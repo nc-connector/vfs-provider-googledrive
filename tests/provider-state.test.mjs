@@ -13,6 +13,8 @@ import {
 } from "../src/state/provider-state.mjs";
 import { FakeStorageArea } from "./helpers/fake-storage.mjs";
 
+const CLIENT_ID = "123456.apps.googleusercontent.com";
+
 function createRepository() {
   let timestamp = 1000;
   let identifier = 0;
@@ -45,6 +47,7 @@ test("keeps refresh material out of normal account results", async () => {
     googleUserId: "google-user-1",
     displayName: "Ada Example",
     emailAddress: "ada@example.invalid",
+    oauthClientId: CLIENT_ID,
     refreshToken: "refresh-secret"
   });
 
@@ -53,6 +56,7 @@ test("keeps refresh material out of normal account results", async () => {
   assert.equal(Object.hasOwn((await repository.listAccounts())[0], "refreshToken"), false);
   assert.deepEqual(await repository.getAccountAuthorization(account.id), {
     accountId: "account-1",
+    oauthClientId: CLIENT_ID,
     refreshToken: "refresh-secret",
     status: "connected"
   });
@@ -67,6 +71,7 @@ test("reuses an account record when Google returns the same user", async () => {
   const original = await repository.upsertAccount({
     googleUserId: "google-user-1",
     displayName: "Old name",
+    oauthClientId: CLIENT_ID,
     refreshToken: "refresh-one"
   });
 
@@ -89,6 +94,7 @@ test("stores only the account binding beside toolkit-owned connection data", asy
   const { repository, storageArea } = createRepository();
   const account = await repository.upsertAccount({
     googleUserId: "google-user-1",
+    oauthClientId: CLIENT_ID,
     refreshToken: "refresh-one"
   });
 
@@ -113,6 +119,7 @@ test("removing an account returns and removes all dependent bindings", async () 
   const { repository } = createRepository();
   const account = await repository.upsertAccount({
     googleUserId: "google-user-1",
+    oauthClientId: CLIENT_ID,
     refreshToken: "refresh-one"
   });
   await repository.bindConnection({ storageId: "storage-1", accountId: account.id });
@@ -129,6 +136,7 @@ test("removes stale bindings without changing valid ones", async () => {
   const { repository } = createRepository();
   const account = await repository.upsertAccount({
     googleUserId: "google-user-1",
+    oauthClientId: CLIENT_ID,
     refreshToken: "refresh-one"
   });
   await repository.bindConnection({ storageId: "storage-1", accountId: account.id });
@@ -149,10 +157,12 @@ test("serializes overlapping account writes", async () => {
   await Promise.all([
     repository.upsertAccount({
       googleUserId: "google-user-1",
+      oauthClientId: CLIENT_ID,
       refreshToken: "refresh-one"
     }),
     repository.upsertAccount({
       googleUserId: "google-user-2",
+      oauthClientId: CLIENT_ID,
       refreshToken: "refresh-two"
     })
   ]);

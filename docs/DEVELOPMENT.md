@@ -1,8 +1,8 @@
 # Development Guide — VFS Provider for Google Drive
 
-> **Development status:** Version 0.1.0 is an MV3 foundation only. It does not
-> register a working VFS provider, authenticate a Google account, or implement
-> Google Drive storage operations.
+> **Development status:** Version 0.1.0 includes the MV3 foundation and internal
+> Google OAuth account services. It does not register a working VFS provider,
+> expose account setup UI, or implement Google Drive storage operations.
 
 ## 1. Product goal
 
@@ -49,6 +49,8 @@ Drive, and this project does not include its WebDAV protocol code.
 | `src/background.js` | module background entry point |
 | `src/state/` | versioned account, connection-binding, and preference storage |
 | `src/core/logger.mjs` | redacted provider diagnostics |
+| `src/google/` | Google OAuth and session-token services |
+| `src/runtime/` | internal extension message boundary |
 | `src/options/` | localized development-status page |
 | `src/_locales/` | WebExtension messages for all supported locales |
 | `src/vendor/vfs-toolkit/` | unmodified Thunderbird VFS provider module |
@@ -77,31 +79,73 @@ Drive, and this project does not include its WebDAV protocol code.
 - A future `runtime.onMessage` listener must return a promise only for messages
   it handles; it must return `undefined` for unrelated messages.
 
-The manifest currently has a minimum Thunderbird version of 140.0, the
-`storage` permission required by the vendored provider module, and no host
-permissions. Any change to that set needs a matching implementation and
-documentation update.
+The manifest currently has a minimum Thunderbird version of 140.0. It requests
+`storage` for Toolkit, account, preference, and session state, plus `identity`
+for the interactive OAuth window. Host access is limited to
+`oauth2.googleapis.com` for token exchange/revocation and `www.googleapis.com`
+for Drive API calls. The authorization page at `accounts.google.com` is opened
+by `identity.launchWebAuthFlow()` and does not need host access.
 
 ## 5. Current runtime surface
 
-The scaffold uses only this product-owned background registration:
+The product-owned background registers these event boundaries during module
+evaluation:
 
 | API | Use | Permission |
 |---|---|---|
-| `browser.runtime.onStartup.addListener` | establishes the MV3 startup event boundary | none |
+| `browser.runtime.onMessage.addListener` | internal account and preference requests | none |
+| `browser.runtime.onStartup.addListener` | resumes the MV3 startup boundary | none |
+| `browser.storage.onChanged.addListener` | applies debug preference changes | `storage` |
 
 The options page imports the vendored localization helper, which resolves
 messages through `browser.i18n.getMessage`. The manifest's `default_locale` is
 `de`.
 
-The background imports the vendored VFS module and declares
+The background constructs the account, preference, OAuth-session, OAuth-client,
+and logger services before it accepts internal requests. The runtime message
+listener is not declared `async`: it returns a promise for known internal
+messages and `undefined` for all other messages. The background also imports the
+vendored VFS module and declares
 `GoogleDriveVfsProvider` as its product-owned subclass. It does not construct or
 initialize that class, so the scaffold does not register provider listeners or
 advertise a storage connection.
 
 The provider module uses `browser.storage.local` for consumer connection
-records. This is why the scaffold declares `storage` before Google account
-storage is implemented.
+records. Product account records and preferences use separate keys in the same
+storage area; access tokens and active PKCE data use `browser.storage.session`.
+
+### OAuth account flow
+
+The account service uses Google's Authorization Code flow with PKCE and the
+documented Thunderbird `identity` API. It derives Mozilla's Google-compatible
+loopback redirect from the fixed add-on ID:
+
+```text
+http://127.0.0.1/mozoauth2/<extension-id-hash>
+```
+
+The Google Cloud credential must be a Desktop app client. Public installed
+clients do not use a client secret. A 32-byte random verifier and independent
+state value are held in `storage.session` for the authorization transaction.
+The returned state and redirect are checked before the code is exchanged.
+
+The provider requests `https://www.googleapis.com/auth/drive`. The narrower
+`drive.file` scope cannot represent an existing Drive tree because it only sees
+files created by or explicitly opened for the app. The full scope is restricted
+and a published build needs the corresponding Google verification work.
+
+Refresh tokens and minimal Google account metadata are stored in
+`storage.local`; normal account queries omit the refresh token. Access tokens
+and PKCE transactions are stored in `storage.session` and are replaced on
+expiry. Thunderbird does not expose a documented operating-system credential
+store to ordinary WebExtensions, so the project does not describe local token
+storage as encrypted. Profile access must be treated as credential access.
+
+Token refresh is deduplicated per account. `invalid_grant` marks that account as
+requiring authorization again. Disconnect first asks Google to revoke the
+refresh token, then removes local credentials even if Google reports that the
+grant is already invalid. An interactive authorization window is opened only
+for an internal user action, never during startup.
 
 ## 6. Planned provider boundary
 
@@ -158,8 +202,8 @@ operations need storage-change reports for items already changed before an
 abort or error, as described by the upstream provider guide.
 
 Google API transport, upload strategy, retry policy, quota mapping, change
-tracking, and error translation are not part of this scaffold and must not be
-inferred from the vendored Toolkit.
+tracking, and error translation are not implemented yet and must not be inferred
+from the vendored Toolkit.
 
 ### Diagnostic logging
 
@@ -234,14 +278,13 @@ Before committing a functional provider change:
    or `VENDOR.md` when their statements change.
 7. Run `npm run test:review` and `npm test`.
 
-## 12. Items not yet defined
+## 12. Pending release inputs
 
-The following choices remain open and must be resolved before their code is
-added:
+The implementation still needs these inputs or later release decisions:
 
-- Google OAuth client ownership and redirect configuration;
-- Google authorization scopes;
-- supported drive types and Google-native files;
+- a project-owned production Google OAuth Desktop client ID;
+- the final product icon and Google brand review;
+- the oldest Thunderbird version verified by smoke testing;
 - retry, upload-resume, timeout, and rate-limit behavior;
 - account and connection migration rules;
 - storage-change polling or Google change-token strategy; and

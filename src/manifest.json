@@ -13,7 +13,12 @@
     "128": "assets/icon.svg"
   },
   "permissions": [
+    "identity",
     "storage"
+  ],
+  "host_permissions": [
+    "https://oauth2.googleapis.com/*",
+    "https://www.googleapis.com/*"
   ],
   "browser_specific_settings": {
     "gecko": {

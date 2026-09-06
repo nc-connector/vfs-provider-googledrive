@@ -1,9 +1,9 @@
 # VFS Provider for Google Drive
 
-> **Development status:** This repository currently contains an initial
-> Manifest V3 project scaffold. It does not authenticate with Google, expose a
-> discoverable VFS storage, or read and write Google Drive content. Do not use
-> this build in production.
+> **Development status:** This repository contains the Manifest V3 foundation
+> and the internal Google OAuth account flow. It does not yet provide the
+> account setup UI, expose a discoverable VFS storage, or read and write Google
+> Drive content. Do not use this build in production.
 
 VFS Provider for Google Drive is intended to make Google Drive storage
 available to compatible Thunderbird add-ons through Thunderbird's VFS Toolkit.
@@ -21,14 +21,17 @@ The initial scaffold provides:
 - versioned preferences for OAuth setup, diagnostics, and Google Workspace
   export formats;
 - privacy-aware diagnostic logging with a strict metadata allowlist;
+- Google OAuth Authorization Code flow with PKCE, token refresh, revocation,
+  and restart-safe session token storage;
 - the unmodified Thunderbird VFS provider and i18n modules at a fixed upstream
   revision;
 - a reproducible XPI build script;
 - local package and review checks; and
 - administrator and developer documentation.
 
-Google OAuth, account setup, VFS connection grants, Google Drive API operations,
-progress, cancellation, and storage-change reporting are not yet implemented.
+Account setup UI, VFS connection grants, Google Drive API operations, progress,
+cancellation, and storage-change reporting are not yet implemented. A Google
+Desktop OAuth client ID is required before the account flow can be smoke-tested.
 
 ## Requirements
 

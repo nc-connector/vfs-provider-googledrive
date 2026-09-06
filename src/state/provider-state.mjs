@@ -106,6 +106,7 @@ export class ProviderStateRepository {
     }
     return {
       accountId: account.id,
+      oauthClientId: account.oauthClientId,
       refreshToken: account.refreshToken,
       status: account.status
     };
@@ -116,6 +117,7 @@ export class ProviderStateRepository {
     googleUserId,
     displayName,
     emailAddress,
+    oauthClientId,
     refreshToken,
     status = "connected"
   }) {
@@ -131,6 +133,11 @@ export class ProviderStateRepository {
         (requestedId && entry.id === requestedId)
       );
       const existing = index >= 0 ? state.accounts[index] : null;
+      const normalizedOauthClientId = normalizeOptionalString(oauthClientId) ||
+        existing?.oauthClientId;
+      if (!normalizedOauthClientId) {
+        throw new TypeError("oauthClientId is required for a new account");
+      }
       const normalizedRefreshToken = normalizeOptionalString(refreshToken) || existing?.refreshToken;
       if (!normalizedRefreshToken) {
         throw new TypeError("refreshToken is required for a new account");
@@ -142,6 +149,7 @@ export class ProviderStateRepository {
         googleUserId: normalizedGoogleUserId,
         displayName: normalizeOptionalString(displayName),
         emailAddress: normalizeOptionalString(emailAddress),
+        oauthClientId: normalizedOauthClientId,
         refreshToken: normalizedRefreshToken,
         status,
         createdAt: existing?.createdAt || timestamp,

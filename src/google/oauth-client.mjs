@@ -1,0 +1,403 @@
+/**
+ * Google OAuth 2.0 Authorization Code flow with PKCE.
+ */
+
+"use strict";
+
+export const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
+
+const AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
+const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
+const REVOCATION_ENDPOINT = "https://oauth2.googleapis.com/revoke";
+const ABOUT_ENDPOINT = "https://www.googleapis.com/drive/v3/about";
+const TRANSACTION_MAX_AGE_MS = 10 * 60 * 1000;
+const CLIENT_ID_PATTERN = /^[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/;
+
+function encodeBase64Url(bytes) {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/u, "");
+}
+
+function requireClientId(value) {
+  const clientId = typeof value === "string" ? value.trim() : "";
+  if (!clientId) {
+    throw new GoogleOAuthError("oauth_not_configured");
+  }
+  if (!CLIENT_ID_PATTERN.test(clientId)) {
+    throw new GoogleOAuthError("oauth_client_id_invalid");
+  }
+  return clientId;
+}
+
+async function readJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
+function tokenExpiry(now, expiresIn) {
+  const seconds = Number(expiresIn);
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    throw new GoogleOAuthError("oauth_token_response_invalid");
+  }
+  return now + seconds * 1000;
+}
+
+export class GoogleOAuthError extends Error {
+  constructor(code, status = 0) {
+    super(code);
+    this.name = "GoogleOAuthError";
+    this.code = code;
+    this.status = status;
+  }
+}
+
+export async function createGoogleRedirectUri(identityApi) {
+  const generated = new URL(await identityApi.getRedirectURL());
+  const extensionHash = generated.hostname.split(".")[0];
+  if (!extensionHash) {
+    throw new GoogleOAuthError("oauth_redirect_invalid");
+  }
+  return `http://127.0.0.1/mozoauth2/${extensionHash}`;
+}
+
+export async function createPkceValues(cryptoApi = crypto) {
+  const verifierBytes = new Uint8Array(32);
+  const stateBytes = new Uint8Array(32);
+  cryptoApi.getRandomValues(verifierBytes);
+  cryptoApi.getRandomValues(stateBytes);
+  const codeVerifier = encodeBase64Url(verifierBytes);
+  const digest = await cryptoApi.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(codeVerifier)
+  );
+  return {
+    codeVerifier,
+    codeChallenge: encodeBase64Url(new Uint8Array(digest)),
+    state: encodeBase64Url(stateBytes)
+  };
+}
+
+export class GoogleOAuthClient {
+  #identityApi;
+  #sessionRepository;
+  #accountRepository;
+  #preferencesRepository;
+  #fetch;
+  #logger;
+  #crypto;
+  #now;
+  #refreshPromises = new Map();
+
+  constructor({
+    identityApi,
+    sessionRepository,
+    accountRepository,
+    preferencesRepository,
+    fetchApi = fetch,
+    logger,
+    cryptoApi = crypto,
+    now = () => Date.now()
+  }) {
+    this.#identityApi = identityApi;
+    this.#sessionRepository = sessionRepository;
+    this.#accountRepository = accountRepository;
+    this.#preferencesRepository = preferencesRepository;
+    this.#fetch = fetchApi;
+    this.#logger = logger;
+    this.#crypto = cryptoApi;
+    this.#now = now;
+  }
+
+  async authorize({ accountId, clientId, interactive = true } = {}) {
+    const preferences = await this.#preferencesRepository.get();
+    const expectedAccount = accountId
+      ? await this.#accountRepository.getAccount(accountId)
+      : null;
+    if (accountId && !expectedAccount) {
+      throw new GoogleOAuthError("oauth_reauthorization_required", 401);
+    }
+    const normalizedClientId = requireClientId(
+      clientId || expectedAccount?.oauthClientId || preferences.oauthClientId
+    );
+    const redirectUri = await createGoogleRedirectUri(this.#identityApi);
+    const pkce = await createPkceValues(this.#crypto);
+    await this.#sessionRepository.removeExpiredTransactions(TRANSACTION_MAX_AGE_MS);
+    await this.#sessionRepository.storeTransaction({
+      state: pkce.state,
+      codeVerifier: pkce.codeVerifier,
+      clientId: normalizedClientId
+    });
+
+    const authorizationUrl = new URL(AUTHORIZATION_ENDPOINT);
+    const authorizationParameters = new URLSearchParams({
+      client_id: normalizedClientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: GOOGLE_DRIVE_SCOPE,
+      code_challenge: pkce.codeChallenge,
+      code_challenge_method: "S256",
+      access_type: "offline",
+      prompt: "consent select_account",
+      include_granted_scopes: "true",
+      state: pkce.state
+    });
+    if (expectedAccount?.emailAddress) {
+      authorizationParameters.set("login_hint", expectedAccount.emailAddress);
+    }
+    authorizationUrl.search = authorizationParameters.toString();
+
+    this.#logger.info("oauth.authorization.start", { phase: "interactive" });
+    try {
+      let responseUrl;
+      try {
+        responseUrl = await this.#identityApi.launchWebAuthFlow({
+          url: authorizationUrl.toString(),
+          interactive
+        });
+      } catch {
+        throw new GoogleOAuthError("oauth_flow_failed");
+      }
+
+      const response = new URL(responseUrl);
+      const expected = new URL(redirectUri);
+      if (response.origin !== expected.origin || response.pathname !== expected.pathname) {
+        throw new GoogleOAuthError("oauth_redirect_mismatch");
+      }
+      const returnedState = response.searchParams.get("state");
+      if (returnedState !== pkce.state) {
+        throw new GoogleOAuthError("oauth_state_mismatch");
+      }
+      const transaction = await this.#sessionRepository.getTransaction(returnedState);
+      if (!transaction || transaction.clientId !== normalizedClientId) {
+        throw new GoogleOAuthError("oauth_state_mismatch");
+      }
+      if (response.searchParams.has("error")) {
+        throw new GoogleOAuthError("oauth_denied");
+      }
+      const authorizationCode = response.searchParams.get("code");
+      if (!authorizationCode) {
+        throw new GoogleOAuthError("oauth_code_missing");
+      }
+
+      const token = await this.#exchangeAuthorizationCode({
+        authorizationCode,
+        codeVerifier: transaction.codeVerifier,
+        clientId: transaction.clientId,
+        redirectUri
+      });
+      const profile = await this.#loadDriveProfile(token.accessToken);
+      if (expectedAccount &&
+          profile.permissionId !== expectedAccount.googleUserId) {
+        try {
+          await this.#revokeToken(token.refreshToken || token.accessToken);
+        } catch {
+          // The mismatched account is never stored locally.
+        }
+        throw new GoogleOAuthError("oauth_account_mismatch");
+      }
+      let account;
+      try {
+        account = await this.#accountRepository.upsertAccount({
+          id: expectedAccount?.id,
+          googleUserId: profile.permissionId,
+          displayName: profile.displayName,
+          emailAddress: profile.emailAddress,
+          oauthClientId: normalizedClientId,
+          refreshToken: token.refreshToken,
+          status: "connected"
+        });
+      } catch (error) {
+        if (error instanceof TypeError && !token.refreshToken) {
+          throw new GoogleOAuthError("oauth_refresh_token_missing");
+        }
+        throw error;
+      }
+      await this.#sessionRepository.setAccessToken(
+        account.id,
+        token.accessToken,
+        token.expiresAt
+      );
+      this.#logger.info("oauth.authorization.complete", { status: "connected" });
+      return account;
+    } finally {
+      await this.#sessionRepository.deleteTransaction(pkce.state);
+    }
+  }
+
+  async getAccessToken(accountId, { forceRefresh = false } = {}) {
+    const authorization = await this.#accountRepository.getAccountAuthorization(accountId);
+    if (!authorization || authorization.status !== "connected") {
+      throw new GoogleOAuthError("oauth_reauthorization_required", 401);
+    }
+
+    if (!forceRefresh) {
+      const cached = await this.#sessionRepository.getAccessToken(accountId);
+      if (cached) {
+        return cached;
+      }
+    } else {
+      await this.#sessionRepository.clearAccessToken(accountId);
+    }
+
+    if (!this.#refreshPromises.has(accountId)) {
+      const refresh = this.#refreshAccessToken(accountId, authorization)
+        .finally(() => this.#refreshPromises.delete(accountId));
+      this.#refreshPromises.set(accountId, refresh);
+    }
+    return this.#refreshPromises.get(accountId);
+  }
+
+  async disconnectAccount(accountId) {
+    const authorization = await this.#accountRepository.getAccountAuthorization(accountId);
+    if (!authorization) {
+      return null;
+    }
+
+    let revoked = false;
+    try {
+      revoked = await this.#revokeToken(authorization.refreshToken, true);
+    } catch (error) {
+      this.#logger.warn("oauth.revocation.failed", { error });
+    } finally {
+      await this.#sessionRepository.clearAccessToken(accountId);
+    }
+
+    const removed = await this.#accountRepository.removeAccount(accountId);
+    this.#logger.info("oauth.account.disconnected", {
+      status: revoked ? "revoked" : "removed_locally"
+    });
+    return {
+      ...removed,
+      revoked
+    };
+  }
+
+  async #exchangeAuthorizationCode({
+    authorizationCode,
+    codeVerifier,
+    clientId,
+    redirectUri
+  }) {
+    const response = await this.#fetch(TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        code: authorizationCode,
+        code_verifier: codeVerifier,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri
+      }).toString()
+    });
+    const payload = await readJson(response);
+    if (!response.ok || typeof payload.access_token !== "string") {
+      throw new GoogleOAuthError("oauth_token_request_failed", response.status);
+    }
+    return {
+      accessToken: payload.access_token,
+      refreshToken: typeof payload.refresh_token === "string"
+        ? payload.refresh_token
+        : "",
+      expiresAt: tokenExpiry(this.#now(), payload.expires_in)
+    };
+  }
+
+  async #revokeToken(token, logFailure = false) {
+    if (!token) {
+      return false;
+    }
+    const response = await this.#fetch(REVOCATION_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({ token }).toString()
+    });
+    if (!response.ok && logFailure) {
+      this.#logger.warn("oauth.revocation.failed", { httpStatus: response.status });
+    }
+    return response.ok;
+  }
+
+  async #loadDriveProfile(accessToken) {
+    const url = new URL(ABOUT_ENDPOINT);
+    url.searchParams.set(
+      "fields",
+      "user(displayName,emailAddress,permissionId)"
+    );
+    const response = await this.#fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+    const payload = await readJson(response);
+    if (!response.ok || !payload.user?.permissionId) {
+      throw new GoogleOAuthError("oauth_profile_request_failed", response.status);
+    }
+    return {
+      permissionId: payload.user.permissionId,
+      displayName: payload.user.displayName || "",
+      emailAddress: payload.user.emailAddress || ""
+    };
+  }
+
+  async #refreshAccessToken(accountId, authorization) {
+    const clientId = requireClientId(authorization.oauthClientId);
+    this.#logger.debug("oauth.token.refresh.start", { phase: "refresh" });
+    const response = await this.#fetch(TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        refresh_token: authorization.refreshToken,
+        grant_type: "refresh_token"
+      }).toString()
+    });
+    const payload = await readJson(response);
+    if (!response.ok || typeof payload.access_token !== "string") {
+      if (payload.error === "invalid_grant") {
+        await this.#accountRepository.setAccountStatus(
+          accountId,
+          "reauthorization_required"
+        );
+        await this.#sessionRepository.clearAccessToken(accountId);
+        throw new GoogleOAuthError("oauth_reauthorization_required", response.status);
+      }
+      throw new GoogleOAuthError("oauth_token_refresh_failed", response.status);
+    }
+
+    const expiresAt = tokenExpiry(this.#now(), payload.expires_in);
+    if (typeof payload.refresh_token === "string" && payload.refresh_token) {
+      const account = await this.#accountRepository.getAccount(accountId);
+      if (!account) {
+        throw new GoogleOAuthError("oauth_reauthorization_required", 401);
+      }
+      await this.#accountRepository.upsertAccount({
+        ...account,
+        oauthClientId: authorization.oauthClientId,
+        refreshToken: payload.refresh_token,
+        status: "connected"
+      });
+    }
+    await this.#sessionRepository.setAccessToken(
+      accountId,
+      payload.access_token,
+      expiresAt
+    );
+    this.#logger.debug("oauth.token.refresh.complete", { status: "connected" });
+    return payload.access_token;
+  }
+}
