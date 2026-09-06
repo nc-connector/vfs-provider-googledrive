@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "De Google-aanmelding is geannuleerd of niet goedgekeurd." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "Voor dit Google-account moet opnieuw worden aangemeld." },
   "optionsErrorOAuthGeneric": { "message": "De Google-aanmelding kon niet worden voltooid. Controleer de client-ID en Google Cloud-instellingen." },
-  "optionsErrorUnexpected": { "message": "De huidige gegevens konden niet worden geladen of de gevraagde wijziging kon niet worden voltooid. Probeer het opnieuw." }
+  "optionsErrorUnexpected": { "message": "De huidige gegevens konden niet worden geladen of de gevraagde wijziging kon niet worden voltooid. Probeer het opnieuw." },
+  "vfsRootMyDrive": { "message": "Mijn Drive" },
+  "vfsRootSharedWithMe": { "message": "Gedeeld met mij" },
+  "vfsRootSharedDrives": { "message": "Gedeelde drives" },
+  "vfsErrorAuthenticationTitle": { "message": "Aanmelden bij Google Drive vereist" },
+  "vfsErrorAuthenticationDescription": { "message": "Open de providerinstellingen en meld u opnieuw aan bij dit Google-account." },
+  "vfsErrorRateLimitTitle": { "message": "Google Drive is bezet" },
+  "vfsErrorRateLimitDescription": { "message": "Google Drive heeft de provider gevraagd te wachten. Probeer het later opnieuw." },
+  "vfsErrorNetworkTitle": { "message": "Google Drive is niet bereikbaar" },
+  "vfsErrorNetworkDescription": { "message": "Controleer de netwerkverbinding en probeer het opnieuw." },
+  "vfsErrorAccessTitle": { "message": "Toegang tot Google Drive geweigerd" },
+  "vfsErrorAccessDescription": { "message": "Het geselecteerde item kan niet met dit Google-account worden gelezen." },
+  "vfsErrorUnavailableTitle": { "message": "Google Drive-item niet beschikbaar" },
+  "vfsErrorUnavailableDescription": { "message": "Het geselecteerde item bestaat niet meer of kan niet worden geopend." }
 }

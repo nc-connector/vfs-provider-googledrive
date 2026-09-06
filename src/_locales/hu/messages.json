@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "A Google-bejelentkezés megszakadt vagy nem lett jóváhagyva." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "Ebbe a Google-fiókba újra be kell jelentkezni." },
   "optionsErrorOAuthGeneric": { "message": "A Google-bejelentkezés nem fejezhető be. Ellenőrizze a kliensazonosítót és a Google Cloud beállításait." },
-  "optionsErrorUnexpected": { "message": "Az aktuális adatokat nem sikerült betölteni, vagy a kért módosítást nem sikerült végrehajtani. Próbálja újra." }
+  "optionsErrorUnexpected": { "message": "Az aktuális adatokat nem sikerült betölteni, vagy a kért módosítást nem sikerült végrehajtani. Próbálja újra." },
+  "vfsRootMyDrive": { "message": "Saját meghajtó" },
+  "vfsRootSharedWithMe": { "message": "Velem megosztva" },
+  "vfsRootSharedDrives": { "message": "Megosztott meghajtók" },
+  "vfsErrorAuthenticationTitle": { "message": "Bejelentkezés szükséges a Google Drive-hoz" },
+  "vfsErrorAuthenticationDescription": { "message": "Nyissa meg a szolgáltató beállításait, és jelentkezzen be újra ebbe a Google-fiókba." },
+  "vfsErrorRateLimitTitle": { "message": "A Google Drive foglalt" },
+  "vfsErrorRateLimitDescription": { "message": "A Google Drive várakozásra kérte a szolgáltatót. Próbálja újra később." },
+  "vfsErrorNetworkTitle": { "message": "A Google Drive nem érhető el" },
+  "vfsErrorNetworkDescription": { "message": "Ellenőrizze a hálózati kapcsolatot, majd próbálja újra." },
+  "vfsErrorAccessTitle": { "message": "A Google Drive-hozzáférés megtagadva" },
+  "vfsErrorAccessDescription": { "message": "A kijelölt elem nem olvasható ezzel a Google-fiókkal." },
+  "vfsErrorUnavailableTitle": { "message": "A Google Drive eleme nem érhető el" },
+  "vfsErrorUnavailableDescription": { "message": "A kijelölt elem már nem létezik, vagy nem nyitható meg." }
 }

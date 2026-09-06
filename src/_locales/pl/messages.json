@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "Logowanie do Google anulowano lub nie zatwierdzono." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "Należy ponownie zalogować się do tego konta Google." },
   "optionsErrorOAuthGeneric": { "message": "Nie udało się zakończyć logowania do Google. Sprawdź identyfikator klienta i konfigurację Google Cloud." },
-  "optionsErrorUnexpected": { "message": "Nie udało się wczytać aktualnych danych lub wykonać żądanej zmiany. Spróbuj ponownie." }
+  "optionsErrorUnexpected": { "message": "Nie udało się wczytać aktualnych danych lub wykonać żądanej zmiany. Spróbuj ponownie." },
+  "vfsRootMyDrive": { "message": "Mój dysk" },
+  "vfsRootSharedWithMe": { "message": "Udostępnione dla mnie" },
+  "vfsRootSharedDrives": { "message": "Dyski współdzielone" },
+  "vfsErrorAuthenticationTitle": { "message": "Wymagane logowanie do Dysku Google" },
+  "vfsErrorAuthenticationDescription": { "message": "Otwórz ustawienia dostawcy i zaloguj się ponownie na to konto Google." },
+  "vfsErrorRateLimitTitle": { "message": "Dysk Google jest zajęty" },
+  "vfsErrorRateLimitDescription": { "message": "Dysk Google poprosił dostawcę o zaczekanie. Spróbuj ponownie później." },
+  "vfsErrorNetworkTitle": { "message": "Dysk Google jest nieosiągalny" },
+  "vfsErrorNetworkDescription": { "message": "Sprawdź połączenie sieciowe i spróbuj ponownie." },
+  "vfsErrorAccessTitle": { "message": "Odmowa dostępu do Dysku Google" },
+  "vfsErrorAccessDescription": { "message": "Nie można odczytać wybranego elementu przy użyciu tego konta Google." },
+  "vfsErrorUnavailableTitle": { "message": "Element Dysku Google jest niedostępny" },
+  "vfsErrorUnavailableDescription": { "message": "Wybrany element już nie istnieje lub nie można go otworzyć." }
 }

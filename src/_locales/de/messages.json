@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "Die Google-Anmeldung wurde abgebrochen oder nicht bestätigt." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "Die Anmeldung für dieses Google-Konto muss erneut durchgeführt werden." },
   "optionsErrorOAuthGeneric": { "message": "Die Google-Anmeldung konnte nicht abgeschlossen werden. Prüfen Sie die Client-ID und die Google-Cloud-Einrichtung." },
-  "optionsErrorUnexpected": { "message": "Die aktuellen Daten konnten nicht geladen oder die angeforderte Änderung nicht abgeschlossen werden. Bitte erneut versuchen." }
+  "optionsErrorUnexpected": { "message": "Die aktuellen Daten konnten nicht geladen oder die angeforderte Änderung nicht abgeschlossen werden. Bitte erneut versuchen." },
+  "vfsRootMyDrive": { "message": "Meine Ablage" },
+  "vfsRootSharedWithMe": { "message": "Für mich freigegeben" },
+  "vfsRootSharedDrives": { "message": "Geteilte Ablagen" },
+  "vfsErrorAuthenticationTitle": { "message": "Anmeldung bei Google Drive erforderlich" },
+  "vfsErrorAuthenticationDescription": { "message": "Öffnen Sie die Anbietereinstellungen und melden Sie sich erneut bei diesem Google-Konto an." },
+  "vfsErrorRateLimitTitle": { "message": "Google Drive ist ausgelastet" },
+  "vfsErrorRateLimitDescription": { "message": "Google Drive hat den Anbieter gebeten zu warten. Versuchen Sie es später erneut." },
+  "vfsErrorNetworkTitle": { "message": "Google Drive ist nicht erreichbar" },
+  "vfsErrorNetworkDescription": { "message": "Prüfen Sie die Netzwerkverbindung und versuchen Sie es erneut." },
+  "vfsErrorAccessTitle": { "message": "Zugriff auf Google Drive verweigert" },
+  "vfsErrorAccessDescription": { "message": "Das ausgewählte Element kann mit diesem Google-Konto nicht gelesen werden." },
+  "vfsErrorUnavailableTitle": { "message": "Google-Drive-Element nicht verfügbar" },
+  "vfsErrorUnavailableDescription": { "message": "Das ausgewählte Element existiert nicht mehr oder kann nicht geöffnet werden." }
 }

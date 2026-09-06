@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "Google 登入已取消或未獲核准。" },
   "optionsErrorOAuthReauthorizationRequired": { "message": "此 Google 帳戶需要重新登入。" },
   "optionsErrorOAuthGeneric": { "message": "無法完成 Google 登入。請檢查用戶端 ID 和 Google Cloud 設定。" },
-  "optionsErrorUnexpected": { "message": "無法載入目前資料或完成要求的變更。請再試一次。" }
+  "optionsErrorUnexpected": { "message": "無法載入目前資料或完成要求的變更。請再試一次。" },
+  "vfsRootMyDrive": { "message": "我的雲端硬碟" },
+  "vfsRootSharedWithMe": { "message": "與我共用" },
+  "vfsRootSharedDrives": { "message": "共用雲端硬碟" },
+  "vfsErrorAuthenticationTitle": { "message": "需要登入 Google 雲端硬碟" },
+  "vfsErrorAuthenticationDescription": { "message": "請開啟提供者設定，然後重新登入此 Google 帳戶。" },
+  "vfsErrorRateLimitTitle": { "message": "Google 雲端硬碟忙碌中" },
+  "vfsErrorRateLimitDescription": { "message": "Google 雲端硬碟要求提供者暫時等待。請稍後再試。" },
+  "vfsErrorNetworkTitle": { "message": "無法連線至 Google 雲端硬碟" },
+  "vfsErrorNetworkDescription": { "message": "請檢查網路連線，然後再試一次。" },
+  "vfsErrorAccessTitle": { "message": "Google 雲端硬碟拒絕存取" },
+  "vfsErrorAccessDescription": { "message": "無法使用此 Google 帳戶讀取所選項目。" },
+  "vfsErrorUnavailableTitle": { "message": "Google 雲端硬碟項目無法使用" },
+  "vfsErrorUnavailableDescription": { "message": "所選項目已不存在或無法開啟。" }
 }

@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "Вход в Google был отменён или не подтверждён." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "В эту учётную запись Google необходимо войти снова." },
   "optionsErrorOAuthGeneric": { "message": "Не удалось завершить вход в Google. Проверьте идентификатор клиента и настройки Google Cloud." },
-  "optionsErrorUnexpected": { "message": "Не удалось загрузить текущие данные или выполнить запрошенное изменение. Повторите попытку." }
+  "optionsErrorUnexpected": { "message": "Не удалось загрузить текущие данные или выполнить запрошенное изменение. Повторите попытку." },
+  "vfsRootMyDrive": { "message": "Мой диск" },
+  "vfsRootSharedWithMe": { "message": "Доступные мне" },
+  "vfsRootSharedDrives": { "message": "Общие диски" },
+  "vfsErrorAuthenticationTitle": { "message": "Требуется вход в Google Диск" },
+  "vfsErrorAuthenticationDescription": { "message": "Откройте настройки провайдера и снова войдите в эту учётную запись Google." },
+  "vfsErrorRateLimitTitle": { "message": "Google Диск занят" },
+  "vfsErrorRateLimitDescription": { "message": "Google Диск запросил паузу. Повторите попытку позже." },
+  "vfsErrorNetworkTitle": { "message": "Google Диск недоступен" },
+  "vfsErrorNetworkDescription": { "message": "Проверьте сетевое подключение и повторите попытку." },
+  "vfsErrorAccessTitle": { "message": "Доступ к Google Диску запрещён" },
+  "vfsErrorAccessDescription": { "message": "Выбранный объект нельзя прочитать с помощью этой учётной записи Google." },
+  "vfsErrorUnavailableTitle": { "message": "Объект Google Диска недоступен" },
+  "vfsErrorUnavailableDescription": { "message": "Выбранный объект больше не существует или его невозможно открыть." }
 }

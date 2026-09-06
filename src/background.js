@@ -15,9 +15,9 @@ import {
   ProviderPreferencesRepository
 } from "./state/provider-preferences.mjs";
 import { ProviderStateRepository } from "./state/provider-state.mjs";
-import { VfsProviderImplementation } from "./vendor/vfs-toolkit/vfs-provider.mjs";
-
-export class GoogleDriveVfsProvider extends VfsProviderImplementation {}
+export {
+  GoogleDriveVfsProvider
+} from "./provider/google-drive-vfs-provider.mjs";
 
 const logger = new ProviderLogger();
 const accountRepository = new ProviderStateRepository({

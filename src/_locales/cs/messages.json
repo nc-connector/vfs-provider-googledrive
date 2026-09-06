@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "Přihlášení ke Googlu bylo zrušeno nebo nebylo schváleno." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "K tomuto účtu Google je nutné se znovu přihlásit." },
   "optionsErrorOAuthGeneric": { "message": "Přihlášení ke Googlu se nepodařilo dokončit. Zkontrolujte ID klienta a nastavení Google Cloud." },
-  "optionsErrorUnexpected": { "message": "Aktuální data se nepodařilo načíst nebo požadovanou změnu dokončit. Zkuste to znovu." }
+  "optionsErrorUnexpected": { "message": "Aktuální data se nepodařilo načíst nebo požadovanou změnu dokončit. Zkuste to znovu." },
+  "vfsRootMyDrive": { "message": "Můj disk" },
+  "vfsRootSharedWithMe": { "message": "Sdíleno se mnou" },
+  "vfsRootSharedDrives": { "message": "Sdílené disky" },
+  "vfsErrorAuthenticationTitle": { "message": "Je vyžadováno přihlášení k Disku Google" },
+  "vfsErrorAuthenticationDescription": { "message": "Otevřete nastavení poskytovatele a znovu se přihlaste k tomuto účtu Google." },
+  "vfsErrorRateLimitTitle": { "message": "Disk Google je zaneprázdněn" },
+  "vfsErrorRateLimitDescription": { "message": "Disk Google požádal poskytovatele, aby počkal. Zkuste to později." },
+  "vfsErrorNetworkTitle": { "message": "Disk Google není dostupný" },
+  "vfsErrorNetworkDescription": { "message": "Zkontrolujte síťové připojení a zkuste to znovu." },
+  "vfsErrorAccessTitle": { "message": "Přístup k Disku Google byl odepřen" },
+  "vfsErrorAccessDescription": { "message": "Vybranou položku nelze pomocí tohoto účtu Google přečíst." },
+  "vfsErrorUnavailableTitle": { "message": "Položka na Disku Google není dostupná" },
+  "vfsErrorUnavailableDescription": { "message": "Vybraná položka již neexistuje nebo ji nelze otevřít." }
 }

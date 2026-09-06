@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "Google へのログインがキャンセルされたか、承認されませんでした。" },
   "optionsErrorOAuthReauthorizationRequired": { "message": "この Google アカウントにもう一度ログインする必要があります。" },
   "optionsErrorOAuthGeneric": { "message": "Google へのログインを完了できませんでした。クライアント ID と Google Cloud の設定を確認してください。" },
-  "optionsErrorUnexpected": { "message": "現在のデータを読み込めなかったか、要求された変更を完了できませんでした。もう一度お試しください。" }
+  "optionsErrorUnexpected": { "message": "現在のデータを読み込めなかったか、要求された変更を完了できませんでした。もう一度お試しください。" },
+  "vfsRootMyDrive": { "message": "マイドライブ" },
+  "vfsRootSharedWithMe": { "message": "共有アイテム" },
+  "vfsRootSharedDrives": { "message": "共有ドライブ" },
+  "vfsErrorAuthenticationTitle": { "message": "Google ドライブへのログインが必要です" },
+  "vfsErrorAuthenticationDescription": { "message": "プロバイダーの設定を開き、この Google アカウントにもう一度ログインしてください。" },
+  "vfsErrorRateLimitTitle": { "message": "Google ドライブが混み合っています" },
+  "vfsErrorRateLimitDescription": { "message": "Google ドライブから待機するよう求められました。後でもう一度お試しください。" },
+  "vfsErrorNetworkTitle": { "message": "Google ドライブに接続できません" },
+  "vfsErrorNetworkDescription": { "message": "ネットワーク接続を確認して、もう一度お試しください。" },
+  "vfsErrorAccessTitle": { "message": "Google ドライブへのアクセスが拒否されました" },
+  "vfsErrorAccessDescription": { "message": "選択したアイテムをこの Google アカウントで読み取ることができません。" },
+  "vfsErrorUnavailableTitle": { "message": "Google ドライブのアイテムを利用できません" },
+  "vfsErrorUnavailableDescription": { "message": "選択したアイテムは存在しないか、開くことができません。" }
 }

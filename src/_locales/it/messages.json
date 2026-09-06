@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "L’accesso a Google è stato annullato o non approvato." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "È necessario accedere di nuovo a questo account Google." },
   "optionsErrorOAuthGeneric": { "message": "Non è stato possibile completare l’accesso a Google. Controlla l’ID client e la configurazione di Google Cloud." },
-  "optionsErrorUnexpected": { "message": "Non è stato possibile caricare i dati correnti o completare la modifica richiesta. Riprova." }
+  "optionsErrorUnexpected": { "message": "Non è stato possibile caricare i dati correnti o completare la modifica richiesta. Riprova." },
+  "vfsRootMyDrive": { "message": "Il mio Drive" },
+  "vfsRootSharedWithMe": { "message": "Condivisi con me" },
+  "vfsRootSharedDrives": { "message": "Drive condivisi" },
+  "vfsErrorAuthenticationTitle": { "message": "È necessario accedere a Google Drive" },
+  "vfsErrorAuthenticationDescription": { "message": "Apri le impostazioni del provider e accedi di nuovo a questo account Google." },
+  "vfsErrorRateLimitTitle": { "message": "Google Drive è occupato" },
+  "vfsErrorRateLimitDescription": { "message": "Google Drive ha chiesto al provider di attendere. Riprova più tardi." },
+  "vfsErrorNetworkTitle": { "message": "Google Drive non è raggiungibile" },
+  "vfsErrorNetworkDescription": { "message": "Controlla la connessione di rete e riprova." },
+  "vfsErrorAccessTitle": { "message": "Accesso a Google Drive negato" },
+  "vfsErrorAccessDescription": { "message": "L’elemento selezionato non può essere letto con questo account Google." },
+  "vfsErrorUnavailableTitle": { "message": "Elemento di Google Drive non disponibile" },
+  "vfsErrorUnavailableDescription": { "message": "L’elemento selezionato non esiste più o non può essere aperto." }
 }

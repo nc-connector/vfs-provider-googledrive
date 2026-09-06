@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "Google sign-in was cancelled or not approved." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "This Google account must be signed in again." },
   "optionsErrorOAuthGeneric": { "message": "Google sign-in could not be completed. Check the client ID and Google Cloud setup." },
-  "optionsErrorUnexpected": { "message": "The current data could not be loaded or the requested change could not be completed. Please try again." }
+  "optionsErrorUnexpected": { "message": "The current data could not be loaded or the requested change could not be completed. Please try again." },
+  "vfsRootMyDrive": { "message": "My Drive" },
+  "vfsRootSharedWithMe": { "message": "Shared with me" },
+  "vfsRootSharedDrives": { "message": "Shared drives" },
+  "vfsErrorAuthenticationTitle": { "message": "Google Drive sign-in required" },
+  "vfsErrorAuthenticationDescription": { "message": "Open the provider settings and sign in to this Google account again." },
+  "vfsErrorRateLimitTitle": { "message": "Google Drive is busy" },
+  "vfsErrorRateLimitDescription": { "message": "Google Drive asked the provider to wait. Try again later." },
+  "vfsErrorNetworkTitle": { "message": "Google Drive is unreachable" },
+  "vfsErrorNetworkDescription": { "message": "Check the network connection and try again." },
+  "vfsErrorAccessTitle": { "message": "Google Drive access denied" },
+  "vfsErrorAccessDescription": { "message": "The selected item cannot be read with this Google account." },
+  "vfsErrorUnavailableTitle": { "message": "Google Drive item unavailable" },
+  "vfsErrorUnavailableDescription": { "message": "The selected item no longer exists or cannot be opened." }
 }

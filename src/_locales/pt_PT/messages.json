@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "O início de sessão Google foi cancelado ou não foi aprovado." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "É necessário iniciar sessão novamente nesta conta Google." },
   "optionsErrorOAuthGeneric": { "message": "Não foi possível concluir o início de sessão Google. Verifique o ID de cliente e a configuração do Google Cloud." },
-  "optionsErrorUnexpected": { "message": "Não foi possível carregar os dados atuais ou concluir a alteração pedida. Tente novamente." }
+  "optionsErrorUnexpected": { "message": "Não foi possível carregar os dados atuais ou concluir a alteração pedida. Tente novamente." },
+  "vfsRootMyDrive": { "message": "O meu disco" },
+  "vfsRootSharedWithMe": { "message": "Partilhados comigo" },
+  "vfsRootSharedDrives": { "message": "Drives partilhados" },
+  "vfsErrorAuthenticationTitle": { "message": "É necessário iniciar sessão no Google Drive" },
+  "vfsErrorAuthenticationDescription": { "message": "Abra as definições do fornecedor e inicie novamente sessão nesta conta Google." },
+  "vfsErrorRateLimitTitle": { "message": "O Google Drive está ocupado" },
+  "vfsErrorRateLimitDescription": { "message": "O Google Drive pediu ao fornecedor que aguardasse. Tente novamente mais tarde." },
+  "vfsErrorNetworkTitle": { "message": "Não é possível aceder ao Google Drive" },
+  "vfsErrorNetworkDescription": { "message": "Verifique a ligação de rede e tente novamente." },
+  "vfsErrorAccessTitle": { "message": "Acesso ao Google Drive recusado" },
+  "vfsErrorAccessDescription": { "message": "O item selecionado não pode ser lido com esta conta Google." },
+  "vfsErrorUnavailableTitle": { "message": "Item do Google Drive indisponível" },
+  "vfsErrorUnavailableDescription": { "message": "O item selecionado já não existe ou não pode ser aberto." }
 }

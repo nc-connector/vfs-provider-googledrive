@@ -49,5 +49,18 @@
   "optionsErrorOAuthCancelled": { "message": "Google 登录已取消或未获批准。" },
   "optionsErrorOAuthReauthorizationRequired": { "message": "此 Google 账号需要重新登录。" },
   "optionsErrorOAuthGeneric": { "message": "无法完成 Google 登录。请检查客户端 ID 和 Google Cloud 设置。" },
-  "optionsErrorUnexpected": { "message": "无法加载当前数据或完成请求的更改。请重试。" }
+  "optionsErrorUnexpected": { "message": "无法加载当前数据或完成请求的更改。请重试。" },
+  "vfsRootMyDrive": { "message": "我的云端硬盘" },
+  "vfsRootSharedWithMe": { "message": "与我共享" },
+  "vfsRootSharedDrives": { "message": "共享云端硬盘" },
+  "vfsErrorAuthenticationTitle": { "message": "需要登录 Google 云端硬盘" },
+  "vfsErrorAuthenticationDescription": { "message": "请打开提供商设置，然后重新登录此 Google 账号。" },
+  "vfsErrorRateLimitTitle": { "message": "Google 云端硬盘正忙" },
+  "vfsErrorRateLimitDescription": { "message": "Google 云端硬盘要求提供商暂时等待。请稍后重试。" },
+  "vfsErrorNetworkTitle": { "message": "无法连接 Google 云端硬盘" },
+  "vfsErrorNetworkDescription": { "message": "请检查网络连接，然后重试。" },
+  "vfsErrorAccessTitle": { "message": "Google 云端硬盘访问被拒绝" },
+  "vfsErrorAccessDescription": { "message": "无法使用此 Google 账号读取所选项目。" },
+  "vfsErrorUnavailableTitle": { "message": "Google 云端硬盘项目不可用" },
+  "vfsErrorUnavailableDescription": { "message": "所选项目已不存在或无法打开。" }
 }
