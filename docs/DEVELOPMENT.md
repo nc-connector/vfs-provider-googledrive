@@ -48,6 +48,7 @@ Drive, and this project does not include its WebDAV protocol code.
 | `src/manifest.json` | Thunderbird MV3 manifest and product metadata |
 | `src/background.mjs` | module background entry point |
 | `src/state/` | versioned account, connection-binding, and preference storage |
+| `src/core/logger.mjs` | redacted provider diagnostics |
 | `src/options/` | localized development-status page |
 | `src/_locales/` | WebExtension messages for all supported locales |
 | `src/vendor/vfs-toolkit/` | unmodified Thunderbird VFS provider module |
@@ -156,6 +157,16 @@ abort or error, as described by the upstream provider guide.
 Google API transport, upload strategy, retry policy, quota mapping, change
 tracking, and error translation are not part of this scaffold and must not be
 inferred from the vendored Toolkit.
+
+### Diagnostic logging
+
+Product logs use the `[GDRVFS]` prefix. The logger accepts only operation names,
+phases, counts, byte totals, progress, retry data, HTTP status values, and stable
+error codes. It drops tokens, authorization data, names, paths, URLs, account and
+storage identifiers, addresses, request bodies, and file content. Error objects
+are reduced to their type, stable code, and numeric HTTP status; their free-text
+messages are not logged. Debug entries remain disabled until the user enables
+the preference.
 
 ## 8. Vendor policy
 

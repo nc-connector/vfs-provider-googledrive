@@ -20,6 +20,7 @@ The initial scaffold provides:
   consumer connections;
 - versioned preferences for OAuth setup, diagnostics, and Google Workspace
   export formats;
+- privacy-aware diagnostic logging with a strict metadata allowlist;
 - the unmodified Thunderbird VFS provider and i18n modules at a fixed upstream
   revision;
 - a reproducible XPI build script;
