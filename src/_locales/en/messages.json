@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "VFS Provider for Google Drive"
   },
-  "optionsStatusHeading": {
-    "message": "Development status"
-  },
+  "optionsDocumentLanguage": { "message": "en" },
   "optionsStatusText": {
-    "message": "Google Drive account setup and storage access are not available in this development build."
-  }
+    "message": "Set up Google accounts here. VFS file operations are not available yet."
+  },
+  "optionsAccountsHeading": { "message": "Google accounts" },
+  "optionsAccountsText": { "message": "Each account is managed separately and can later be selected for a VFS connection." },
+  "optionsAccountsDataNotice": { "message": "Signing in lets this add-on read and manage files in Google Drive. Data is transferred only for actions started by you or connected VFS add-ons." },
+  "optionsAddAccount": { "message": "Add Google account" },
+  "optionsNoAccounts": { "message": "No Google account has been set up yet." },
+  "optionsAccountFallback": { "message": "Google account" },
+  "optionsAccountConnected": { "message": "Connected" },
+  "optionsAccountReauthorizationRequired": { "message": "Sign-in required again" },
+  "optionsReauthorizeAccount": { "message": "Sign in again" },
+  "optionsDisconnectAccount": { "message": "Sign out and remove" },
+  "optionsConfirmDisconnect": { "message": "Sign out of this Google account and remove it from the provider?" },
+  "optionsAccountAdded": { "message": "Google account added." },
+  "optionsAccountReauthorized": { "message": "Google account signed in again." },
+  "optionsAccountDisconnected": { "message": "Google account removed locally." },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "The Google account was removed locally, but its Google access could not be revoked. Remove the access in your Google Account as well." },
+  "optionsPreferencesHeading": { "message": "Preferences" },
+  "optionsPreferencesText": { "message": "These settings apply to the provider. The export formats are used once reading Google Workspace files is available." },
+  "optionsOAuthClientIdLabel": { "message": "OAuth client ID" },
+  "optionsOAuthClientIdHelp": { "message": "For development or managed installations: the client ID of a Google Desktop application. A client ID is not a secret." },
+  "optionsDebugLoggingLabel": { "message": "Enable diagnostic logging" },
+  "optionsExportsHeading": { "message": "Google Workspace export formats" },
+  "optionsExportDocuments": { "message": "Google Docs" },
+  "optionsExportSpreadsheets": { "message": "Google Sheets" },
+  "optionsExportPresentations": { "message": "Google Slides" },
+  "optionsExportDrawings": { "message": "Google Drawings" },
+  "optionsFormatDocx": { "message": "DOCX" },
+  "optionsFormatPdf": { "message": "PDF" },
+  "optionsFormatXlsx": { "message": "XLSX" },
+  "optionsFormatPptx": { "message": "PPTX" },
+  "optionsSavePreferences": { "message": "Save preferences" },
+  "optionsPreferencesSaved": { "message": "Preferences saved." },
+  "optionsErrorOAuthNotConfigured": { "message": "Save an OAuth client ID before signing in." },
+  "optionsErrorOAuthClientIdInvalid": { "message": "The OAuth client ID is invalid." },
+  "optionsErrorOAuthAccountMismatch": { "message": "The selected Google account does not match the account being signed in again." },
+  "optionsErrorOAuthCancelled": { "message": "Google sign-in was cancelled or not approved." },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "This Google account must be signed in again." },
+  "optionsErrorOAuthGeneric": { "message": "Google sign-in could not be completed. Check the client ID and Google Cloud setup." },
+  "optionsErrorUnexpected": { "message": "The current data could not be loaded or the requested change could not be completed. Please try again." }
 }

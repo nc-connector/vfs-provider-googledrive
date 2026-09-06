@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "Provedor VFS para o Google Drive"
   },
-  "optionsStatusHeading": {
-    "message": "Status de desenvolvimento"
-  },
+  "optionsDocumentLanguage": { "message": "pt-BR" },
   "optionsStatusText": {
-    "message": "A configuração da conta do Google Drive e o acesso ao armazenamento não estão disponíveis nesta versão de desenvolvimento."
-  }
+    "message": "Configure contas do Google aqui. As operações de arquivos VFS ainda não estão disponíveis."
+  },
+  "optionsAccountsHeading": { "message": "Contas do Google" },
+  "optionsAccountsText": { "message": "Cada conta é gerenciada separadamente e depois pode ser escolhida para uma conexão VFS." },
+  "optionsAccountsDataNotice": { "message": "Ao entrar, você permite que esta extensão leia e gerencie arquivos no Google Drive. Os dados só são transferidos para ações iniciadas por você ou por extensões VFS conectadas." },
+  "optionsAddAccount": { "message": "Adicionar conta do Google" },
+  "optionsNoAccounts": { "message": "Nenhuma conta do Google foi configurada ainda." },
+  "optionsAccountFallback": { "message": "Conta do Google" },
+  "optionsAccountConnected": { "message": "Conectada" },
+  "optionsAccountReauthorizationRequired": { "message": "É necessário entrar novamente" },
+  "optionsReauthorizeAccount": { "message": "Entrar novamente" },
+  "optionsDisconnectAccount": { "message": "Sair e remover" },
+  "optionsConfirmDisconnect": { "message": "Sair desta conta do Google e removê-la do provedor?" },
+  "optionsAccountAdded": { "message": "Conta do Google adicionada." },
+  "optionsAccountReauthorized": { "message": "A conta do Google foi conectada novamente." },
+  "optionsAccountDisconnected": { "message": "Conta do Google removida localmente." },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "A conta do Google foi removida localmente, mas não foi possível revogar o acesso no Google. Remova o acesso também na sua Conta do Google." },
+  "optionsPreferencesHeading": { "message": "Preferências" },
+  "optionsPreferencesText": { "message": "Estas configurações valem para o provedor. Os formatos de exportação serão usados quando a leitura de arquivos do Google Workspace estiver disponível." },
+  "optionsOAuthClientIdLabel": { "message": "ID do cliente OAuth" },
+  "optionsOAuthClientIdHelp": { "message": "Para desenvolvimento ou instalações gerenciadas: ID do cliente de um aplicativo Google para computador. Um ID de cliente não é segredo." },
+  "optionsDebugLoggingLabel": { "message": "Ativar registro de diagnóstico" },
+  "optionsExportsHeading": { "message": "Formatos de exportação do Google Workspace" },
+  "optionsExportDocuments": { "message": "Documentos Google" },
+  "optionsExportSpreadsheets": { "message": "Planilhas Google" },
+  "optionsExportPresentations": { "message": "Apresentações Google" },
+  "optionsExportDrawings": { "message": "Desenhos Google" },
+  "optionsFormatDocx": { "message": "Formato DOCX" },
+  "optionsFormatPdf": { "message": "Formato PDF" },
+  "optionsFormatXlsx": { "message": "Formato XLSX" },
+  "optionsFormatPptx": { "message": "Formato PPTX" },
+  "optionsSavePreferences": { "message": "Salvar preferências" },
+  "optionsPreferencesSaved": { "message": "Preferências salvas." },
+  "optionsErrorOAuthNotConfigured": { "message": "Salve um ID de cliente OAuth antes de entrar." },
+  "optionsErrorOAuthClientIdInvalid": { "message": "O ID do cliente OAuth é inválido." },
+  "optionsErrorOAuthAccountMismatch": { "message": "A conta do Google selecionada não corresponde à conta que está sendo conectada novamente." },
+  "optionsErrorOAuthCancelled": { "message": "O login do Google foi cancelado ou não foi aprovado." },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "É preciso entrar novamente nesta conta do Google." },
+  "optionsErrorOAuthGeneric": { "message": "Não foi possível concluir o login do Google. Verifique o ID do cliente e a configuração do Google Cloud." },
+  "optionsErrorUnexpected": { "message": "Não foi possível carregar os dados atuais ou concluir a alteração solicitada. Tente novamente." }
 }

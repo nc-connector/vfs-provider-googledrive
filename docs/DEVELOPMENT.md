@@ -1,8 +1,8 @@
 # Development Guide — VFS Provider for Google Drive
 
 > **Development status:** Version 0.1.0 includes the MV3 foundation and internal
-> Google OAuth account services. It does not register a working VFS provider,
-> expose account setup UI, or implement Google Drive storage operations.
+> Google OAuth account services and localized account settings. It does not
+> register a working VFS provider or implement Google Drive storage operations.
 
 ## 1. Product goal
 
@@ -51,7 +51,7 @@ Drive, and this project does not include its WebDAV protocol code.
 | `src/core/logger.mjs` | redacted provider diagnostics |
 | `src/google/` | Google OAuth and session-token services |
 | `src/runtime/` | internal extension message boundary |
-| `src/options/` | localized development-status page |
+| `src/options/` | localized account and provider settings |
 | `src/_locales/` | WebExtension messages for all supported locales |
 | `src/vendor/vfs-toolkit/` | unmodified Thunderbird VFS provider module |
 | `src/vendor/i18n/` | unmodified Thunderbird HTML localization module |
@@ -76,7 +76,7 @@ Drive, and this project does not include its WebDAV protocol code.
   shipped code.
 - Do not add Experiment APIs.
 - Do not load executable code from a remote location.
-- A future `runtime.onMessage` listener must return a promise only for messages
+- The `runtime.onMessage` listener must return a promise only for messages
   it handles; it must return `undefined` for unrelated messages.
 
 The manifest currently has a minimum Thunderbird version of 140.0. It requests
@@ -98,8 +98,9 @@ evaluation:
 | `browser.storage.onChanged.addListener` | applies debug preference changes | `storage` |
 
 The options page imports the vendored localization helper, which resolves
-messages through `browser.i18n.getMessage`. The manifest's `default_locale` is
-`de`.
+messages through `browser.i18n.getMessage`. Its `.js` entry point delegates
+message and view state to a DOM-independent `.mjs` controller. The manifest's
+`default_locale` is `de`.
 
 The background constructs the account, preference, OAuth-session, OAuth-client,
 and logger services before it accepts internal requests. The runtime message
@@ -143,9 +144,16 @@ storage as encrypted. Profile access must be treated as credential access.
 
 Token refresh is deduplicated per account. `invalid_grant` marks that account as
 requiring authorization again. Disconnect first asks Google to revoke the
-refresh token, then removes local credentials even if Google reports that the
-grant is already invalid. An interactive authorization window is opened only
-for an internal user action, never during startup.
+refresh token, then removes local credentials even if revocation fails. The
+settings page reports when the account was removed locally but its Google grant
+may remain. An interactive authorization window is opened only for an internal
+user action, never during startup.
+
+The options page saves provider preferences before it starts a new login. A
+reauthorization request includes the selected local account ID, uses that
+account's original OAuth client ID and login hint, and rejects a returned Google
+identity that does not match. The page renders account data as text and never
+receives refresh or access tokens.
 
 ## 6. Planned provider boundary
 

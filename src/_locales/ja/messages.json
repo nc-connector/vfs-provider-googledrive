@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "Google Drive 用 VFS プロバイダー"
   },
-  "optionsStatusHeading": {
-    "message": "開発状況"
-  },
+  "optionsDocumentLanguage": { "message": "ja" },
   "optionsStatusText": {
-    "message": "この開発ビルドでは、Google Drive アカウントの設定とストレージへのアクセスは利用できません。"
-  }
+    "message": "ここで Google アカウントを設定できます。VFS のファイル操作はまだ利用できません。"
+  },
+  "optionsAccountsHeading": { "message": "Google アカウント" },
+  "optionsAccountsText": { "message": "各アカウントは個別に管理され、後で VFS 接続に選択できます。" },
+  "optionsAccountsDataNotice": { "message": "ログインすると、このアドオンに Google Drive のファイルを読み取り、管理する権限が付与されます。データは、ユーザーまたは接続済み VFS アドオンが開始した操作に限り転送されます。" },
+  "optionsAddAccount": { "message": "Google アカウントを追加" },
+  "optionsNoAccounts": { "message": "Google アカウントはまだ設定されていません。" },
+  "optionsAccountFallback": { "message": "Google のアカウント" },
+  "optionsAccountConnected": { "message": "接続済み" },
+  "optionsAccountReauthorizationRequired": { "message": "再ログインが必要です" },
+  "optionsReauthorizeAccount": { "message": "もう一度ログイン" },
+  "optionsDisconnectAccount": { "message": "ログアウトして削除" },
+  "optionsConfirmDisconnect": { "message": "この Google アカウントからログアウトし、プロバイダーから削除しますか？" },
+  "optionsAccountAdded": { "message": "Google アカウントを追加しました。" },
+  "optionsAccountReauthorized": { "message": "Google アカウントに再ログインしました。" },
+  "optionsAccountDisconnected": { "message": "Google アカウントをローカルから削除しました。" },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "Google アカウントはローカルから削除されましたが、Google 側のアクセス権を取り消せませんでした。Google アカウントでもアクセス権を削除してください。" },
+  "optionsPreferencesHeading": { "message": "設定項目" },
+  "optionsPreferencesText": { "message": "これらの設定はプロバイダーに適用されます。エクスポート形式は Google Workspace ファイルの読み取りが利用可能になった時点で使用されます。" },
+  "optionsOAuthClientIdLabel": { "message": "OAuth クライアント ID" },
+  "optionsOAuthClientIdHelp": { "message": "開発または管理対象インストール用: Google デスクトップ アプリのクライアント ID。クライアント ID は秘密情報ではありません。" },
+  "optionsDebugLoggingLabel": { "message": "診断ログを有効にする" },
+  "optionsExportsHeading": { "message": "Google Workspace のエクスポート形式" },
+  "optionsExportDocuments": { "message": "Google ドキュメント" },
+  "optionsExportSpreadsheets": { "message": "Google スプレッドシート" },
+  "optionsExportPresentations": { "message": "Google スライド" },
+  "optionsExportDrawings": { "message": "Google 図形描画" },
+  "optionsFormatDocx": { "message": "DOCX 形式" },
+  "optionsFormatPdf": { "message": "PDF 形式" },
+  "optionsFormatXlsx": { "message": "XLSX 形式" },
+  "optionsFormatPptx": { "message": "PPTX 形式" },
+  "optionsSavePreferences": { "message": "設定を保存" },
+  "optionsPreferencesSaved": { "message": "設定を保存しました。" },
+  "optionsErrorOAuthNotConfigured": { "message": "ログインする前に OAuth クライアント ID を保存してください。" },
+  "optionsErrorOAuthClientIdInvalid": { "message": "OAuth クライアント ID が無効です。" },
+  "optionsErrorOAuthAccountMismatch": { "message": "選択した Google アカウントは、再ログインするアカウントと一致しません。" },
+  "optionsErrorOAuthCancelled": { "message": "Google へのログインがキャンセルされたか、承認されませんでした。" },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "この Google アカウントにもう一度ログインする必要があります。" },
+  "optionsErrorOAuthGeneric": { "message": "Google へのログインを完了できませんでした。クライアント ID と Google Cloud の設定を確認してください。" },
+  "optionsErrorUnexpected": { "message": "現在のデータを読み込めなかったか、要求された変更を完了できませんでした。もう一度お試しください。" }
 }

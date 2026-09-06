@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "Proveedor VFS para Google Drive"
   },
-  "optionsStatusHeading": {
-    "message": "Estado del desarrollo"
-  },
+  "optionsDocumentLanguage": { "message": "es" },
   "optionsStatusText": {
-    "message": "La configuración de la cuenta de Google Drive y el acceso al almacenamiento no están disponibles en esta versión de desarrollo."
-  }
+    "message": "Configure aquí las cuentas de Google. Las operaciones de archivos VFS todavía no están disponibles."
+  },
+  "optionsAccountsHeading": { "message": "Cuentas de Google" },
+  "optionsAccountsText": { "message": "Cada cuenta se administra por separado y más adelante podrá elegirse para una conexión VFS." },
+  "optionsAccountsDataNotice": { "message": "Al iniciar sesión, permite que este complemento lea y administre archivos en Google Drive. Los datos solo se transfieren para acciones iniciadas por usted o por complementos VFS conectados." },
+  "optionsAddAccount": { "message": "Añadir cuenta de Google" },
+  "optionsNoAccounts": { "message": "Todavía no se ha configurado ninguna cuenta de Google." },
+  "optionsAccountFallback": { "message": "Cuenta de Google" },
+  "optionsAccountConnected": { "message": "Conectada" },
+  "optionsAccountReauthorizationRequired": { "message": "Se debe iniciar sesión de nuevo" },
+  "optionsReauthorizeAccount": { "message": "Iniciar sesión de nuevo" },
+  "optionsDisconnectAccount": { "message": "Cerrar sesión y eliminar" },
+  "optionsConfirmDisconnect": { "message": "¿Cerrar sesión en esta cuenta de Google y eliminarla del proveedor?" },
+  "optionsAccountAdded": { "message": "Cuenta de Google añadida." },
+  "optionsAccountReauthorized": { "message": "Se inició sesión de nuevo en la cuenta de Google." },
+  "optionsAccountDisconnected": { "message": "Cuenta de Google eliminada localmente." },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "La cuenta de Google se eliminó localmente, pero no se pudo revocar el acceso en Google. Elimina también el acceso desde tu cuenta de Google." },
+  "optionsPreferencesHeading": { "message": "Preferencias" },
+  "optionsPreferencesText": { "message": "Estas opciones se aplican al proveedor. Los formatos se usarán cuando esté disponible la lectura de archivos de Google Workspace." },
+  "optionsOAuthClientIdLabel": { "message": "ID de cliente OAuth" },
+  "optionsOAuthClientIdHelp": { "message": "Para desarrollo o instalaciones administradas: ID de cliente de una aplicación de escritorio de Google. Un ID de cliente no es secreto." },
+  "optionsDebugLoggingLabel": { "message": "Activar el registro de diagnóstico" },
+  "optionsExportsHeading": { "message": "Formatos de exportación de Google Workspace" },
+  "optionsExportDocuments": { "message": "Documentos de Google" },
+  "optionsExportSpreadsheets": { "message": "Hojas de cálculo de Google" },
+  "optionsExportPresentations": { "message": "Presentaciones de Google" },
+  "optionsExportDrawings": { "message": "Dibujos de Google" },
+  "optionsFormatDocx": { "message": "Formato DOCX" },
+  "optionsFormatPdf": { "message": "Formato PDF" },
+  "optionsFormatXlsx": { "message": "Formato XLSX" },
+  "optionsFormatPptx": { "message": "Formato PPTX" },
+  "optionsSavePreferences": { "message": "Guardar preferencias" },
+  "optionsPreferencesSaved": { "message": "Preferencias guardadas." },
+  "optionsErrorOAuthNotConfigured": { "message": "Guarde un ID de cliente OAuth antes de iniciar sesión." },
+  "optionsErrorOAuthClientIdInvalid": { "message": "El ID de cliente OAuth no es válido." },
+  "optionsErrorOAuthAccountMismatch": { "message": "La cuenta de Google seleccionada no coincide con la cuenta en la que se debe iniciar sesión de nuevo." },
+  "optionsErrorOAuthCancelled": { "message": "El inicio de sesión de Google se canceló o no se aprobó." },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "Debe iniciar sesión de nuevo en esta cuenta de Google." },
+  "optionsErrorOAuthGeneric": { "message": "No se pudo completar el inicio de sesión de Google. Compruebe el ID de cliente y la configuración de Google Cloud." },
+  "optionsErrorUnexpected": { "message": "No se pudieron cargar los datos actuales o completar el cambio solicitado. Inténtalo de nuevo." }
 }

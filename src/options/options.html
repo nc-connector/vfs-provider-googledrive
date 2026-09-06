@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,10 +9,82 @@
   </head>
   <body>
     <main>
-      <h1 data-i18n-content="optionsTitle"></h1>
-      <section class="status-panel" aria-labelledby="status-heading">
-        <h2 id="status-heading" data-i18n-content="optionsStatusHeading"></h2>
-        <p data-i18n-content="optionsStatusText"></p>
+      <header class="page-header">
+        <div class="product-mark" aria-hidden="true">GD</div>
+        <div>
+          <h1 data-i18n-content="optionsTitle"></h1>
+          <p data-i18n-content="optionsStatusText"></p>
+        </div>
+      </header>
+
+      <p id="feedback" class="feedback" role="status" aria-live="polite" hidden></p>
+
+      <section class="panel" aria-labelledby="accounts-heading">
+        <div class="section-heading">
+          <div>
+            <h2 id="accounts-heading" data-i18n-content="optionsAccountsHeading"></h2>
+            <p data-i18n-content="optionsAccountsText"></p>
+            <p class="data-notice" data-i18n-content="optionsAccountsDataNotice"></p>
+          </div>
+          <button id="add-account" class="primary-action" type="button" data-i18n-content="optionsAddAccount"></button>
+        </div>
+        <ul id="account-list" class="account-list" aria-live="polite"></ul>
+        <p id="no-accounts" class="empty-state" data-i18n-content="optionsNoAccounts"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="preferences-heading">
+        <h2 id="preferences-heading" data-i18n-content="optionsPreferencesHeading"></h2>
+        <p class="section-intro" data-i18n-content="optionsPreferencesText"></p>
+
+        <form id="preferences-form" novalidate>
+          <div class="form-field">
+            <label for="oauth-client-id" data-i18n-content="optionsOAuthClientIdLabel"></label>
+            <input id="oauth-client-id" name="oauthClientId" type="text" autocomplete="off" spellcheck="false" inputmode="url">
+            <p class="field-help" data-i18n-content="optionsOAuthClientIdHelp"></p>
+          </div>
+
+          <label class="toggle-field" for="debug-logging">
+            <input id="debug-logging" name="debugLogging" type="checkbox">
+            <span data-i18n-content="optionsDebugLoggingLabel"></span>
+          </label>
+
+          <fieldset>
+            <legend data-i18n-content="optionsExportsHeading"></legend>
+            <div class="export-grid">
+              <label for="export-document">
+                <span data-i18n-content="optionsExportDocuments"></span>
+                <select id="export-document" name="document">
+                  <option value="docx" data-i18n-content="optionsFormatDocx"></option>
+                  <option value="pdf" data-i18n-content="optionsFormatPdf"></option>
+                </select>
+              </label>
+              <label for="export-spreadsheet">
+                <span data-i18n-content="optionsExportSpreadsheets"></span>
+                <select id="export-spreadsheet" name="spreadsheet">
+                  <option value="xlsx" data-i18n-content="optionsFormatXlsx"></option>
+                  <option value="pdf" data-i18n-content="optionsFormatPdf"></option>
+                </select>
+              </label>
+              <label for="export-presentation">
+                <span data-i18n-content="optionsExportPresentations"></span>
+                <select id="export-presentation" name="presentation">
+                  <option value="pptx" data-i18n-content="optionsFormatPptx"></option>
+                  <option value="pdf" data-i18n-content="optionsFormatPdf"></option>
+                </select>
+              </label>
+              <label for="export-drawing">
+                <span data-i18n-content="optionsExportDrawings"></span>
+                <select id="export-drawing" name="drawing">
+                  <option value="pdf" data-i18n-content="optionsFormatPdf"></option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="form-actions">
+            <button id="save-preferences" class="secondary-action" type="submit" data-i18n-content="optionsSavePreferences"></button>
+          </div>
+        </form>
       </section>
     </main>
   </body>

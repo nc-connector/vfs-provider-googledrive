@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "Fournisseur VFS pour Google Drive"
   },
-  "optionsStatusHeading": {
-    "message": "État du développement"
-  },
+  "optionsDocumentLanguage": { "message": "fr" },
   "optionsStatusText": {
-    "message": "La configuration du compte Google Drive et l’accès au stockage ne sont pas disponibles dans cette version de développement."
-  }
+    "message": "Configurez ici les comptes Google. Les opérations de fichiers VFS ne sont pas encore disponibles."
+  },
+  "optionsAccountsHeading": { "message": "Comptes Google" },
+  "optionsAccountsText": { "message": "Chaque compte est géré séparément et pourra ensuite être choisi pour une connexion VFS." },
+  "optionsAccountsDataNotice": { "message": "La connexion autorise ce module à lire et gérer des fichiers dans Google Drive. Les données ne sont transférées que pour les actions lancées par vous ou par des modules VFS connectés." },
+  "optionsAddAccount": { "message": "Ajouter un compte Google" },
+  "optionsNoAccounts": { "message": "Aucun compte Google n’est encore configuré." },
+  "optionsAccountFallback": { "message": "Compte Google" },
+  "optionsAccountConnected": { "message": "Connecté" },
+  "optionsAccountReauthorizationRequired": { "message": "Nouvelle connexion requise" },
+  "optionsReauthorizeAccount": { "message": "Se reconnecter" },
+  "optionsDisconnectAccount": { "message": "Déconnecter et supprimer" },
+  "optionsConfirmDisconnect": { "message": "Déconnecter ce compte Google et le supprimer du fournisseur ?" },
+  "optionsAccountAdded": { "message": "Compte Google ajouté." },
+  "optionsAccountReauthorized": { "message": "Compte Google reconnecté." },
+  "optionsAccountDisconnected": { "message": "Compte Google supprimé localement." },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "Le compte Google a été supprimé localement, mais son accès n’a pas pu être révoqué auprès de Google. Supprimez également l’accès dans votre compte Google." },
+  "optionsPreferencesHeading": { "message": "Préférences" },
+  "optionsPreferencesText": { "message": "Ces réglages s’appliquent au fournisseur. Les formats seront utilisés lorsque la lecture des fichiers Google Workspace sera disponible." },
+  "optionsOAuthClientIdLabel": { "message": "ID client OAuth" },
+  "optionsOAuthClientIdHelp": { "message": "Pour le développement ou les installations gérées : ID client d’une application Google pour ordinateur. Un ID client n’est pas secret." },
+  "optionsDebugLoggingLabel": { "message": "Activer la journalisation de diagnostic" },
+  "optionsExportsHeading": { "message": "Formats d’exportation Google Workspace" },
+  "optionsExportDocuments": { "message": "Documents Google" },
+  "optionsExportSpreadsheets": { "message": "Feuilles Google" },
+  "optionsExportPresentations": { "message": "Diapositives Google" },
+  "optionsExportDrawings": { "message": "Dessins Google" },
+  "optionsFormatDocx": { "message": "Format DOCX" },
+  "optionsFormatPdf": { "message": "Format PDF" },
+  "optionsFormatXlsx": { "message": "Format XLSX" },
+  "optionsFormatPptx": { "message": "Format PPTX" },
+  "optionsSavePreferences": { "message": "Enregistrer les préférences" },
+  "optionsPreferencesSaved": { "message": "Préférences enregistrées." },
+  "optionsErrorOAuthNotConfigured": { "message": "Enregistrez un ID client OAuth avant de vous connecter." },
+  "optionsErrorOAuthClientIdInvalid": { "message": "L’ID client OAuth n’est pas valide." },
+  "optionsErrorOAuthAccountMismatch": { "message": "Le compte Google sélectionné ne correspond pas au compte à reconnecter." },
+  "optionsErrorOAuthCancelled": { "message": "La connexion à Google a été annulée ou non approuvée." },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "Ce compte Google doit être reconnecté." },
+  "optionsErrorOAuthGeneric": { "message": "La connexion à Google n’a pas pu être terminée. Vérifiez l’ID client et la configuration Google Cloud." },
+  "optionsErrorUnexpected": { "message": "Les données actuelles n’ont pas pu être chargées ou la modification demandée n’a pas pu être effectuée. Réessayez." }
 }

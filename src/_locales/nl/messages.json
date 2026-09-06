@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "VFS-provider voor Google Drive"
   },
-  "optionsStatusHeading": {
-    "message": "Ontwikkelingsstatus"
-  },
+  "optionsDocumentLanguage": { "message": "nl" },
   "optionsStatusText": {
-    "message": "Het instellen van een Google Drive-account en de toegang tot opslag zijn niet beschikbaar in deze ontwikkelversie."
-  }
+    "message": "Stel hier Google-accounts in. VFS-bestandsbewerkingen zijn nog niet beschikbaar."
+  },
+  "optionsAccountsHeading": { "message": "Google-accounts" },
+  "optionsAccountsText": { "message": "Elk account wordt afzonderlijk beheerd en kan later voor een VFS-verbinding worden gekozen." },
+  "optionsAccountsDataNotice": { "message": "Door aan te melden geeft u deze add-on toestemming om bestanden in Google Drive te lezen en beheren. Gegevens worden alleen overgedragen voor acties van u of verbonden VFS-add-ons." },
+  "optionsAddAccount": { "message": "Google-account toevoegen" },
+  "optionsNoAccounts": { "message": "Er is nog geen Google-account ingesteld." },
+  "optionsAccountFallback": { "message": "Google-account" },
+  "optionsAccountConnected": { "message": "Verbonden" },
+  "optionsAccountReauthorizationRequired": { "message": "Opnieuw aanmelden vereist" },
+  "optionsReauthorizeAccount": { "message": "Opnieuw aanmelden" },
+  "optionsDisconnectAccount": { "message": "Afmelden en verwijderen" },
+  "optionsConfirmDisconnect": { "message": "Afmelden bij dit Google-account en het uit de provider verwijderen?" },
+  "optionsAccountAdded": { "message": "Google-account toegevoegd." },
+  "optionsAccountReauthorized": { "message": "Opnieuw aangemeld bij Google-account." },
+  "optionsAccountDisconnected": { "message": "Google-account lokaal verwijderd." },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "Het Google-account is lokaal verwijderd, maar de toegang bij Google kon niet worden ingetrokken. Verwijder de toegang ook in uw Google-account." },
+  "optionsPreferencesHeading": { "message": "Voorkeuren" },
+  "optionsPreferencesText": { "message": "Deze instellingen gelden voor de provider. De exportindelingen worden gebruikt zodra Google Workspace-bestanden kunnen worden gelezen." },
+  "optionsOAuthClientIdLabel": { "message": "OAuth-client-ID" },
+  "optionsOAuthClientIdHelp": { "message": "Voor ontwikkeling of beheerde installaties: client-ID van een Google-desktoptoepassing. Een client-ID is geen geheim." },
+  "optionsDebugLoggingLabel": { "message": "Diagnostische logboekregistratie inschakelen" },
+  "optionsExportsHeading": { "message": "Exportindelingen voor Google Workspace" },
+  "optionsExportDocuments": { "message": "Google-documenten" },
+  "optionsExportSpreadsheets": { "message": "Google-spreadsheets" },
+  "optionsExportPresentations": { "message": "Google-presentaties" },
+  "optionsExportDrawings": { "message": "Google-tekeningen" },
+  "optionsFormatDocx": { "message": "DOCX-bestand" },
+  "optionsFormatPdf": { "message": "PDF-bestand" },
+  "optionsFormatXlsx": { "message": "XLSX-bestand" },
+  "optionsFormatPptx": { "message": "PPTX-bestand" },
+  "optionsSavePreferences": { "message": "Voorkeuren opslaan" },
+  "optionsPreferencesSaved": { "message": "Voorkeuren opgeslagen." },
+  "optionsErrorOAuthNotConfigured": { "message": "Sla vóór het aanmelden een OAuth-client-ID op." },
+  "optionsErrorOAuthClientIdInvalid": { "message": "De OAuth-client-ID is ongeldig." },
+  "optionsErrorOAuthAccountMismatch": { "message": "Het geselecteerde Google-account komt niet overeen met het account waarvoor opnieuw wordt aangemeld." },
+  "optionsErrorOAuthCancelled": { "message": "De Google-aanmelding is geannuleerd of niet goedgekeurd." },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "Voor dit Google-account moet opnieuw worden aangemeld." },
+  "optionsErrorOAuthGeneric": { "message": "De Google-aanmelding kon niet worden voltooid. Controleer de client-ID en Google Cloud-instellingen." },
+  "optionsErrorUnexpected": { "message": "De huidige gegevens konden niet worden geladen of de gevraagde wijziging kon niet worden voltooid. Probeer het opnieuw." }
 }

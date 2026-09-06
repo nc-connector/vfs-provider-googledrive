@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "VFS-szolgáltató a Google Drive-hoz"
   },
-  "optionsStatusHeading": {
-    "message": "Fejlesztési állapot"
-  },
+  "optionsDocumentLanguage": { "message": "hu" },
   "optionsStatusText": {
-    "message": "A Google Drive-fiók beállítása és a tárhelyhez való hozzáférés ebben a fejlesztői verzióban nem érhető el."
-  }
+    "message": "Itt állíthatók be a Google-fiókok. A VFS-fájlműveletek még nem érhetők el."
+  },
+  "optionsAccountsHeading": { "message": "Google-fiókok" },
+  "optionsAccountsText": { "message": "Minden fiók külön kezelhető, és később kiválasztható egy VFS-kapcsolathoz." },
+  "optionsAccountsDataNotice": { "message": "A bejelentkezéssel engedélyezi, hogy ez a kiegészítő fájlokat olvasson és kezeljen a Google Drive-on. Adatátvitel csak az Ön vagy a csatlakoztatott VFS-kiegészítők által indított műveleteknél történik." },
+  "optionsAddAccount": { "message": "Google-fiók hozzáadása" },
+  "optionsNoAccounts": { "message": "Még nincs beállítva Google-fiók." },
+  "optionsAccountFallback": { "message": "Google-fiók" },
+  "optionsAccountConnected": { "message": "Csatlakoztatva" },
+  "optionsAccountReauthorizationRequired": { "message": "Újbóli bejelentkezés szükséges" },
+  "optionsReauthorizeAccount": { "message": "Újbóli bejelentkezés" },
+  "optionsDisconnectAccount": { "message": "Kijelentkezés és eltávolítás" },
+  "optionsConfirmDisconnect": { "message": "Kijelentkezik ebből a Google-fiókból, és eltávolítja a szolgáltatóból?" },
+  "optionsAccountAdded": { "message": "A Google-fiók hozzáadva." },
+  "optionsAccountReauthorized": { "message": "A Google-fiókba újból bejelentkezett." },
+  "optionsAccountDisconnected": { "message": "A Google-fiók helyileg eltávolítva." },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "A Google-fiókot helyileg eltávolítottuk, de a Google-hozzáférést nem sikerült visszavonni. Távolítsa el a hozzáférést a Google-fiókjában is." },
+  "optionsPreferencesHeading": { "message": "Beállítások" },
+  "optionsPreferencesText": { "message": "Ezek a beállítások a szolgáltatóra vonatkoznak. Az exportformátumok a Google Workspace-fájlok olvasásának elérhetővé válásakor lépnek életbe." },
+  "optionsOAuthClientIdLabel": { "message": "OAuth-kliensazonosító" },
+  "optionsOAuthClientIdHelp": { "message": "Fejlesztéshez vagy felügyelt telepítéshez: egy Google asztali alkalmazás kliensazonosítója. A kliensazonosító nem titkos adat." },
+  "optionsDebugLoggingLabel": { "message": "Diagnosztikai naplózás engedélyezése" },
+  "optionsExportsHeading": { "message": "Google Workspace exportformátumok" },
+  "optionsExportDocuments": { "message": "Google-dokumentumok" },
+  "optionsExportSpreadsheets": { "message": "Google-táblázatok" },
+  "optionsExportPresentations": { "message": "Google-prezentációk" },
+  "optionsExportDrawings": { "message": "Google-rajzok" },
+  "optionsFormatDocx": { "message": "DOCX-formátum" },
+  "optionsFormatPdf": { "message": "PDF-formátum" },
+  "optionsFormatXlsx": { "message": "XLSX-formátum" },
+  "optionsFormatPptx": { "message": "PPTX-formátum" },
+  "optionsSavePreferences": { "message": "Beállítások mentése" },
+  "optionsPreferencesSaved": { "message": "A beállítások mentve." },
+  "optionsErrorOAuthNotConfigured": { "message": "Bejelentkezés előtt mentse az OAuth-kliensazonosítót." },
+  "optionsErrorOAuthClientIdInvalid": { "message": "Az OAuth-kliensazonosító érvénytelen." },
+  "optionsErrorOAuthAccountMismatch": { "message": "A kiválasztott Google-fiók nem egyezik az újból bejelentkeztetendő fiókkal." },
+  "optionsErrorOAuthCancelled": { "message": "A Google-bejelentkezés megszakadt vagy nem lett jóváhagyva." },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "Ebbe a Google-fiókba újra be kell jelentkezni." },
+  "optionsErrorOAuthGeneric": { "message": "A Google-bejelentkezés nem fejezhető be. Ellenőrizze a kliensazonosítót és a Google Cloud beállításait." },
+  "optionsErrorUnexpected": { "message": "Az aktuális adatokat nem sikerült betölteni, vagy a kért módosítást nem sikerült végrehajtani. Próbálja újra." }
 }

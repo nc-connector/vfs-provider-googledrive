@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "Poskytovatel VFS pro Google Drive"
   },
-  "optionsStatusHeading": {
-    "message": "Stav vývoje"
-  },
+  "optionsDocumentLanguage": { "message": "cs" },
   "optionsStatusText": {
-    "message": "Nastavení účtu Google Drive a přístup k úložišti nejsou v tomto vývojovém sestavení k dispozici."
-  }
+    "message": "Zde můžete nastavit účty Google. Operace se soubory VFS zatím nejsou dostupné."
+  },
+  "optionsAccountsHeading": { "message": "Účty Google" },
+  "optionsAccountsText": { "message": "Každý účet je spravován samostatně a později jej lze vybrat pro připojení VFS." },
+  "optionsAccountsDataNotice": { "message": "Přihlášením povolíte tomuto doplňku číst a spravovat soubory na Disku Google. Data se přenášejí jen při akcích spuštěných vámi nebo připojenými doplňky VFS." },
+  "optionsAddAccount": { "message": "Přidat účet Google" },
+  "optionsNoAccounts": { "message": "Zatím nebyl nastaven žádný účet Google." },
+  "optionsAccountFallback": { "message": "Účet Google" },
+  "optionsAccountConnected": { "message": "Připojeno" },
+  "optionsAccountReauthorizationRequired": { "message": "Je nutné nové přihlášení" },
+  "optionsReauthorizeAccount": { "message": "Přihlásit znovu" },
+  "optionsDisconnectAccount": { "message": "Odhlásit a odebrat" },
+  "optionsConfirmDisconnect": { "message": "Odhlásit tento účet Google a odebrat jej z poskytovatele?" },
+  "optionsAccountAdded": { "message": "Účet Google byl přidán." },
+  "optionsAccountReauthorized": { "message": "Účet Google byl znovu přihlášen." },
+  "optionsAccountDisconnected": { "message": "Účet Google byl místně odebrán." },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "Účet Google byl místně odebrán, ale přístup u Googlu se nepodařilo zrušit. Odeberte přístup také ve svém účtu Google." },
+  "optionsPreferencesHeading": { "message": "Předvolby" },
+  "optionsPreferencesText": { "message": "Tato nastavení platí pro poskytovatele. Formáty exportu se použijí, až bude dostupné čtení souborů Google Workspace." },
+  "optionsOAuthClientIdLabel": { "message": "ID klienta OAuth" },
+  "optionsOAuthClientIdHelp": { "message": "Pro vývoj nebo spravované instalace: ID klienta desktopové aplikace Google. ID klienta není tajné." },
+  "optionsDebugLoggingLabel": { "message": "Povolit diagnostické protokolování" },
+  "optionsExportsHeading": { "message": "Formáty exportu Google Workspace" },
+  "optionsExportDocuments": { "message": "Dokumenty Google" },
+  "optionsExportSpreadsheets": { "message": "Tabulky Google" },
+  "optionsExportPresentations": { "message": "Prezentace Google" },
+  "optionsExportDrawings": { "message": "Nákresy Google" },
+  "optionsFormatDocx": { "message": "Formát DOCX" },
+  "optionsFormatPdf": { "message": "Formát PDF" },
+  "optionsFormatXlsx": { "message": "Formát XLSX" },
+  "optionsFormatPptx": { "message": "Formát PPTX" },
+  "optionsSavePreferences": { "message": "Uložit předvolby" },
+  "optionsPreferencesSaved": { "message": "Předvolby byly uloženy." },
+  "optionsErrorOAuthNotConfigured": { "message": "Před přihlášením uložte ID klienta OAuth." },
+  "optionsErrorOAuthClientIdInvalid": { "message": "ID klienta OAuth není platné." },
+  "optionsErrorOAuthAccountMismatch": { "message": "Vybraný účet Google neodpovídá účtu, ke kterému se znovu přihlašujete." },
+  "optionsErrorOAuthCancelled": { "message": "Přihlášení ke Googlu bylo zrušeno nebo nebylo schváleno." },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "K tomuto účtu Google je nutné se znovu přihlásit." },
+  "optionsErrorOAuthGeneric": { "message": "Přihlášení ke Googlu se nepodařilo dokončit. Zkontrolujte ID klienta a nastavení Google Cloud." },
+  "optionsErrorUnexpected": { "message": "Aktuální data se nepodařilo načíst nebo požadovanou změnu dokončit. Zkuste to znovu." }
 }

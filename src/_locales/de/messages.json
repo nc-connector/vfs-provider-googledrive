@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "VFS-Anbieter für Google Drive"
   },
-  "optionsStatusHeading": {
-    "message": "Entwicklungsstatus"
-  },
+  "optionsDocumentLanguage": { "message": "de" },
   "optionsStatusText": {
-    "message": "Die Einrichtung eines Kontos für Google Drive und der Zugriff auf den Speicher sind in dieser Entwicklungsversion nicht verfügbar."
-  }
+    "message": "Google-Konten werden hier eingerichtet. VFS-Dateioperationen sind noch nicht verfügbar."
+  },
+  "optionsAccountsHeading": { "message": "Google-Konten" },
+  "optionsAccountsText": { "message": "Jedes Konto wird getrennt verwaltet und kann später gezielt für eine VFS-Verbindung ausgewählt werden." },
+  "optionsAccountsDataNotice": { "message": "Beim Anmelden erlauben Sie diesem Add-on, Dateien in Google Drive zu lesen und zu verwalten. Daten werden nur für von Ihnen oder verbundenen VFS-Add-ons ausgelöste Vorgänge übertragen." },
+  "optionsAddAccount": { "message": "Google-Konto hinzufügen" },
+  "optionsNoAccounts": { "message": "Noch kein Google-Konto eingerichtet." },
+  "optionsAccountFallback": { "message": "Google-Konto" },
+  "optionsAccountConnected": { "message": "Verbunden" },
+  "optionsAccountReauthorizationRequired": { "message": "Erneute Anmeldung erforderlich" },
+  "optionsReauthorizeAccount": { "message": "Erneut anmelden" },
+  "optionsDisconnectAccount": { "message": "Abmelden und entfernen" },
+  "optionsConfirmDisconnect": { "message": "Dieses Google-Konto abmelden und aus dem Anbieter entfernen?" },
+  "optionsAccountAdded": { "message": "Google-Konto hinzugefügt." },
+  "optionsAccountReauthorized": { "message": "Google-Konto erneut angemeldet." },
+  "optionsAccountDisconnected": { "message": "Google-Konto lokal entfernt." },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "Das Google-Konto wurde lokal entfernt, der Zugriff bei Google konnte jedoch nicht widerrufen werden. Entfernen Sie den Zugriff zusätzlich in Ihrem Google-Konto." },
+  "optionsPreferencesHeading": { "message": "Einstellungen" },
+  "optionsPreferencesText": { "message": "Diese Einstellungen gelten für den Anbieter. Die Exportformate werden verwendet, sobald das Lesen von Google-Workspace-Dateien verfügbar ist." },
+  "optionsOAuthClientIdLabel": { "message": "OAuth-Client-ID" },
+  "optionsOAuthClientIdHelp": { "message": "Für Entwicklung oder verwaltete Installationen: Client-ID einer Google-Desktop-Anwendung. Eine Client-ID ist kein Geheimnis." },
+  "optionsDebugLoggingLabel": { "message": "Diagnoseprotokollierung aktivieren" },
+  "optionsExportsHeading": { "message": "Exportformate für Google Workspace" },
+  "optionsExportDocuments": { "message": "Google-Dokumente" },
+  "optionsExportSpreadsheets": { "message": "Google Tabellen" },
+  "optionsExportPresentations": { "message": "Google Präsentationen" },
+  "optionsExportDrawings": { "message": "Google Zeichnungen" },
+  "optionsFormatDocx": { "message": "DOCX-Datei" },
+  "optionsFormatPdf": { "message": "PDF-Datei" },
+  "optionsFormatXlsx": { "message": "XLSX-Datei" },
+  "optionsFormatPptx": { "message": "PPTX-Datei" },
+  "optionsSavePreferences": { "message": "Einstellungen speichern" },
+  "optionsPreferencesSaved": { "message": "Einstellungen gespeichert." },
+  "optionsErrorOAuthNotConfigured": { "message": "Vor der Anmeldung muss eine OAuth-Client-ID gespeichert werden." },
+  "optionsErrorOAuthClientIdInvalid": { "message": "Die OAuth-Client-ID ist ungültig." },
+  "optionsErrorOAuthAccountMismatch": { "message": "Das ausgewählte Google-Konto stimmt nicht mit dem erneut anzumeldenden Konto überein." },
+  "optionsErrorOAuthCancelled": { "message": "Die Google-Anmeldung wurde abgebrochen oder nicht bestätigt." },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "Die Anmeldung für dieses Google-Konto muss erneut durchgeführt werden." },
+  "optionsErrorOAuthGeneric": { "message": "Die Google-Anmeldung konnte nicht abgeschlossen werden. Prüfen Sie die Client-ID und die Google-Cloud-Einrichtung." },
+  "optionsErrorUnexpected": { "message": "Die aktuellen Daten konnten nicht geladen oder die angeforderte Änderung nicht abgeschlossen werden. Bitte erneut versuchen." }
 }

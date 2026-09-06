@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "Fornecedor VFS para o Google Drive"
   },
-  "optionsStatusHeading": {
-    "message": "Estado de desenvolvimento"
-  },
+  "optionsDocumentLanguage": { "message": "pt-PT" },
   "optionsStatusText": {
-    "message": "A configuração da conta do Google Drive e o acesso ao armazenamento não estão disponíveis nesta versão de desenvolvimento."
-  }
+    "message": "Configure aqui as contas Google. As operações de ficheiros VFS ainda não estão disponíveis."
+  },
+  "optionsAccountsHeading": { "message": "Contas Google" },
+  "optionsAccountsText": { "message": "Cada conta é gerida separadamente e poderá depois ser escolhida para uma ligação VFS." },
+  "optionsAccountsDataNotice": { "message": "Ao iniciar sessão, permite que esta extensão leia e faça a gestão de ficheiros no Google Drive. Os dados só são transferidos para ações iniciadas por si ou por extensões VFS ligadas." },
+  "optionsAddAccount": { "message": "Adicionar conta Google" },
+  "optionsNoAccounts": { "message": "Ainda não foi configurada nenhuma conta Google." },
+  "optionsAccountFallback": { "message": "Conta Google" },
+  "optionsAccountConnected": { "message": "Ligada" },
+  "optionsAccountReauthorizationRequired": { "message": "É necessário iniciar sessão novamente" },
+  "optionsReauthorizeAccount": { "message": "Iniciar sessão novamente" },
+  "optionsDisconnectAccount": { "message": "Terminar sessão e remover" },
+  "optionsConfirmDisconnect": { "message": "Terminar sessão nesta conta Google e removê-la do fornecedor?" },
+  "optionsAccountAdded": { "message": "Conta Google adicionada." },
+  "optionsAccountReauthorized": { "message": "A conta Google iniciou sessão novamente." },
+  "optionsAccountDisconnected": { "message": "Conta Google removida localmente." },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "A conta Google foi removida localmente, mas não foi possível revogar o acesso no Google. Remova também o acesso na sua Conta Google." },
+  "optionsPreferencesHeading": { "message": "Preferências" },
+  "optionsPreferencesText": { "message": "Estas definições aplicam-se ao fornecedor. Os formatos de exportação serão usados quando a leitura de ficheiros Google Workspace estiver disponível." },
+  "optionsOAuthClientIdLabel": { "message": "ID de cliente OAuth" },
+  "optionsOAuthClientIdHelp": { "message": "Para desenvolvimento ou instalações geridas: ID de cliente de uma aplicação Google para computador. Um ID de cliente não é segredo." },
+  "optionsDebugLoggingLabel": { "message": "Ativar o registo de diagnóstico" },
+  "optionsExportsHeading": { "message": "Formatos de exportação do Google Workspace" },
+  "optionsExportDocuments": { "message": "Documentos Google" },
+  "optionsExportSpreadsheets": { "message": "Folhas de cálculo Google" },
+  "optionsExportPresentations": { "message": "Apresentações Google" },
+  "optionsExportDrawings": { "message": "Desenhos Google" },
+  "optionsFormatDocx": { "message": "Formato DOCX" },
+  "optionsFormatPdf": { "message": "Formato PDF" },
+  "optionsFormatXlsx": { "message": "Formato XLSX" },
+  "optionsFormatPptx": { "message": "Formato PPTX" },
+  "optionsSavePreferences": { "message": "Guardar preferências" },
+  "optionsPreferencesSaved": { "message": "Preferências guardadas." },
+  "optionsErrorOAuthNotConfigured": { "message": "Guarde um ID de cliente OAuth antes de iniciar sessão." },
+  "optionsErrorOAuthClientIdInvalid": { "message": "O ID de cliente OAuth é inválido." },
+  "optionsErrorOAuthAccountMismatch": { "message": "A conta Google selecionada não corresponde à conta em que está a iniciar sessão novamente." },
+  "optionsErrorOAuthCancelled": { "message": "O início de sessão Google foi cancelado ou não foi aprovado." },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "É necessário iniciar sessão novamente nesta conta Google." },
+  "optionsErrorOAuthGeneric": { "message": "Não foi possível concluir o início de sessão Google. Verifique o ID de cliente e a configuração do Google Cloud." },
+  "optionsErrorUnexpected": { "message": "Não foi possível carregar os dados atuais ou concluir a alteração pedida. Tente novamente." }
 }

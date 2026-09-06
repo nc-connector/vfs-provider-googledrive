@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "Провайдер VFS для Google Drive"
   },
-  "optionsStatusHeading": {
-    "message": "Состояние разработки"
-  },
+  "optionsDocumentLanguage": { "message": "ru" },
   "optionsStatusText": {
-    "message": "В этой сборке для разработки недоступны настройка учётной записи Google Drive и доступ к хранилищу."
-  }
+    "message": "Здесь можно настроить учётные записи Google. Операции с файлами VFS пока недоступны."
+  },
+  "optionsAccountsHeading": { "message": "Учётные записи Google" },
+  "optionsAccountsText": { "message": "Каждая учётная запись управляется отдельно и позднее может быть выбрана для подключения VFS." },
+  "optionsAccountsDataNotice": { "message": "При входе это дополнение получает разрешение читать файлы на Google Диске и управлять ими. Данные передаются только для действий, начатых вами или подключёнными дополнениями VFS." },
+  "optionsAddAccount": { "message": "Добавить учётную запись Google" },
+  "optionsNoAccounts": { "message": "Учётная запись Google ещё не настроена." },
+  "optionsAccountFallback": { "message": "Учётная запись Google" },
+  "optionsAccountConnected": { "message": "Подключено" },
+  "optionsAccountReauthorizationRequired": { "message": "Требуется повторный вход" },
+  "optionsReauthorizeAccount": { "message": "Войти снова" },
+  "optionsDisconnectAccount": { "message": "Выйти и удалить" },
+  "optionsConfirmDisconnect": { "message": "Выйти из этой учётной записи Google и удалить её из провайдера?" },
+  "optionsAccountAdded": { "message": "Учётная запись Google добавлена." },
+  "optionsAccountReauthorized": { "message": "Выполнен повторный вход в учётную запись Google." },
+  "optionsAccountDisconnected": { "message": "Учётная запись Google удалена локально." },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "Аккаунт Google удалён локально, но отозвать доступ на стороне Google не удалось. Удалите доступ также в своём аккаунте Google." },
+  "optionsPreferencesHeading": { "message": "Настройки" },
+  "optionsPreferencesText": { "message": "Эти настройки относятся к провайдеру. Форматы экспорта будут использоваться, когда станет доступно чтение файлов Google Workspace." },
+  "optionsOAuthClientIdLabel": { "message": "Идентификатор клиента OAuth" },
+  "optionsOAuthClientIdHelp": { "message": "Для разработки или управляемых установок: идентификатор клиента настольного приложения Google. Идентификатор клиента не является секретом." },
+  "optionsDebugLoggingLabel": { "message": "Включить диагностический журнал" },
+  "optionsExportsHeading": { "message": "Форматы экспорта Google Workspace" },
+  "optionsExportDocuments": { "message": "Документы Google" },
+  "optionsExportSpreadsheets": { "message": "Таблицы Google" },
+  "optionsExportPresentations": { "message": "Презентации Google" },
+  "optionsExportDrawings": { "message": "Рисунки Google" },
+  "optionsFormatDocx": { "message": "Формат DOCX" },
+  "optionsFormatPdf": { "message": "Формат PDF" },
+  "optionsFormatXlsx": { "message": "Формат XLSX" },
+  "optionsFormatPptx": { "message": "Формат PPTX" },
+  "optionsSavePreferences": { "message": "Сохранить настройки" },
+  "optionsPreferencesSaved": { "message": "Настройки сохранены." },
+  "optionsErrorOAuthNotConfigured": { "message": "Перед входом сохраните идентификатор клиента OAuth." },
+  "optionsErrorOAuthClientIdInvalid": { "message": "Недопустимый идентификатор клиента OAuth." },
+  "optionsErrorOAuthAccountMismatch": { "message": "Выбранная учётная запись Google не совпадает с учётной записью для повторного входа." },
+  "optionsErrorOAuthCancelled": { "message": "Вход в Google был отменён или не подтверждён." },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "В эту учётную запись Google необходимо войти снова." },
+  "optionsErrorOAuthGeneric": { "message": "Не удалось завершить вход в Google. Проверьте идентификатор клиента и настройки Google Cloud." },
+  "optionsErrorUnexpected": { "message": "Не удалось загрузить текущие данные или выполнить запрошенное изменение. Повторите попытку." }
 }

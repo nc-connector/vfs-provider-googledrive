@@ -1,8 +1,8 @@
 # Administration Guide — VFS Provider for Google Drive
 
 > **Development status:** The current package includes the internal OAuth
-> account service but no account setup UI or usable VFS storage. It is not ready
-> for deployment.
+> account service and localized account settings, but no usable VFS storage. It
+> is not ready for deployment.
 
 This guide records the administrative boundary of the project while the
 provider is under development. Runtime setup, managed deployment, OAuth
@@ -16,11 +16,11 @@ connection to compatible Thunderbird add-ons through the Thunderbird VFS
 Toolkit. A consuming add-on will need a user-approved connection before it can
 request file or folder operations.
 
-The current build only displays a localized development-status page. Its OAuth
-service has no user-facing entry point yet. It does not:
+The current build provides a localized settings page where a tester can enter a
+Desktop OAuth client ID, add or reauthorize Google accounts, remove an account,
+choose Workspace export formats, and enable diagnostic logging. It does not:
 
-- start Google OAuth during normal use;
-- call Google Drive APIs;
+- perform Google Drive file or storage operations;
 - advertise a VFS provider to other add-ons; or
 - grant a consumer access to storage.
 
@@ -38,7 +38,7 @@ is not initialized yet, so it does not advertise VFS connections.
 
 Live OAuth testing needs a separate Google Cloud project with the Google Drive
 API enabled, an OAuth consent screen, and a Desktop app OAuth client. Enter that
-client ID in provider preferences when the account UI becomes available. Do not
+client ID in the provider settings. Do not
 place a client secret in this repository or the XPI; a desktop client is public
 and the implementation uses PKCE.
 
@@ -74,13 +74,13 @@ network access.
 
 ## 5. Development-build behavior
 
-After loading the development XPI, the add-on options page reports that Google
-Drive account setup and storage access are unavailable. This is the expected
-result for version 0.1.0.
+After loading the development XPI, the add-on options page can store the Desktop
+OAuth client ID and start Google authorization only after the tester presses
+the add-account or sign-in-again button. The page discloses the requested Drive
+access before that action.
 
-No provider should appear in a VFS client and no Google authorization window
-should open. Either behavior would differ from the intended scaffold state and
-should be reported with the add-on version and Thunderbird version.
+No provider should appear in a VFS client yet. A Google authorization window
+must not open during installation, startup, or simply opening the settings.
 
 ## 6. Planned administrative decisions
 

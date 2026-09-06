@@ -8,10 +8,46 @@
   "optionsTitle": {
     "message": "Google Drive VFS 提供程序"
   },
-  "optionsStatusHeading": {
-    "message": "开发状态"
-  },
+  "optionsDocumentLanguage": { "message": "zh-CN" },
   "optionsStatusText": {
-    "message": "此开发版本暂不支持 Google Drive 账号设置和存储访问。"
-  }
+    "message": "可在此设置 Google 账号。VFS 文件操作尚不可用。"
+  },
+  "optionsAccountsHeading": { "message": "Google 账号" },
+  "optionsAccountsText": { "message": "每个账号均单独管理，稍后可为 VFS 连接选择相应账号。" },
+  "optionsAccountsDataNotice": { "message": "登录即表示允许此附加组件读取和管理 Google Drive 中的文件。只有您或已连接的 VFS 附加组件发起操作时才会传输数据。" },
+  "optionsAddAccount": { "message": "添加 Google 账号" },
+  "optionsNoAccounts": { "message": "尚未设置 Google 账号。" },
+  "optionsAccountFallback": { "message": "Google 账号" },
+  "optionsAccountConnected": { "message": "已连接" },
+  "optionsAccountReauthorizationRequired": { "message": "需要重新登录" },
+  "optionsReauthorizeAccount": { "message": "重新登录" },
+  "optionsDisconnectAccount": { "message": "退出并移除" },
+  "optionsConfirmDisconnect": { "message": "要退出此 Google 账号并将其从提供程序中移除吗？" },
+  "optionsAccountAdded": { "message": "已添加 Google 账号。" },
+  "optionsAccountReauthorized": { "message": "已重新登录 Google 账号。" },
+  "optionsAccountDisconnected": { "message": "已在本地移除 Google 账号。" },
+  "optionsAccountDisconnectedWithoutRevocation": { "message": "Google 账号已从本地移除，但无法撤销其在 Google 端的访问授权。请同时在您的 Google 账号中移除该访问权限。" },
+  "optionsPreferencesHeading": { "message": "首选项" },
+  "optionsPreferencesText": { "message": "这些设置适用于提供程序。Google Workspace 文件读取功能可用后，将使用所选导出格式。" },
+  "optionsOAuthClientIdLabel": { "message": "OAuth 客户端 ID" },
+  "optionsOAuthClientIdHelp": { "message": "用于开发或托管安装：Google 桌面应用的客户端 ID。客户端 ID 并非机密。" },
+  "optionsDebugLoggingLabel": { "message": "启用诊断日志" },
+  "optionsExportsHeading": { "message": "Google Workspace 导出格式" },
+  "optionsExportDocuments": { "message": "Google 文档" },
+  "optionsExportSpreadsheets": { "message": "Google 表格" },
+  "optionsExportPresentations": { "message": "Google 幻灯片" },
+  "optionsExportDrawings": { "message": "Google 绘图" },
+  "optionsFormatDocx": { "message": "DOCX 格式" },
+  "optionsFormatPdf": { "message": "PDF 格式" },
+  "optionsFormatXlsx": { "message": "XLSX 格式" },
+  "optionsFormatPptx": { "message": "PPTX 格式" },
+  "optionsSavePreferences": { "message": "保存首选项" },
+  "optionsPreferencesSaved": { "message": "首选项已保存。" },
+  "optionsErrorOAuthNotConfigured": { "message": "请先保存 OAuth 客户端 ID，再登录。" },
+  "optionsErrorOAuthClientIdInvalid": { "message": "OAuth 客户端 ID 无效。" },
+  "optionsErrorOAuthAccountMismatch": { "message": "所选 Google 账号与要重新登录的账号不一致。" },
+  "optionsErrorOAuthCancelled": { "message": "Google 登录已取消或未获批准。" },
+  "optionsErrorOAuthReauthorizationRequired": { "message": "此 Google 账号需要重新登录。" },
+  "optionsErrorOAuthGeneric": { "message": "无法完成 Google 登录。请检查客户端 ID 和 Google Cloud 设置。" },
+  "optionsErrorUnexpected": { "message": "无法加载当前数据或完成请求的更改。请重试。" }
 }
