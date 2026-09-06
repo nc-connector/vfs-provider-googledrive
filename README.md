@@ -88,9 +88,9 @@ the Thunderbird `webext-linter` repository.
 ## Technical baseline
 
 The primary VFS references are Thunderbird's
-[example provider](https://github.com/thunderbird/webext-support/tree/3476faa0870bb6dbe63c7c72fc3dab2b67731f4e/modules/vfs-toolkit/example-vfs-provider)
+[example provider](https://github.com/thunderbird/webext-support/tree/a82f2b767f4183f582ed33e81cd35a1c45639430/modules/vfs-toolkit/example-vfs-provider)
 and
-[provider API documentation](https://github.com/thunderbird/webext-support/blob/3476faa0870bb6dbe63c7c72fc3dab2b67731f4e/modules/vfs-toolkit/vfs-provider/README.md).
+[provider API documentation](https://github.com/thunderbird/webext-support/blob/a82f2b767f4183f582ed33e81cd35a1c45639430/modules/vfs-toolkit/vfs-provider/README.md).
 The project also studies
 [jobisoft/vfs-provider-webdav](https://github.com/jobisoft/vfs-provider-webdav/tree/1e5d3beba3b778999cebc74f2d6a2e9508f56bab)
 as an additional reference for separating provider accounts from consumer

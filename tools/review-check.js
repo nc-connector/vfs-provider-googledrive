@@ -25,7 +25,7 @@ const EXPECTED_LOCALES = [
 ];
 const EXPECTED_VENDOR_HASHES = new Map([
   ["vendor/i18n/i18n.mjs", "efc9e290349356d47283414d35951df829bcc4135e472be239faab2e9a7582ea"],
-  ["vendor/vfs-toolkit/vfs-provider.mjs", "0a9d4f9f5841254f6aa517ec5cd7a7d87b557eb2d3814b670529bf66bede73e9"]
+  ["vendor/vfs-toolkit/vfs-provider.mjs", "cdf9bed9683af96505c2aae8f3798cc3bd0d835388a8c9f908b17bf67596329d"]
 ]);
 const SKIP_FOLDERS = new Set([
   ".git",
@@ -118,7 +118,8 @@ function checkVendor() {
     assert(hash === expectedHash, `Vendored file changed: ${relativePath}`);
     assert(vendorNotes.includes(expectedHash), `VENDOR.md is missing the hash for ${relativePath}`);
   }
-  assert(vendorNotes.includes("3476faa0870bb6dbe63c7c72fc3dab2b67731f4e"), "VENDOR.md is missing the upstream base");
+  assert(vendorNotes.includes("a82f2b767f4183f582ed33e81cd35a1c45639430"), "VENDOR.md is missing the VFS provider revision");
+  assert(vendorNotes.includes("3476faa0870bb6dbe63c7c72fc3dab2b67731f4e"), "VENDOR.md is missing the i18n revision");
 }
 
 function checkFiles() {

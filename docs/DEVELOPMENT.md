@@ -23,13 +23,13 @@ form a usable path.
 
 ## 2. Technical references
 
-The primary implementation references are fixed to Thunderbird
-`webext-support` commit
-`3476faa0870bb6dbe63c7c72fc3dab2b67731f4e`:
+The VFS provider references are fixed to the review revision from
+[`thunderbird/webext-support#96`](https://github.com/thunderbird/webext-support/pull/96),
+commit `a82f2b767f4183f582ed33e81cd35a1c45639430`:
 
-- [VFS example provider](https://github.com/thunderbird/webext-support/tree/3476faa0870bb6dbe63c7c72fc3dab2b67731f4e/modules/vfs-toolkit/example-vfs-provider)
-- [VFS provider API guide](https://github.com/thunderbird/webext-support/blob/3476faa0870bb6dbe63c7c72fc3dab2b67731f4e/modules/vfs-toolkit/vfs-provider/README.md)
-- [VFS provider module](https://github.com/thunderbird/webext-support/blob/3476faa0870bb6dbe63c7c72fc3dab2b67731f4e/modules/vfs-toolkit/vfs-provider/vfs-provider.mjs)
+- [VFS example provider](https://github.com/thunderbird/webext-support/tree/a82f2b767f4183f582ed33e81cd35a1c45639430/modules/vfs-toolkit/example-vfs-provider)
+- [VFS provider API guide](https://github.com/thunderbird/webext-support/blob/a82f2b767f4183f582ed33e81cd35a1c45639430/modules/vfs-toolkit/vfs-provider/README.md)
+- [VFS provider module](https://github.com/thunderbird/webext-support/blob/a82f2b767f4183f582ed33e81cd35a1c45639430/modules/vfs-toolkit/vfs-provider/vfs-provider.mjs)
 
 The example defines the expected provider lifecycle and connection flow. The
 provider guide and module define the supported callback surface, progress,
@@ -251,12 +251,14 @@ the preference.
 
 ## 8. Vendor policy
 
-The files below come from Thunderbird `webext-support` commit
-`3476faa0870bb6dbe63c7c72fc3dab2b67731f4e` and are packaged without local
-changes:
+The files below come from fixed Thunderbird `webext-support` revisions and are
+packaged without local changes:
 
 - `src/vendor/vfs-toolkit/vfs-provider.mjs`
 - `src/vendor/i18n/i18n.mjs`
+
+Their individual revisions and hashes are recorded in
+[VENDOR.md](../VENDOR.md).
 
 Do not patch product behavior into these files. Update a vendor file only by
 selecting a new upstream revision, copying the upstream content, and updating
