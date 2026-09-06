@@ -142,6 +142,7 @@ export function mapVfsProviderError(error, getMessage) {
 
 export class GoogleDriveVfsProvider extends VfsProviderImplementation {
   #readiness;
+  #connectionService;
   #accountRepository;
   #preferencesRepository;
   #transport;
@@ -155,6 +156,7 @@ export class GoogleDriveVfsProvider extends VfsProviderImplementation {
   constructor({
     name,
     readiness,
+    connectionService,
     accountRepository,
     preferencesRepository,
     transport,
@@ -169,12 +171,16 @@ export class GoogleDriveVfsProvider extends VfsProviderImplementation {
   }) {
     super({ name, ...providerOptions });
     this.#readiness = Promise.resolve(readiness);
+    this.#connectionService = requireMethod(
+      connectionService,
+      "getAuthorizedBinding",
+      "connectionService"
+    );
     this.#accountRepository = requireMethod(
       accountRepository,
-      "getConnectionBinding",
+      "getAccount",
       "accountRepository"
     );
-    requireMethod(accountRepository, "getAccount", "accountRepository");
     this.#preferencesRepository = requireMethod(
       preferencesRepository,
       "get",
@@ -204,26 +210,26 @@ export class GoogleDriveVfsProvider extends VfsProviderImplementation {
   }
 
   async onStorageUsage(storageId) {
-    return this.#run("storage_usage", storageId, async (namespace) =>
+    return this.#run("storage_usage", storageId, null, async (namespace) =>
       namespace.getStorageUsage());
   }
 
   async onList(requestId, storageId, path) {
     return this.#abortRegistry.run(requestId, (signal) =>
-      this.#run("list", storageId, (namespace) =>
+      this.#run("list", storageId, "folder.read", (namespace) =>
         namespace.list(path, { signal })));
   }
 
   async onReadFile(requestId, storageId, path) {
     return this.#abortRegistry.run(requestId, (signal) =>
-      this.#run("read_file", storageId, (namespace) =>
+      this.#run("read_file", storageId, "file.read", (namespace) =>
         namespace.readFile(path, { signal })));
   }
 
-  async #run(operation, storageId, callback) {
+  async #run(operation, storageId, capability, callback) {
     this.#logger?.debug?.("vfs.operation.start", { operation });
     try {
-      const namespace = await this.#namespaceForStorage(storageId);
+      const namespace = await this.#namespaceForStorage(storageId, capability);
       const result = await callback(namespace);
       this.#logger?.debug?.("vfs.operation.complete", { operation });
       return result;
@@ -239,16 +245,10 @@ export class GoogleDriveVfsProvider extends VfsProviderImplementation {
     }
   }
 
-  async #namespaceForStorage(storageId) {
+  async #namespaceForStorage(storageId, capability) {
     await this.#readiness;
-    if (typeof storageId !== "string" ||
-        !storageId || storageId.trim() !== storageId) {
-      throw authError();
-    }
-    const binding = await this.#accountRepository.getConnectionBinding(storageId);
-    if (!binding) {
-      throw authError();
-    }
+    const binding = await this.#connectionService
+      .getAuthorizedBinding(storageId, capability);
     const account = await this.#accountRepository.getAccount(binding.accountId);
     if (!account) {
       throw authError();

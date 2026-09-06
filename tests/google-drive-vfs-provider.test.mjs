@@ -42,6 +42,7 @@ function createProvider({
 } = {}) {
   const namespaceCalls = [];
   const apiCalls = [];
+  const authorizationCalls = [];
   const activeNamespace = namespace || {
     async getStorageUsage() {
       namespaceCalls.push({ method: "getStorageUsage" });
@@ -59,10 +60,19 @@ function createProvider({
   const provider = new GoogleDriveVfsProvider({
     name: "Google Drive",
     readiness,
+    connectionService: {
+      async getAuthorizedBinding(storageId, capability) {
+        authorizationCalls.push({ storageId, capability });
+        if (typeof storageId !== "string" ||
+            storageId !== binding?.storageId) {
+          throw Object.assign(new Error("Unauthorized storage connection"), {
+            code: "E:AUTH"
+          });
+        }
+        return binding;
+      }
+    },
     accountRepository: {
-      async getConnectionBinding(storageId) {
-        return storageId === binding?.storageId ? binding : null;
-      },
       async getAccount(accountId) {
         return accountId === account?.id ? account : null;
       }
@@ -89,7 +99,7 @@ function createProvider({
       return activeNamespace;
     }
   });
-  return { apiCalls, namespaceCalls, provider };
+  return { apiCalls, authorizationCalls, namespaceCalls, provider };
 }
 
 test("advertises only implemented read operations", () => {
@@ -102,7 +112,12 @@ test("advertises only implemented read operations", () => {
 });
 
 test("binds list, read, and quota requests to the selected Google account", async () => {
-  const { apiCalls, namespaceCalls, provider } = createProvider();
+  const {
+    apiCalls,
+    authorizationCalls,
+    namespaceCalls,
+    provider
+  } = createProvider();
 
   assert.deepEqual(await provider.onStorageUsage("storage-1"), {
     usage: 10,
@@ -116,6 +131,11 @@ test("binds list, read, and quota requests to the selected Google account", asyn
   )).name, "file.txt");
 
   assert.equal(apiCalls.every((call) => call.accountId === "account-1"), true);
+  assert.deepEqual(authorizationCalls, [
+    { storageId: "storage-1", capability: null },
+    { storageId: "storage-1", capability: "folder.read" },
+    { storageId: "storage-1", capability: "file.read" }
+  ]);
   const creations = namespaceCalls.filter((call) => call.method === "create");
   assert.equal(creations.length, 3);
   assert.deepEqual(creations[0].options.exportFormats, EXPORT_FORMATS);
