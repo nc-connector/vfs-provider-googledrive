@@ -47,7 +47,7 @@ Drive, and this project does not include its WebDAV protocol code.
 |---|---|
 | `src/manifest.json` | Thunderbird MV3 manifest and product metadata |
 | `src/background.mjs` | module background entry point |
-| `src/state/` | versioned account and connection-binding storage |
+| `src/state/` | versioned account, connection-binding, and preference storage |
 | `src/options/` | localized development-status page |
 | `src/_locales/` | WebExtension messages for all supported locales |
 | `src/vendor/vfs-toolkit/` | unmodified Thunderbird VFS provider module |
@@ -119,6 +119,13 @@ tokens unless an internal authorization lookup is explicitly requested.
 The repository serializes writes performed by its background instance and uses
 a versioned storage record. UI pages must request state changes through the
 background instead of constructing independent writers.
+
+Provider preferences use a separate versioned record. The initial export
+choices are DOCX for Google Docs, XLSX for Google Sheets, PPTX for Google Slides,
+and PDF for Google Drawings. PDF is also an available choice for Docs, Sheets,
+and Slides. An OAuth client ID can be supplied for development and managed
+deployments until a project-owned production client is selected; OAuth client
+IDs are identifiers, not secrets.
 
 Incoming requests must validate the consumer, storage ID, requested capability,
 and current account state before accessing Google Drive. Setup data supplied by

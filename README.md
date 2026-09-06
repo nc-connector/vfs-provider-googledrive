@@ -18,6 +18,8 @@ The initial scaffold provides:
 - a localized status page;
 - a versioned state repository that keeps Google accounts separate from VFS
   consumer connections;
+- versioned preferences for OAuth setup, diagnostics, and Google Workspace
+  export formats;
 - the unmodified Thunderbird VFS provider and i18n modules at a fixed upstream
   revision;
 - a reproducible XPI build script;
