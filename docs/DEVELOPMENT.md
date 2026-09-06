@@ -1,8 +1,9 @@
 # Development Guide — VFS Provider for Google Drive
 
-> **Development status:** Version 0.1.0 includes the MV3 foundation and internal
-> Google OAuth account services, localized account settings, and a reusable
-> read-only Drive API layer. It does not register a working VFS provider.
+> **Development status:** Version 0.1.0 includes the MV3 foundation, Google
+> OAuth account services, localized account and connection settings, and a
+> working read-only VFS provider. Write operations and release validation are
+> still in progress.
 
 ## 1. Product goal
 
@@ -17,9 +18,8 @@ The design separates three concerns:
 3. request-scoped file and folder operations performed for a granted
    connection.
 
-The scaffold deliberately does not publish a placeholder provider. Discovery
-will be added only when account setup, connection grants, and storage access can
-form a usable path.
+The provider publishes only capabilities backed by a complete account,
+connection, and Drive access path.
 
 ## 2. Technical references
 
@@ -50,8 +50,10 @@ Drive, and this project does not include its WebDAV protocol code.
 | `src/state/` | versioned account, connection-binding, and preference storage |
 | `src/core/logger.mjs` | redacted provider diagnostics |
 | `src/google/` | Google OAuth, session-token, and Drive API services |
+| `src/provider/` | VFS adapter and account-bound connection lifecycle |
 | `src/runtime/` | internal extension message boundary |
 | `src/options/` | localized account and provider settings |
+| `src/connection/` | localized VFS setup and configuration popups |
 | `src/_locales/` | WebExtension messages for all supported locales |
 | `src/vendor/vfs-toolkit/` | unmodified Thunderbird VFS provider module |
 | `src/vendor/i18n/` | unmodified Thunderbird HTML localization module |
@@ -95,7 +97,10 @@ evaluation:
 |---|---|---|
 | `browser.runtime.onMessage.addListener` | internal account and preference requests | none |
 | `browser.runtime.onStartup.addListener` | resumes the MV3 startup boundary | none |
-| `browser.storage.onChanged.addListener` | applies debug preference changes | `storage` |
+| `browser.storage.onChanged.addListener` | applies debug changes and reconciles removed VFS connections | `storage` |
+| `browser.runtime.onMessageExternal.addListener` | VFS provider discovery | none |
+| `browser.runtime.onConnectExternal.addListener` | consumer-bound VFS requests | none |
+| `browser.windows.onRemoved.addListener` | cancels abandoned setup requests | none |
 
 The options page imports the vendored localization helper, which resolves
 messages through `browser.i18n.getMessage`. Its `.js` entry point delegates
@@ -103,13 +108,12 @@ message and view state to a DOM-independent `.mjs` controller. The manifest's
 `default_locale` is `de`.
 
 The background constructs the account, preference, OAuth-session, OAuth-client,
-and logger services before it accepts internal requests. The runtime message
-listener is not declared `async`: it returns a promise for known internal
-messages and `undefined` for all other messages. The background also imports the
-vendored VFS module and declares
-`GoogleDriveVfsProvider` as its product-owned subclass. It does not construct or
-initialize that class, so the scaffold does not register provider listeners or
-advertise a storage connection.
+connection, Drive transport, and logger services before it accepts work. The
+runtime message listener is not declared `async`: it returns a promise for known
+internal messages and `undefined` for all other messages. The background
+constructs `GoogleDriveVfsProvider` and calls its synchronous `init()` during
+module evaluation. Provider operations wait for asynchronous repository
+initialization through the shared readiness promise.
 
 The provider module uses `browser.storage.local` for consumer connection
 records. Product account records and preferences use separate keys in the same
@@ -173,14 +177,14 @@ mode preserves the `Location`, HTTP 308, and `Range` values needed by the future
 resumable uploader. It does not make upload decisions or repeat a mutating
 request after an unknown result.
 
-`GoogleDriveApiClient` currently provides paginated file and shared-drive
+`GoogleDriveApiClient` provides paginated file and shared-drive
 listing, metadata, storage quota, binary download, byte ranges, and Google
 Workspace export. File and account identifiers, query text, paths, and request
-URLs are excluded from diagnostic records. These modules are not loaded by the
-background yet; the provider callback layer will create them for an approved
-account binding.
+URLs are excluded from diagnostic records. The provider creates the Drive
+namespace only after the Toolkit connection, requested read capability, local
+account binding, and current account status have been checked.
 
-## 6. Planned provider boundary
+## 6. Provider boundary
 
 Account records and VFS connection records must remain distinct:
 
@@ -213,12 +217,12 @@ and current account state before accessing Google Drive. Setup data supplied by
 a consumer is not an account credential.
 
 Google Drive objects use stable IDs and can have duplicate display names. The
-future path layer must retain object identity instead of treating a visible path
-as a globally unique key. Decisions for shortcuts, shared items, Google-native
-documents, and shared drives must be made before the related callbacks are
-implemented.
+read path retains object identity in encoded path segments rather than treating
+a visible name as a globally unique key. It resolves shortcuts, distinguishes
+duplicate siblings, exports supported Google-native documents, and separates
+My Drive, shared items, and Shared drives into virtual roots.
 
-## 7. Planned VFS operations
+## 7. VFS operations
 
 The provider API exposes callbacks for:
 
@@ -229,15 +233,17 @@ The provider API exposes callbacks for:
 - deleting files or folders; and
 - canceling a request.
 
-Capabilities must be declared only after their complete callback path exists.
-Long operations need request-scoped progress and cancellation. Partial folder
-operations need storage-change reports for items already changed before an
-abort or error, as described by the upstream provider guide.
+The current provider advertises folder read and file read. It implements root
+and folder listing, storage quota, binary download, Workspace export, localized
+VFS errors, and request-scoped cancellation. The account binding and capability
+are checked for every operation.
 
-Upload strategy, quota-to-VFS mapping, change tracking, and VFS error
-translation are not implemented yet and must not be inferred from the vendored
-Toolkit. The current Drive client exposes read operations; write and upload
-orchestration remain absent.
+Capabilities for writes remain disabled until their complete callback paths
+exist. Uploads and other long write operations need request-scoped progress and
+cancellation. Partial folder operations need storage-change reports for items
+already changed before an abort or error, as described by the upstream provider
+guide. Upload strategy and change tracking remain product-owned work and must
+not be inferred from the vendored Toolkit.
 
 ### Diagnostic logging
 
@@ -321,7 +327,7 @@ The implementation still needs these inputs or later release decisions:
 - a project-owned production Google OAuth Desktop client ID;
 - the final product icon and Google brand review;
 - the oldest Thunderbird version verified by smoke testing;
-- retry, upload-resume, timeout, and rate-limit behavior;
+- upload-resume and write timeout behavior;
 - account and connection migration rules;
 - storage-change polling or Google change-token strategy; and
 - release signing, update channel, and managed deployment.

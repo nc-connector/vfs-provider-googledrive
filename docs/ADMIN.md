@@ -1,8 +1,9 @@
 # Administration Guide — VFS Provider for Google Drive
 
-> **Development status:** The current package includes the internal OAuth
-> account service and localized account settings, but no usable VFS storage. It
-> is not ready for deployment.
+> **Development status:** The current package provides read-only Google Drive
+> storage through VFS, including account-bound setup and configuration. It is
+> not ready for production deployment because write operations and release
+> validation remain incomplete.
 
 This guide records the administrative boundary of the project while the
 provider is under development. Runtime setup, managed deployment, OAuth
@@ -17,12 +18,15 @@ Toolkit. A consuming add-on will need a user-approved connection before it can
 request file or folder operations.
 
 The current build provides a localized settings page where a tester can enter a
-Desktop OAuth client ID, add or reauthorize Google accounts, remove an account,
-choose Workspace export formats, and enable diagnostic logging. It does not:
+Desktop OAuth client ID, add or reauthorize Google accounts, remove an unused
+account, choose Workspace export formats, and enable diagnostic logging. A
+compatible VFS consumer can create a connection for one account, rename that
+connection, switch its account, browse Drive content, and read files. It does
+not yet:
 
-- perform Google Drive file or storage operations;
-- advertise a VFS provider to other add-ons; or
-- grant a consumer access to storage.
+- create, replace, move, copy, or delete Drive content;
+- report remote Drive changes to connected consumers; or
+- list and revoke individual consumer connections in the provider settings.
 
 ## 2. Current platform requirements
 
@@ -32,7 +36,8 @@ choose Workspace export formats, and enable diagnostic logging. It does not:
 The manifest requests `storage` and `identity`. Host access is limited to
 Google's OAuth token/revocation endpoint and Google Drive API endpoint. It does
 not request access to arbitrary sites or include Experiment APIs. The provider
-is not initialized yet, so it does not advertise VFS connections.
+registers during background startup and advertises only connections previously
+approved by the user for the requesting consumer add-on.
 
 ## 3. Google Cloud development setup
 
@@ -77,10 +82,13 @@ network access.
 After loading the development XPI, the add-on options page can store the Desktop
 OAuth client ID and start Google authorization only after the tester presses
 the add-account or sign-in-again button. The page discloses the requested Drive
-access before that action.
+access before that action. A compatible VFS client discovers the provider and
+opens the provider-owned setup popup when the user adds a connection. The popup
+shows both the consumer name and its add-on ID before an account is granted.
 
-No provider should appear in a VFS client yet. A Google authorization window
-must not open during installation, startup, or simply opening the settings.
+A Google authorization window must not open during installation, startup, or
+simply opening the settings. An account cannot be removed while a current VFS
+connection still uses it; remove the connection from the consumer first.
 
 ## 6. Planned administrative decisions
 
@@ -89,8 +97,8 @@ The following items must be settled and documented before deployment:
 - supported Thunderbird release range;
 - Google Cloud project and OAuth client registration;
 - requested Google scopes and their review status;
-- account add, reconnect, revoke, and removal flows;
-- consumer connection grants and revocation;
+- production account recovery and administrative revocation procedures;
+- provider-side display and revocation of individual consumer connections;
 - support for My Drive, shared items, and shared drives;
 - organization policy and managed deployment options;
 - logging controls, diagnostics, and retention guidance; and

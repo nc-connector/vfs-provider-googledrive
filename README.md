@@ -1,8 +1,9 @@
 # VFS Provider for Google Drive
 
-> **Development status:** This repository contains the Manifest V3 foundation
-> and Google account settings, plus a reusable read-only Drive API layer. It
-> does not yet expose a discoverable VFS storage. Do not use this build in
+> **Development status:** This repository contains a working read-only VFS
+> provider for Google Drive. Consumer add-ons can create an account-bound
+> connection, browse Drive content, and read files. Write operations and the
+> release work listed below are not complete, so this build is not ready for
 > production.
 
 VFS Provider for Google Drive is intended to make Google Drive storage
@@ -27,17 +28,22 @@ The initial scaffold provides:
 - authenticated Google Drive v3 requests with token refresh, bounded retry for
   safe reads, validated upload-session URLs, pagination, quota, metadata,
   download, and export helpers;
+- a consumer-bound VFS connection lifecycle with localized setup and
+  configuration popups;
+- read-only VFS access to My Drive, Shared with me, and Shared drives, including
+  Google Workspace export, shortcuts, duplicate names, request cancellation,
+  and storage quota reporting;
 - the unmodified Thunderbird VFS provider and i18n modules at a fixed upstream
   revision;
 - a reproducible XPI build script;
 - local package and review checks; and
 - administrator and developer documentation.
 
-VFS connection grants, provider callbacks, write operations, progress,
-cancellation, and storage-change reporting are not yet implemented. The Drive
-API layer is not invoked by the background until those callbacks are connected.
-A Google Desktop OAuth client ID is required before the account flow can be
-smoke-tested.
+The provider advertises only the implemented read capabilities. Uploads and
+other write operations, write progress, and storage-change reporting are not
+yet implemented. The settings page does not yet list or revoke individual
+consumer connections. A Google Desktop OAuth client ID is required for live
+account and provider testing.
 
 ## Requirements
 
@@ -94,8 +100,8 @@ and
 The project also studies
 [jobisoft/vfs-provider-webdav](https://github.com/jobisoft/vfs-provider-webdav/tree/1e5d3beba3b778999cebc74f2d6a2e9508f56bab)
 as an additional reference for separating provider accounts from consumer
-connections. Google Drive access will use its own implementation; WebDAV
-protocol code is not part of this scaffold.
+connections. Google Drive access uses its own implementation; WebDAV protocol
+code is not part of this provider.
 
 See [VENDOR.md](VENDOR.md) for the fixed Thunderbird revision, source links,
 licenses, and file hashes.
