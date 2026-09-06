@@ -173,16 +173,26 @@ background wait alive for an unbounded period.
 
 The same transport accepts only Google's Drive API path, Drive upload path, or
 a resumable-session URL below the validated Drive upload path. A raw response
-mode preserves the `Location`, HTTP 308, and `Range` values needed by the future
+mode preserves the `Location`, HTTP 308, and `Range` values used by the
 resumable uploader. It does not make upload decisions or repeat a mutating
 request after an unknown result.
 
 `GoogleDriveApiClient` provides paginated file and shared-drive
 listing, metadata, storage quota, binary download, byte ranges, and Google
-Workspace export. File and account identifiers, query text, paths, and request
-URLs are excluded from diagnostic records. The provider creates the Drive
-namespace only after the Toolkit connection, requested read capability, local
-account binding, and current account status have been checked.
+Workspace export. It also provides metadata-first multipart uploads and the
+resumable session primitives used by `GoogleDriveUploader`. Files of 5 MB or
+less use multipart upload. Larger files use 8 MiB chunks, whose size is a
+multiple of Drive's required 256 KiB unit. Progress advances only to the byte
+offset confirmed by Drive. After an unknown chunk result, the uploader queries
+the session before sending more data; it never blindly repeats that chunk. A
+session rejected by Drive can be restarted once during the active request.
+
+Upload state, source bytes, session URLs, and abort controllers remain bound to
+the active VFS request and are not presented as surviving an MV3 background
+restart. File and account identifiers, query text, paths, session URLs, and
+request URLs are excluded from diagnostic records. The provider creates the
+Drive namespace only after the Toolkit connection, requested read capability,
+local account binding, and current account status have been checked.
 
 ## 6. Provider boundary
 
@@ -239,11 +249,12 @@ VFS errors, and request-scoped cancellation. The account binding and capability
 are checked for every operation.
 
 Capabilities for writes remain disabled until their complete callback paths
-exist. Uploads and other long write operations need request-scoped progress and
-cancellation. Partial folder operations need storage-change reports for items
-already changed before an abort or error, as described by the upstream provider
-guide. Upload strategy and change tracking remain product-owned work and must
-not be inferred from the vendored Toolkit.
+exist. The upload service is present but is not connected to a VFS write
+callback yet. Uploads and other long write operations need request-scoped
+progress and cancellation. Partial folder operations need storage-change
+reports for items already changed before an abort or error, as described by the
+upstream provider guide. Upload strategy and change tracking remain
+product-owned work and must not be inferred from the vendored Toolkit.
 
 ### Diagnostic logging
 
@@ -327,7 +338,7 @@ The implementation still needs these inputs or later release decisions:
 - a project-owned production Google OAuth Desktop client ID;
 - the final product icon and Google brand review;
 - the oldest Thunderbird version verified by smoke testing;
-- upload-resume and write timeout behavior;
+- write timeout behavior;
 - account and connection migration rules;
 - storage-change polling or Google change-token strategy; and
 - release signing, update channel, and managed deployment.

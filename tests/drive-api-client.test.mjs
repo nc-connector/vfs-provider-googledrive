@@ -1,5 +1,5 @@
 /**
- * Read-only Google Drive API client tests.
+ * Google Drive API client tests.
  */
 
 "use strict";
@@ -186,6 +186,242 @@ test("exports a link-shared Workspace file with its resource key", async () => {
   });
   assert.equal(calls[0].options.responseType, "blob");
   assert.equal(calls[0].options.operation, "files.export");
+});
+
+test("creates a small file with metadata-first multipart upload", async () => {
+  const media = new Blob(["file data"], { type: "text/plain" });
+  const { calls, client } = createClient(() => ({ id: "created-file" }));
+
+  assert.deepEqual(await client.uploadMultipart({
+    metadata: { name: "report.txt", parents: ["folder-1"] },
+    media
+  }), { id: "created-file" });
+
+  const options = calls[0].options;
+  assert.equal(options.resourcePath, "files");
+  assert.equal(options.endpoint, "upload");
+  assert.deepEqual(options.query, {
+    uploadType: "multipart",
+    supportsAllDrives: true,
+    fields: DRIVE_FILE_FIELDS
+  });
+  assert.equal(options.method, "POST");
+  assert.equal(options.retryMode, "never");
+  assert.equal(options.body instanceof Blob, true);
+  assert.equal(
+    options.headers["Content-Type"],
+    options.body.type
+  );
+  assert.equal(Object.hasOwn(options.headers, "Content-Length"), false);
+  const body = await options.body.text();
+  const metadataAt = body.indexOf(JSON.stringify({
+    name: "report.txt",
+    parents: ["folder-1"]
+  }));
+  const mediaAt = body.indexOf("file data");
+  assert.equal(metadataAt > 0, true);
+  assert.equal(mediaAt > metadataAt, true);
+  assert.match(body, /Content-Type: application\/json; charset=UTF-8/u);
+  assert.match(body, /Content-Type: text\/plain/u);
+});
+
+test("updates a small file with an encoded multipart upload target", async () => {
+  const { calls, client } = createClient(() => ({ id: "file/id" }));
+
+  await client.uploadMultipart({
+    fileId: "file/id",
+    metadata: { name: "new.bin" },
+    media: new Blob(["data"])
+  });
+
+  assert.equal(calls[0].options.resourcePath, "files/file%2Fid");
+  assert.equal(calls[0].options.method, "PATCH");
+  assert.match(
+    await calls[0].options.body.text(),
+    /Content-Type: application\/octet-stream/u
+  );
+  assert.equal(
+    calls[0].options.operation,
+    "files.upload.multipart.update"
+  );
+});
+
+test("starts create and update resumable sessions without replaying initiation", async () => {
+  const sessionUrl =
+    "https://www.googleapis.com/upload/drive/v3/files?upload_id=session-1";
+  const { calls, client } = createClient(() => new Response(null, {
+    status: 200,
+    headers: { Location: sessionUrl }
+  }));
+  const media = new Blob(["content"], { type: "text/plain" });
+
+  assert.equal(await client.startResumableUpload({
+    metadata: { name: "new.txt" },
+    media
+  }), sessionUrl);
+  assert.equal(await client.startResumableUpload({
+    fileId: "file/id",
+    metadata: { name: "existing.txt" },
+    media
+  }), sessionUrl);
+
+  assert.deepEqual(calls.map((call) => call.options.method), ["POST", "PATCH"]);
+  assert.deepEqual(calls.map((call) => call.options.resourcePath), [
+    "files",
+    "files/file%2Fid"
+  ]);
+  for (const { options } of calls) {
+    assert.equal(options.endpoint, "upload");
+    assert.equal(options.query.uploadType, "resumable");
+    assert.equal(options.query.supportsAllDrives, true);
+    assert.equal(options.headers["X-Upload-Content-Type"], "text/plain");
+    assert.equal(options.headers["X-Upload-Content-Length"], "7");
+    assert.equal(Object.hasOwn(options.headers, "Content-Length"), false);
+    assert.equal(options.responseType, "response");
+    assert.equal(options.retryMode, "never");
+  }
+});
+
+test("rejects a resumable session outside the Drive upload endpoint", async () => {
+  const { client } = createClient(() => new Response(null, {
+    status: 200,
+    headers: { Location: "https://example.invalid/upload/session" }
+  }));
+
+  await assert.rejects(
+    client.startResumableUpload({
+      metadata: { name: "new.txt" },
+      media: new Blob(["content"])
+    }),
+    (error) => error instanceof GoogleDriveRequestError &&
+      error.code === "drive_upload_session_invalid"
+  );
+});
+
+test("uses the server-confirmed range for resumable chunks", async () => {
+  const { calls, client } = createClient(() => new Response(null, {
+    status: 308,
+    headers: { Range: "bytes=0-3" }
+  }));
+  const signal = new AbortController().signal;
+
+  assert.deepEqual(await client.sendResumableChunk(
+    "https://www.googleapis.com/upload/drive/v3/files?upload_id=session-1",
+    {
+      chunk: new Blob(["12345"], { type: "text/plain" }),
+      start: 0,
+      total: 10,
+      signal
+    }
+  ), {
+    complete: false,
+    nextOffset: 4,
+    file: null
+  });
+
+  const options = calls[0].options;
+  assert.equal(options.method, "PUT");
+  assert.equal(options.headers["Content-Type"], "text/plain");
+  assert.equal(options.headers["Content-Range"], "bytes 0-4/10");
+  assert.equal(Object.hasOwn(options.headers, "Content-Length"), false);
+  assert.equal(options.retryMode, "never");
+  assert.deepEqual(options.acceptedStatuses, [308]);
+  assert.equal(options.signal, signal);
+});
+
+test("treats a missing resumable Range header as no confirmed bytes", async () => {
+  const { client } = createClient(() => new Response(null, { status: 308 }));
+
+  assert.deepEqual(await client.sendResumableChunk(
+    "https://www.googleapis.com/upload/drive/v3/files?upload_id=session-1",
+    { chunk: new Blob(["12345"]), start: 0, total: 10 }
+  ), {
+    complete: false,
+    nextOffset: 0,
+    file: null
+  });
+});
+
+test("returns final metadata from a completed resumable chunk", async () => {
+  const { client } = createClient(() => new Response(
+    JSON.stringify({ id: "file-1", name: "done.bin" }),
+    { status: 201, headers: { "Content-Type": "application/json" } }
+  ));
+
+  assert.deepEqual(await client.sendResumableChunk(
+    "https://www.googleapis.com/upload/drive/v3/files?upload_id=session-1",
+    { chunk: new Blob(["12345"]), start: 5, total: 10 }
+  ), {
+    complete: true,
+    nextOffset: 10,
+    file: { id: "file-1", name: "done.bin" }
+  });
+});
+
+test("keeps an abort raised while reading final upload metadata", async () => {
+  const controller = new AbortController();
+  const abort = new DOMException("stopped", "AbortError");
+  const { client } = createClient(() => ({
+    status: 200,
+    headers: new Headers(),
+    async json() {
+      controller.abort(abort);
+      throw abort;
+    }
+  }));
+
+  await assert.rejects(
+    client.sendResumableChunk(
+      "https://www.googleapis.com/upload/drive/v3/files?upload_id=session-1",
+      {
+        chunk: new Blob(["12345"]),
+        start: 0,
+        total: 5,
+        signal: controller.signal
+      }
+    ),
+    (error) => error === abort
+  );
+});
+
+test("rejects impossible resumable server ranges", async () => {
+  const { client } = createClient(() => new Response(null, {
+    status: 308,
+    headers: { Range: "bytes=0-99" }
+  }));
+
+  await assert.rejects(
+    client.sendResumableChunk(
+      "https://www.googleapis.com/upload/drive/v3/files?upload_id=session-1",
+      { chunk: new Blob(["12345"]), start: 0, total: 10 }
+    ),
+    (error) => error instanceof GoogleDriveRequestError &&
+      error.code === "drive_upload_range_invalid"
+  );
+});
+
+test("queries resumable state with an idempotent empty upload request", async () => {
+  const { calls, client } = createClient(() => new Response(null, {
+    status: 308,
+    headers: { Range: "bytes=0-6" }
+  }));
+
+  assert.deepEqual(await client.queryResumableUpload(
+    "https://www.googleapis.com/upload/drive/v3/files?upload_id=session-1",
+    { total: 10 }
+  ), {
+    complete: false,
+    nextOffset: 7,
+    file: null
+  });
+
+  assert.equal(calls[0].options.method, "PUT");
+  assert.deepEqual(calls[0].options.headers, {
+    "Content-Range": "bytes */10"
+  });
+  assert.equal(calls[0].options.body, undefined);
+  assert.equal(calls[0].options.retryMode, "always");
+  assert.deepEqual(calls[0].options.acceptedStatuses, [308]);
 });
 
 test("rejects a repeated page token instead of looping forever", async () => {

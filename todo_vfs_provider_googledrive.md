@@ -78,6 +78,10 @@ kept in sync with the repository.
   creating a second upload transport.
 - [x] Add paginated read helpers for quota, metadata, binary download, Workspace
   export, file listing, and Shared Drive listing.
+- [x] Add metadata-first multipart upload for files up to 5 MB and resumable
+  8 MiB chunk upload above that limit. Base progress on Drive-confirmed byte
+  ranges, query uncertain sessions before continuing, and allow one in-request
+  restart after Drive rejects a session.
 - [x] Add tested path, duplicate-name, Workspace-export, and request-abort
   modules and use them from the read-only provider adapter.
 

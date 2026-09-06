@@ -18,6 +18,19 @@ const RETRY_MODES = new Set(["safe", "always", "never"]);
 const SAFE_RETRY_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const EXTRA_SUCCESS_STATUSES = new Set([308]);
 
+export function validateDriveUploadSessionUrl(value) {
+  if (typeof value !== "string" || !value) {
+    throw new TypeError("uploadSessionUrl");
+  }
+  const sessionUrl = new URL(value);
+  if (sessionUrl.origin !== "https://www.googleapis.com" ||
+      !sessionUrl.pathname.startsWith(DRIVE_UPLOAD_PATH_PREFIX) ||
+      sessionUrl.username || sessionUrl.password || sessionUrl.hash) {
+    throw new TypeError("uploadSessionUrl");
+  }
+  return sessionUrl.toString();
+}
+
 function abortError(signal) {
   if (signal?.reason instanceof Error) {
     return signal.reason;
@@ -89,16 +102,10 @@ function buildRequestUrl({
   uploadSessionUrl
 }) {
   if (uploadSessionUrl !== undefined) {
-    if (resourcePath !== undefined || typeof uploadSessionUrl !== "string" ||
-        !uploadSessionUrl) {
+    if (resourcePath !== undefined) {
       throw new TypeError("uploadSessionUrl");
     }
-    const sessionUrl = new URL(uploadSessionUrl);
-    if (sessionUrl.origin !== "https://www.googleapis.com" ||
-        !sessionUrl.pathname.startsWith(DRIVE_UPLOAD_PATH_PREFIX) ||
-        sessionUrl.username || sessionUrl.password || sessionUrl.hash) {
-      throw new TypeError("uploadSessionUrl");
-    }
+    const sessionUrl = new URL(validateDriveUploadSessionUrl(uploadSessionUrl));
     appendQuery(sessionUrl, query);
     return sessionUrl.toString();
   }

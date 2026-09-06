@@ -1,10 +1,13 @@
 /**
- * Read-only Google Drive API v3 operations used by the provider.
+ * Google Drive API v3 operations used by the provider.
  */
 
 "use strict";
 
-import { GoogleDriveRequestError } from "./drive-transport.mjs";
+import {
+  GoogleDriveRequestError,
+  validateDriveUploadSessionUrl
+} from "./drive-transport.mjs";
 
 export const DRIVE_ABOUT_FIELDS = [
   "exportFormats",
@@ -46,6 +49,7 @@ export const DRIVE_FIELDS = [
 
 const STORAGE_QUOTA_FIELDS =
   "storageQuota(limit,usage,usageInDrive,usageInDriveTrash)";
+const DEFAULT_MEDIA_TYPE = "application/octet-stream";
 
 function requireText(value, name) {
   if (typeof value !== "string" || !value) {
@@ -59,6 +63,136 @@ function requirePageSize(value, maximum, name) {
     throw new RangeError(name);
   }
   return value;
+}
+
+function requireBlob(value, name) {
+  if (!(value instanceof Blob)) {
+    throw new TypeError(name);
+  }
+  return value;
+}
+
+function requireMetadata(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError("metadata");
+  }
+  return value;
+}
+
+function optionalFileId(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  return requireText(value, "fileId");
+}
+
+function requireNonNegativeInteger(value, name) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new RangeError(name);
+  }
+  return value;
+}
+
+function mediaType(media) {
+  return media.type || DEFAULT_MEDIA_TYPE;
+}
+
+function uploadResource(fileId) {
+  return fileId === null
+    ? "files"
+    : `files/${encodeURIComponent(fileId)}`;
+}
+
+function uploadMethod(fileId) {
+  return fileId === null ? "POST" : "PATCH";
+}
+
+function uploadOperation(fileId, type) {
+  return `files.upload.${type}.${fileId === null ? "create" : "update"}`;
+}
+
+function serializeMetadata(metadata) {
+  try {
+    return JSON.stringify(requireMetadata(metadata));
+  } catch (error) {
+    if (error instanceof TypeError && error.message === "metadata") {
+      throw error;
+    }
+    throw new TypeError("metadata", { cause: error });
+  }
+}
+
+function createMultipartBody(metadata, media) {
+  const boundary = `googledrive_${crypto.randomUUID().replaceAll("-", "")}`;
+  const contentType = `multipart/related; boundary=${boundary}`;
+  const body = new Blob([
+    `--${boundary}\r\n`,
+    "Content-Type: application/json; charset=UTF-8\r\n\r\n",
+    serializeMetadata(metadata),
+    `\r\n--${boundary}\r\n`,
+    `Content-Type: ${mediaType(media)}\r\n\r\n`,
+    media,
+    `\r\n--${boundary}--\r\n`
+  ], { type: contentType });
+  return { body, contentType };
+}
+
+async function readUploadMetadata(response, signal) {
+  if (response.status !== 200 && response.status !== 201) {
+    throw new GoogleDriveRequestError("drive_upload_response_invalid", {
+      status: response.status
+    });
+  }
+  let result;
+  try {
+    result = await response.json();
+  } catch (cause) {
+    if (signal?.aborted || cause?.name === "AbortError") {
+      throw cause;
+    }
+    throw new GoogleDriveRequestError("drive_upload_response_invalid", {
+      status: response.status,
+      cause
+    });
+  }
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
+    throw new GoogleDriveRequestError("drive_upload_response_invalid", {
+      status: response.status
+    });
+  }
+  return result;
+}
+
+function confirmedOffset(response, total, maximumOffset) {
+  const range = response.headers.get("Range");
+  if (range === null) {
+    return 0;
+  }
+  const match = /^bytes=0-(\d+)$/iu.exec(range.trim());
+  const lastByte = match ? Number(match[1]) : Number.NaN;
+  const nextOffset = lastByte + 1;
+  if (!Number.isSafeInteger(lastByte) || lastByte < 0 ||
+      nextOffset > total || nextOffset > maximumOffset) {
+    throw new GoogleDriveRequestError("drive_upload_range_invalid", {
+      status: response.status
+    });
+  }
+  return nextOffset;
+}
+
+async function resumableResult(response, total, maximumOffset, signal) {
+  if (response.status === 308) {
+    return {
+      complete: false,
+      nextOffset: confirmedOffset(response, total, maximumOffset),
+      file: null
+    };
+  }
+  return {
+    complete: true,
+    nextOffset: total,
+    file: await readUploadMetadata(response, signal)
+  };
 }
 
 function listProjection(collection, itemFields, extraFields = []) {
@@ -234,6 +368,120 @@ export class GoogleDriveApiClient {
       signal,
       operation: "files.export"
     });
+  }
+
+  async uploadMultipart({
+    fileId,
+    metadata,
+    media,
+    signal
+  }) {
+    const normalizedFileId = optionalFileId(fileId);
+    const normalizedMedia = requireBlob(media, "media");
+    const { body, contentType } = createMultipartBody(
+      metadata,
+      normalizedMedia
+    );
+    return this.#transport.request(this.#accountId, {
+      resourcePath: uploadResource(normalizedFileId),
+      endpoint: "upload",
+      query: {
+        uploadType: "multipart",
+        supportsAllDrives: true,
+        fields: DRIVE_FILE_FIELDS
+      },
+      method: uploadMethod(normalizedFileId),
+      headers: { "Content-Type": contentType },
+      body,
+      signal,
+      operation: uploadOperation(normalizedFileId, "multipart"),
+      retryMode: "never"
+    });
+  }
+
+  async startResumableUpload({
+    fileId,
+    metadata,
+    media,
+    signal
+  }) {
+    const normalizedFileId = optionalFileId(fileId);
+    const normalizedMedia = requireBlob(media, "media");
+    const response = await this.#transport.request(this.#accountId, {
+      resourcePath: uploadResource(normalizedFileId),
+      endpoint: "upload",
+      query: {
+        uploadType: "resumable",
+        supportsAllDrives: true,
+        fields: DRIVE_FILE_FIELDS
+      },
+      method: uploadMethod(normalizedFileId),
+      headers: {
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": mediaType(normalizedMedia),
+        "X-Upload-Content-Length": String(normalizedMedia.size)
+      },
+      body: serializeMetadata(metadata),
+      responseType: "response",
+      signal,
+      operation: uploadOperation(normalizedFileId, "resumable.start"),
+      retryMode: "never"
+    });
+    const location = response.headers.get("Location");
+    try {
+      return validateDriveUploadSessionUrl(location);
+    } catch (cause) {
+      throw new GoogleDriveRequestError("drive_upload_session_invalid", {
+        status: response.status,
+        cause
+      });
+    }
+  }
+
+  async sendResumableChunk(uploadSessionUrl, {
+    chunk,
+    start,
+    total,
+    signal
+  }) {
+    const normalizedChunk = requireBlob(chunk, "chunk");
+    const normalizedStart = requireNonNegativeInteger(start, "start");
+    const normalizedTotal = requireNonNegativeInteger(total, "total");
+    const endOffset = normalizedStart + normalizedChunk.size;
+    if (normalizedChunk.size === 0 || endOffset > normalizedTotal ||
+        endOffset > Number.MAX_SAFE_INTEGER) {
+      throw new RangeError("chunk");
+    }
+    const response = await this.#transport.request(this.#accountId, {
+      uploadSessionUrl: validateDriveUploadSessionUrl(uploadSessionUrl),
+      method: "PUT",
+      headers: {
+        "Content-Type": mediaType(normalizedChunk),
+        "Content-Range": `bytes ${normalizedStart}-${endOffset - 1}/${normalizedTotal}`
+      },
+      body: normalizedChunk,
+      responseType: "response",
+      signal,
+      operation: "files.upload.resumable.chunk",
+      retryMode: "never",
+      acceptedStatuses: [308]
+    });
+    return resumableResult(response, normalizedTotal, endOffset, signal);
+  }
+
+  async queryResumableUpload(uploadSessionUrl, { total, signal }) {
+    const normalizedTotal = requireNonNegativeInteger(total, "total");
+    const response = await this.#transport.request(this.#accountId, {
+      uploadSessionUrl: validateDriveUploadSessionUrl(uploadSessionUrl),
+      method: "PUT",
+      headers: { "Content-Range": `bytes */${normalizedTotal}` },
+      responseType: "response",
+      signal,
+      operation: "files.upload.resumable.status",
+      retryMode: "always",
+      acceptedStatuses: [308]
+    });
+    return resumableResult(response, normalizedTotal, normalizedTotal, signal);
   }
 
   async #collectPages({
