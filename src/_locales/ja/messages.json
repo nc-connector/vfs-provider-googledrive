@@ -1,0 +1,17 @@
+{
+  "extensionName": {
+    "message": "Google Drive 用 VFS プロバイダー"
+  },
+  "extensionDescription": {
+    "message": "VFS Toolkit を介して、互換性のある Thunderbird アドオンに Google Drive ストレージを追加します。"
+  },
+  "optionsTitle": {
+    "message": "Google Drive 用 VFS プロバイダー"
+  },
+  "optionsStatusHeading": {
+    "message": "開発状況"
+  },
+  "optionsStatusText": {
+    "message": "この開発ビルドでは、Google Drive アカウントの設定とストレージへのアクセスは利用できません。"
+  }
+}

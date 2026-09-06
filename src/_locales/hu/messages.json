@@ -1,0 +1,17 @@
+{
+  "extensionName": {
+    "message": "VFS-szolgáltató a Google Drive-hoz"
+  },
+  "extensionDescription": {
+    "message": "Google Drive-tárhelyet ad a kompatibilis Thunderbird-kiegészítőkhöz a VFS Toolkit segítségével."
+  },
+  "optionsTitle": {
+    "message": "VFS-szolgáltató a Google Drive-hoz"
+  },
+  "optionsStatusHeading": {
+    "message": "Fejlesztési állapot"
+  },
+  "optionsStatusText": {
+    "message": "A Google Drive-fiók beállítása és a tárhelyhez való hozzáférés ebben a fejlesztői verzióban nem érhető el."
+  }
+}

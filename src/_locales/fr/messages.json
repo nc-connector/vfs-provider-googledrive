@@ -1,0 +1,17 @@
+{
+  "extensionName": {
+    "message": "Fournisseur VFS pour Google Drive"
+  },
+  "extensionDescription": {
+    "message": "Ajoute le stockage Google Drive aux modules complémentaires Thunderbird compatibles grâce à VFS Toolkit."
+  },
+  "optionsTitle": {
+    "message": "Fournisseur VFS pour Google Drive"
+  },
+  "optionsStatusHeading": {
+    "message": "État du développement"
+  },
+  "optionsStatusText": {
+    "message": "La configuration du compte Google Drive et l’accès au stockage ne sont pas disponibles dans cette version de développement."
+  }
+}

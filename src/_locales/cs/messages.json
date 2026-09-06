@@ -1,0 +1,17 @@
+{
+  "extensionName": {
+    "message": "Poskytovatel VFS pro Google Drive"
+  },
+  "extensionDescription": {
+    "message": "Přidává úložiště Google Drive do kompatibilních doplňků Thunderbirdu prostřednictvím VFS Toolkit."
+  },
+  "optionsTitle": {
+    "message": "Poskytovatel VFS pro Google Drive"
+  },
+  "optionsStatusHeading": {
+    "message": "Stav vývoje"
+  },
+  "optionsStatusText": {
+    "message": "Nastavení účtu Google Drive a přístup k úložišti nejsou v tomto vývojovém sestavení k dispozici."
+  }
+}

@@ -1,0 +1,10 @@
+.tmp/
+.lib-cdn-lookup-cache/
+.lib-mozilla-hash-db-cache/
+.schema-cache/
+dist/
+node_modules/
+npm-debug.log*
+webext-linter-*.json
+*.xpi
+*.zip

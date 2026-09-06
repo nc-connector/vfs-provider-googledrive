@@ -1,0 +1,22 @@
+{
+  "name": "vfs-provider-googledrive",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "overrides": {
+    "adm-zip": "0.6.0",
+    "fast-uri": "3.1.4",
+    "obfuscation-detector": "3.0.1"
+  },
+  "scripts": {
+    "build": "node tools/build.js",
+    "test": "npm run test:review && npm run test:webext-linter",
+    "test:review": "node tools/review-check.js && node tools/build.js .tmp/review.xpi && node tools/package-check.js .tmp/review.xpi --remove",
+    "test:webext-linter": "npm run webext-linter:update && npm run webext-linter:audit && npm run webext-linter:check",
+    "webext-linter:update": "npm install --no-save --no-package-lock --prefer-online https://github.com/thunderbird/webext-linter/archive/refs/heads/main.tar.gz",
+    "webext-linter:audit": "node tools/webext-linter-dependency-check.js",
+    "webext-linter:check": "node tools/webext-linter-check.js"
+  }
+}

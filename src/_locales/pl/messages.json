@@ -1,0 +1,17 @@
+{
+  "extensionName": {
+    "message": "Dostawca VFS dla Google Drive"
+  },
+  "extensionDescription": {
+    "message": "Dodaje przestrzeń dyskową Google Drive do zgodnych dodatków Thunderbirda za pośrednictwem VFS Toolkit."
+  },
+  "optionsTitle": {
+    "message": "Dostawca VFS dla Google Drive"
+  },
+  "optionsStatusHeading": {
+    "message": "Stan rozwoju"
+  },
+  "optionsStatusText": {
+    "message": "W tej wersji rozwojowej nie można skonfigurować konta Google Drive ani uzyskać dostępu do pamięci."
+  }
+}

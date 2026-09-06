@@ -1,0 +1,163 @@
+"use strict";
+
+const crypto = require("node:crypto");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const ROOT = path.resolve(__dirname, "..");
+const SOURCE_DIR = path.join(ROOT, "src");
+const EXPECTED_LOCALES = [
+  "cs",
+  "de",
+  "en",
+  "es",
+  "fr",
+  "hu",
+  "it",
+  "ja",
+  "nl",
+  "pl",
+  "pt_BR",
+  "pt_PT",
+  "ru",
+  "zh_CN",
+  "zh_TW"
+];
+const EXPECTED_VENDOR_HASHES = new Map([
+  ["vendor/i18n/i18n.mjs", "efc9e290349356d47283414d35951df829bcc4135e472be239faab2e9a7582ea"],
+  ["vendor/vfs-toolkit/vfs-provider.mjs", "0a9d4f9f5841254f6aa517ec5cd7a7d87b557eb2d3814b670529bf66bede73e9"]
+]);
+const SKIP_FOLDERS = new Set([
+  ".git",
+  ".lib-cdn-lookup-cache",
+  ".lib-mozilla-hash-db-cache",
+  ".schema-cache",
+  ".tmp",
+  "dist",
+  "node_modules"
+]);
+
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+function readJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function listProjectFiles(directory = ROOT) {
+  const result = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.isDirectory() && SKIP_FOLDERS.has(entry.name)) {
+      continue;
+    }
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      result.push(...listProjectFiles(entryPath));
+    } else if (entry.isFile()) {
+      result.push(entryPath);
+    }
+  }
+  return result;
+}
+
+function checkManifest() {
+  const manifest = readJson(path.join(SOURCE_DIR, "manifest.json"));
+  const packageJson = readJson(path.join(ROOT, "package.json"));
+  assert(manifest.manifest_version === 3, "The extension must use Manifest V3");
+  assert(!Object.hasOwn(manifest, "applications"), "Use browser_specific_settings instead of applications");
+  assert(manifest.browser_specific_settings?.gecko?.id === "{90c66d9f-a142-43a8-8ffb-707a48d8eb7a}", "Unexpected extension ID");
+  assert(manifest.browser_specific_settings?.gecko?.strict_min_version === "140.0", "Unexpected minimum Thunderbird version");
+  assert(manifest.background?.type === "module", "The background must be an ES module");
+  assert(JSON.stringify(manifest.background?.scripts) === JSON.stringify(["background.mjs"]), "Unexpected background entry point");
+  assert(manifest.icons?.["16"] === "assets/icon.svg", "The extension icon is missing");
+  assert(manifest.icons?.["32"] === "assets/icon.svg", "The extension icon is missing");
+  assert(manifest.icons?.["64"] === "assets/icon.svg", "The extension icon is missing");
+  assert(manifest.icons?.["128"] === "assets/icon.svg", "The extension icon is missing");
+  assert(manifest.default_locale === "de", "German must remain the default locale");
+  assert(manifest.version === packageJson.version, "Package and manifest versions differ");
+  assert(!manifest.experiment_apis, "The provider must not include an Experiment API");
+  assert(JSON.stringify(manifest.permissions) === JSON.stringify(["storage"]), "Unexpected extension permissions");
+  assert(!manifest.host_permissions?.length, "The scaffold must not request unused host access");
+}
+
+function checkLocales() {
+  const localeRoot = path.join(SOURCE_DIR, "_locales");
+  const locales = fs.readdirSync(localeRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  assert(JSON.stringify(locales) === JSON.stringify([...EXPECTED_LOCALES].sort()), "Locale folder set differs from Translations.md");
+
+  const english = readJson(path.join(localeRoot, "en", "messages.json"));
+  const expectedKeys = Object.keys(english).sort();
+  for (const locale of locales) {
+    const messages = readJson(path.join(localeRoot, locale, "messages.json"));
+    assert(JSON.stringify(Object.keys(messages).sort()) === JSON.stringify(expectedKeys), `${locale} locale keys differ from English`);
+    for (const key of expectedKeys) {
+      const message = String(messages[key]?.message || "").trim();
+      assert(message, `${locale}.${key} is empty`);
+      assert(!/(TODO|TBD|TRANSLATE_ME|FIXME)/i.test(message), `${locale}.${key} contains a work marker`);
+      if (locale !== "en" && key !== "extensionName") {
+        assert(message !== english[key].message, `${locale}.${key} is still English`);
+      }
+    }
+  }
+}
+
+function checkVendor() {
+  const vendorNotes = fs.readFileSync(path.join(ROOT, "VENDOR.md"), "utf8").toLowerCase();
+  for (const [relativePath, expectedHash] of EXPECTED_VENDOR_HASHES) {
+    const filePath = path.join(SOURCE_DIR, relativePath);
+    const hash = crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+    assert(hash === expectedHash, `Vendored file changed: ${relativePath}`);
+    assert(vendorNotes.includes(expectedHash), `VENDOR.md is missing the hash for ${relativePath}`);
+  }
+  assert(vendorNotes.includes("3476faa0870bb6dbe63c7c72fc3dab2b67731f4e"), "VENDOR.md is missing the upstream base");
+}
+
+function checkFiles() {
+  const required = [
+    "README.md",
+    "Translations.md",
+    "VENDOR.md",
+    "docs/ADMIN.md",
+    "docs/DEVELOPMENT.md",
+    "src/assets/icon.svg",
+    "src/background.mjs",
+    "src/options/options.html",
+    "src/options/options.mjs"
+  ];
+  for (const relativePath of required) {
+    assert(fs.existsSync(path.join(ROOT, relativePath)), `Required file is missing: ${relativePath}`);
+  }
+
+  for (const filePath of listProjectFiles()) {
+    const buffer = fs.readFileSync(filePath);
+    assert(!(buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf), `UTF-8 BOM found: ${path.relative(ROOT, filePath)}`);
+    const text = buffer.toString("utf8");
+    assert(!text.includes("\r"), `CRLF found: ${path.relative(ROOT, filePath)}`);
+    if (/\.(?:css|html|js|mjs)$/.test(filePath)) {
+      assert(!text.includes("\t"), `Tab indentation found: ${path.relative(ROOT, filePath)}`);
+    }
+  }
+
+  const sourceText = listProjectFiles(SOURCE_DIR)
+    .filter((filePath) => /\.(?:html|js|mjs)$/.test(filePath))
+    .map((filePath) => fs.readFileSync(filePath, "utf8"))
+    .join("\n");
+  assert(!/<script[^>]+src=["']https?:/i.test(sourceText), "Remote script reference found");
+  assert(!/\beval\s*\(|\bnew\s+Function\s*\(/.test(sourceText), "Dynamic code execution found");
+}
+
+function run() {
+  checkManifest();
+  checkLocales();
+  checkVendor();
+  checkFiles();
+  console.log("[OK] review-check passed");
+}
+
+run();

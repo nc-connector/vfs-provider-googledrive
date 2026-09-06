@@ -1,0 +1,17 @@
+{
+  "extensionName": {
+    "message": "Google Drive VFS 提供程序"
+  },
+  "extensionDescription": {
+    "message": "通过 VFS Toolkit 为兼容的 Thunderbird 附加组件添加 Google Drive 存储空间。"
+  },
+  "optionsTitle": {
+    "message": "Google Drive VFS 提供程序"
+  },
+  "optionsStatusHeading": {
+    "message": "开发状态"
+  },
+  "optionsStatusText": {
+    "message": "此开发版本暂不支持 Google Drive 账号设置和存储访问。"
+  }
+}
