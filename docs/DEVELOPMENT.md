@@ -46,7 +46,7 @@ Drive, and this project does not include its WebDAV protocol code.
 | Path | Purpose |
 |---|---|
 | `src/manifest.json` | Thunderbird MV3 manifest and product metadata |
-| `src/background.mjs` | module background entry point |
+| `src/background.js` | module background entry point |
 | `src/state/` | versioned account, connection-binding, and preference storage |
 | `src/core/logger.mjs` | redacted provider diagnostics |
 | `src/options/` | localized development-status page |
@@ -63,6 +63,9 @@ Drive, and this project does not include its WebDAV protocol code.
 ## 4. Manifest V3 rules
 
 - Keep the background entry point as an ES module.
+- Name scripts loaded directly by the manifest or an HTML page with `.js`.
+  Name reusable imported modules and vendored modules with `.mjs`. Node build
+  and review tools use CommonJS `.js`; tests use ESM `.mjs`.
 - Register background event listeners during module evaluation.
 - Keep account and connection state in extension storage rather than relying on
   module globals surviving a background restart.

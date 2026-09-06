@@ -71,7 +71,7 @@ function checkManifest() {
   assert(manifest.browser_specific_settings?.gecko?.id === "{90c66d9f-a142-43a8-8ffb-707a48d8eb7a}", "Unexpected extension ID");
   assert(manifest.browser_specific_settings?.gecko?.strict_min_version === "140.0", "Unexpected minimum Thunderbird version");
   assert(manifest.background?.type === "module", "The background must be an ES module");
-  assert(JSON.stringify(manifest.background?.scripts) === JSON.stringify(["background.mjs"]), "Unexpected background entry point");
+  assert(JSON.stringify(manifest.background?.scripts) === JSON.stringify(["background.js"]), "Unexpected background entry point");
   assert(manifest.icons?.["16"] === "assets/icon.svg", "The extension icon is missing");
   assert(manifest.icons?.["32"] === "assets/icon.svg", "The extension icon is missing");
   assert(manifest.icons?.["64"] === "assets/icon.svg", "The extension icon is missing");
@@ -126,9 +126,9 @@ function checkFiles() {
     "docs/ADMIN.md",
     "docs/DEVELOPMENT.md",
     "src/assets/icon.svg",
-    "src/background.mjs",
+    "src/background.js",
     "src/options/options.html",
-    "src/options/options.mjs"
+    "src/options/options.js"
   ];
   for (const relativePath of required) {
     assert(fs.existsSync(path.join(ROOT, relativePath)), `Required file is missing: ${relativePath}`);
@@ -150,6 +150,20 @@ function checkFiles() {
     .join("\n");
   assert(!/<script[^>]+src=["']https?:/i.test(sourceText), "Remote script reference found");
   assert(!/\beval\s*\(|\bnew\s+Function\s*\(/.test(sourceText), "Dynamic code execution found");
+
+  const reusableModules = listProjectFiles(SOURCE_DIR)
+    .filter((filePath) => filePath.endsWith(".mjs"));
+  for (const filePath of reusableModules) {
+    const text = fs.readFileSync(filePath, "utf8");
+    assert(!/\brequire\s*\(|\bmodule\.exports\b/.test(text), `CommonJS found in ESM module: ${path.relative(ROOT, filePath)}`);
+  }
+
+  const nodeTools = listProjectFiles(path.join(ROOT, "tools"))
+    .filter((filePath) => filePath.endsWith(".js"));
+  for (const filePath of nodeTools) {
+    const text = fs.readFileSync(filePath, "utf8");
+    assert(!/^\s*(?:import|export)\s/m.test(text), `ESM syntax found in CommonJS tool: ${path.relative(ROOT, filePath)}`);
+  }
 }
 
 function run() {

@@ -23,7 +23,7 @@
   },
   "background": {
     "scripts": [
-      "background.mjs"
+      "background.js"
     ],
     "type": "module"
   },
