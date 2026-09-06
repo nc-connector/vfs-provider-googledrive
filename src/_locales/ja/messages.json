@@ -10,10 +10,10 @@
   },
   "optionsDocumentLanguage": { "message": "ja" },
   "optionsStatusText": {
-    "message": "ここで Google アカウントを設定できます。VFS のファイル操作はまだ利用できません。"
+    "message": "Google アカウントの設定とプロバイダー設定の管理を行います。"
   },
   "optionsAccountsHeading": { "message": "Google アカウント" },
-  "optionsAccountsText": { "message": "各アカウントは個別に管理され、後で VFS 接続に選択できます。" },
+  "optionsAccountsText": { "message": "各アカウントは個別に管理され、1 つ以上の VFS 接続で使用できます。" },
   "optionsAccountsDataNotice": { "message": "ログインすると、このアドオンに Google Drive のファイルを読み取り、管理する権限が付与されます。データは、ユーザーまたは接続済み VFS アドオンが開始した操作に限り転送されます。" },
   "optionsAddAccount": { "message": "Google アカウントを追加" },
   "optionsNoAccounts": { "message": "Google アカウントはまだ設定されていません。" },
@@ -28,7 +28,7 @@
   "optionsAccountDisconnected": { "message": "Google アカウントをローカルから削除しました。" },
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Google アカウントはローカルから削除されましたが、Google 側のアクセス権を取り消せませんでした。Google アカウントでもアクセス権を削除してください。" },
   "optionsPreferencesHeading": { "message": "設定項目" },
-  "optionsPreferencesText": { "message": "これらの設定はプロバイダーに適用されます。エクスポート形式は Google Workspace ファイルの読み取りが利用可能になった時点で使用されます。" },
+  "optionsPreferencesText": { "message": "これらの設定はプロバイダーに適用されます。選択したエクスポート形式は Google Workspace ファイルの読み取り時に使用されます。" },
   "optionsOAuthClientIdLabel": { "message": "OAuth クライアント ID" },
   "optionsOAuthClientIdHelp": { "message": "開発または管理対象インストール用: Google デスクトップ アプリのクライアント ID。クライアント ID は秘密情報ではありません。" },
   "optionsDebugLoggingLabel": { "message": "診断ログを有効にする" },
@@ -50,6 +50,7 @@
   "optionsErrorOAuthReauthorizationRequired": { "message": "この Google アカウントにもう一度ログインする必要があります。" },
   "optionsErrorOAuthGeneric": { "message": "Google へのログインを完了できませんでした。クライアント ID と Google Cloud の設定を確認してください。" },
   "optionsErrorUnexpected": { "message": "現在のデータを読み込めなかったか、要求された変更を完了できませんでした。もう一度お試しください。" },
+  "optionsErrorAccountHasConnections": { "message": "この Google アカウントは 1 つ以上の VFS 接続で使用中です。ログアウトする前に、接続先のアドオンでそれらの接続を削除してください。" },
   "vfsRootMyDrive": { "message": "マイドライブ" },
   "vfsRootSharedWithMe": { "message": "共有アイテム" },
   "vfsRootSharedDrives": { "message": "共有ドライブ" },
@@ -62,5 +63,38 @@
   "vfsErrorAccessTitle": { "message": "Google ドライブへのアクセスが拒否されました" },
   "vfsErrorAccessDescription": { "message": "選択したアイテムをこの Google アカウントで読み取ることができません。" },
   "vfsErrorUnavailableTitle": { "message": "Google ドライブのアイテムを利用できません" },
-  "vfsErrorUnavailableDescription": { "message": "選択したアイテムは存在しないか、開くことができません。" }
+  "vfsErrorUnavailableDescription": { "message": "選択したアイテムは存在しないか、開くことができません。" },
+  "vfsSetupDocumentTitle": { "message": "Google Drive に接続" },
+  "vfsSetupTitle": { "message": "Google Drive に接続" },
+  "vfsSetupRequestText": {
+    "message": "$ADDON$ が Google Drive の使用を求めています。利用可能にする Google アカウントを選択してください。",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "サンプルアドオン" }
+    }
+  },
+  "vfsConfigDocumentTitle": { "message": "Google Drive 接続を設定" },
+  "vfsConfigTitle": { "message": "Google Drive 接続を設定" },
+  "vfsConfigText": {
+    "message": "$ADDON$ で使用する Google アカウントと接続名を選択してください。",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "サンプルアドオン" }
+    }
+  },
+  "vfsConnectionAccountLabel": { "message": "Google アカウント" },
+  "vfsConnectionNameLabel": { "message": "接続名" },
+  "vfsConnectionNameHelp": { "message": "この名前は接続先のアドオンに表示されます。" },
+  "vfsConnectionNoAccounts": { "message": "この接続を作成する前に Google アカウントを追加してください。" },
+  "vfsConnectionDefaultName": {
+    "message": "$ACCOUNT$ の Google Drive",
+    "placeholders": {
+      "account": { "content": "$1", "example": "ada@example.com" }
+    }
+  },
+  "vfsConnectionCancel": { "message": "キャンセル" },
+  "vfsConnectionGrant": { "message": "接続" },
+  "vfsConnectionSave": { "message": "保存" },
+  "vfsConnectionErrorInvalidRequest": { "message": "この VFS 接続リクエストは無効か、有効期限が切れています。" },
+  "vfsConnectionErrorNotFound": { "message": "この VFS 接続は存在しません。" },
+  "vfsConnectionErrorAccountUnavailable": { "message": "選択した Google アカウントは利用できないか、再ログインが必要です。" },
+  "vfsConnectionErrorUnexpected": { "message": "VFS 接続を保存できませんでした。もう一度お試しください。" }
 }

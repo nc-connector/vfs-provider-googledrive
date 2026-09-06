@@ -27,7 +27,12 @@ function toolkitConnection({
   return { addonId, addonName, storageId, name, capabilities };
 }
 
-async function createFixture({ connections = [], reportConnection, randomUUID } = {}) {
+async function createFixture({
+  connections = [],
+  reportConnection,
+  randomUUID,
+  logger
+} = {}) {
   const storageArea = new FakeStorageArea({
     [VFS_TOOLKIT_CONNECTIONS_KEY]: connections
   });
@@ -37,7 +42,8 @@ async function createFixture({ connections = [], reportConnection, randomUUID } 
     storageArea,
     accountRepository,
     reportConnection: reportConnection || (async () => undefined),
-    randomUUID: randomUUID || (() => "storage-new")
+    randomUUID: randomUUID || (() => "storage-new"),
+    logger
   });
   return { accountRepository, service, storageArea };
 }
@@ -151,6 +157,47 @@ test("creates the product binding before completing Toolkit setup", async () => 
   assert.equal(reported[5], "setup-token");
 });
 
+test("reconciliation reads Toolkit connections after queued setup completes", async () => {
+  let releaseSetup;
+  const setupMayFinish = new Promise((resolve) => {
+    releaseSetup = resolve;
+  });
+  let reportStarted;
+  const reportHasStarted = new Promise((resolve) => {
+    reportStarted = resolve;
+  });
+  let fixture;
+  fixture = await createFixture({
+    reportConnection: async () => {
+      reportStarted();
+      await setupMayFinish;
+      await fixture.storageArea.set({
+        [VFS_TOOLKIT_CONNECTIONS_KEY]: [toolkitConnection({
+          storageId: "storage-new"
+        })]
+      });
+    }
+  });
+  await addAccount(fixture.accountRepository);
+
+  const create = fixture.service.createConnection({
+    addonId: "consumer@example.invalid",
+    accountId: "account-1",
+    name: "Work Drive",
+    setupToken: "setup-token"
+  });
+  await reportHasStarted;
+  const reconcile = fixture.service.reconcileToolkitConnections();
+  releaseSetup();
+
+  await Promise.all([create, reconcile]);
+  assert.equal(
+    (await fixture.accountRepository.getConnectionBinding("storage-new"))
+      .accountId,
+    "account-1"
+  );
+});
+
 test("removes a new binding when Toolkit setup fails", async () => {
   const { accountRepository, service } = await createFixture({
     reportConnection: async () => {
@@ -232,6 +279,47 @@ test("restores the previous account binding when an update fails", async () => {
   );
 });
 
+test("keeps a provisional account change hidden from provider requests", async () => {
+  const existing = toolkitConnection();
+  let finishReport;
+  const reportMayFinish = new Promise((resolve, reject) => {
+    finishReport = () => reject(new Error("update failed"));
+  });
+  let reportStarted;
+  const reportHasStarted = new Promise((resolve) => {
+    reportStarted = resolve;
+  });
+  const { accountRepository, service } = await createFixture({
+    connections: [existing],
+    reportConnection: async () => {
+      reportStarted();
+      return reportMayFinish;
+    }
+  });
+  await addAccount(accountRepository, "account-1");
+  await addAccount(accountRepository, "account-2");
+  await accountRepository.bindConnection({
+    storageId: "storage-1",
+    accountId: "account-1"
+  });
+
+  const update = service.updateConnection({
+    addonId: existing.addonId,
+    storageId: existing.storageId,
+    accountId: "account-2",
+    name: "Personal Drive"
+  });
+  await reportHasStarted;
+  const authorized = service.getAuthorizedBinding(
+    "storage-1",
+    "file.read"
+  );
+  finishReport();
+
+  await assert.rejects(update, /update failed/);
+  assert.equal((await authorized).accountId, "account-1");
+});
+
 test("blocks account removal until its Toolkit connections are gone", async () => {
   const existing = toolkitConnection();
   const { accountRepository, service, storageArea } = await createFixture({
@@ -261,6 +349,41 @@ test("blocks account removal until its Toolkit connections are gone", async () =
   );
   assert.equal(calls, 1);
   assert.deepEqual(await accountRepository.listConnectionBindings(), []);
+});
+
+test("reports connection lifecycle phases without product identifiers", async () => {
+  const calls = [];
+  const logger = Object.fromEntries(["debug", "info", "warn"].map((level) => [
+    level,
+    (event, details) => calls.push({ level, event, details })
+  ]));
+  const { accountRepository, service } = await createFixture({ logger });
+  await addAccount(accountRepository);
+
+  await service.initialize();
+  await service.createConnection({
+    addonId: "consumer@example.invalid",
+    accountId: "account-1",
+    name: "Private Drive name",
+    setupToken: "private-setup-token"
+  });
+
+  assert.deepEqual(calls, [
+    {
+      level: "debug",
+      event: "vfs.connection.reconciled",
+      details: { connections: 0, status: "current" }
+    },
+    {
+      level: "info",
+      event: "vfs.connection.created",
+      details: { status: "connected" }
+    }
+  ]);
+  const output = JSON.stringify(calls);
+  assert.equal(output.includes("consumer@example.invalid"), false);
+  assert.equal(output.includes("Private Drive name"), false);
+  assert.equal(output.includes("private-setup-token"), false);
 });
 
 test("loads config only for the matching consumer and storage pair", async () => {

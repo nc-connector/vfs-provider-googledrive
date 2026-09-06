@@ -131,6 +131,11 @@ function checkFiles() {
     "docs/DEVELOPMENT.md",
     "src/assets/icon.svg",
     "src/background.js",
+    "src/connection/config.html",
+    "src/connection/connection-controller.mjs",
+    "src/connection/page.js",
+    "src/connection/setup.html",
+    "src/connection/styles.css",
     "src/options/options.html",
     "src/options/options.js"
   ];

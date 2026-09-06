@@ -24,6 +24,12 @@ function createHandler(overrides = {}) {
       authorize: async () => ({ id: "account-1" }),
       disconnectAccount: async () => ({ revoked: true })
     },
+    connectionService: {
+      disconnectAccount: async (_accountId, disconnect) => disconnect(),
+      getConnection: async (request) => request,
+      createConnection: async (request) => request,
+      updateConnection: async (request) => request
+    },
     ...overrides
   });
 }
@@ -105,4 +111,97 @@ test("passes the selected account to a reauthorization request", async () => {
     ok: true,
     value: { id: "account-2" }
   });
+});
+
+test("checks VFS bindings before disconnecting an account", async () => {
+  const calls = [];
+  const handler = createHandler({
+    oauthClient: {
+      disconnectAccount: async (accountId) => {
+        calls.push(["oauth", accountId]);
+        return { revoked: true };
+      }
+    },
+    connectionService: {
+      disconnectAccount: async (accountId, disconnect) => {
+        calls.push(["connections", accountId]);
+        return disconnect();
+      }
+    }
+  });
+
+  const response = await handler({
+    type: "googleDrive:account:disconnect",
+    accountId: "account-1"
+  }, { id: "provider@example.invalid" });
+
+  assert.deepEqual(calls, [
+    ["connections", "account-1"],
+    ["oauth", "account-1"]
+  ]);
+  assert.deepEqual(response, { ok: true, value: { revoked: true } });
+});
+
+test("routes VFS connection messages without passing extra fields", async () => {
+  const calls = [];
+  const connectionService = {
+    async getConnection(request) {
+      calls.push(["get", request]);
+      return request;
+    },
+    async createConnection(request) {
+      calls.push(["create", request]);
+      return request;
+    },
+    async updateConnection(request) {
+      calls.push(["update", request]);
+      return request;
+    }
+  };
+  const handler = createHandler({ connectionService });
+  const sender = { id: "provider@example.invalid" };
+
+  await handler({
+    type: "googleDrive:vfs:connection:get",
+    addonId: "consumer@example.invalid",
+    storageId: "storage-1",
+    ignored: "value"
+  }, sender);
+  await handler({
+    type: "googleDrive:vfs:connection:create",
+    addonId: "consumer@example.invalid",
+    addonName: "Consumer",
+    accountId: "account-1",
+    name: "Work Drive",
+    setupToken: "setup-token",
+    ignored: "value"
+  }, sender);
+  await handler({
+    type: "googleDrive:vfs:connection:update",
+    addonId: "consumer@example.invalid",
+    storageId: "storage-1",
+    accountId: "account-2",
+    name: "Personal Drive",
+    ignored: "value"
+  }, sender);
+
+  assert.deepEqual(calls, [
+    ["get", {
+      addonId: "consumer@example.invalid",
+      storageId: "storage-1"
+    }],
+    ["create", {
+      addonId: "consumer@example.invalid",
+      addonName: "Consumer",
+      accountId: "account-1",
+      name: "Work Drive",
+      setupToken: "setup-token"
+    }],
+    ["update", {
+      addonId: "consumer@example.invalid",
+      storageId: "storage-1",
+      accountId: "account-2",
+      name: "Personal Drive"
+    }]
+  ]);
 });

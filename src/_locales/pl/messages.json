@@ -10,10 +10,10 @@
   },
   "optionsDocumentLanguage": { "message": "pl" },
   "optionsStatusText": {
-    "message": "Tutaj można skonfigurować konta Google. Operacje na plikach VFS nie są jeszcze dostępne."
+    "message": "Skonfiguruj konta Google i zarządzaj ustawieniami dostawcy."
   },
   "optionsAccountsHeading": { "message": "Konta Google" },
-  "optionsAccountsText": { "message": "Każde konto jest zarządzane osobno i później można je wybrać dla połączenia VFS." },
+  "optionsAccountsText": { "message": "Każde konto jest zarządzane osobno i może być używane przez jedno lub więcej połączeń VFS." },
   "optionsAccountsDataNotice": { "message": "Logowanie zezwala temu dodatkowi na odczyt i zarządzanie plikami na Dysku Google. Dane są przesyłane tylko dla działań uruchomionych przez użytkownika lub połączone dodatki VFS." },
   "optionsAddAccount": { "message": "Dodaj konto Google" },
   "optionsNoAccounts": { "message": "Nie skonfigurowano jeszcze konta Google." },
@@ -28,7 +28,7 @@
   "optionsAccountDisconnected": { "message": "Konto Google usunięto lokalnie." },
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Konto Google zostało usunięte lokalnie, ale nie udało się cofnąć dostępu po stronie Google. Usuń dostęp również na swoim koncie Google." },
   "optionsPreferencesHeading": { "message": "Ustawienia" },
-  "optionsPreferencesText": { "message": "Te ustawienia dotyczą dostawcy. Formaty eksportu zostaną użyte, gdy odczyt plików Google Workspace będzie dostępny." },
+  "optionsPreferencesText": { "message": "Te ustawienia dotyczą dostawcy. Wybrane formaty eksportu są używane podczas odczytu plików Google Workspace." },
   "optionsOAuthClientIdLabel": { "message": "Identyfikator klienta OAuth" },
   "optionsOAuthClientIdHelp": { "message": "Do programowania lub instalacji zarządzanych: identyfikator klienta aplikacji komputerowej Google. Identyfikator klienta nie jest tajny." },
   "optionsDebugLoggingLabel": { "message": "Włącz dziennik diagnostyczny" },
@@ -50,6 +50,7 @@
   "optionsErrorOAuthReauthorizationRequired": { "message": "Należy ponownie zalogować się do tego konta Google." },
   "optionsErrorOAuthGeneric": { "message": "Nie udało się zakończyć logowania do Google. Sprawdź identyfikator klienta i konfigurację Google Cloud." },
   "optionsErrorUnexpected": { "message": "Nie udało się wczytać aktualnych danych lub wykonać żądanej zmiany. Spróbuj ponownie." },
+  "optionsErrorAccountHasConnections": { "message": "To konto Google jest nadal używane przez co najmniej jedno połączenie VFS. Przed wylogowaniem usuń te połączenia w podłączonych dodatkach." },
   "vfsRootMyDrive": { "message": "Mój dysk" },
   "vfsRootSharedWithMe": { "message": "Udostępnione dla mnie" },
   "vfsRootSharedDrives": { "message": "Dyski współdzielone" },
@@ -62,5 +63,38 @@
   "vfsErrorAccessTitle": { "message": "Odmowa dostępu do Dysku Google" },
   "vfsErrorAccessDescription": { "message": "Nie można odczytać wybranego elementu przy użyciu tego konta Google." },
   "vfsErrorUnavailableTitle": { "message": "Element Dysku Google jest niedostępny" },
-  "vfsErrorUnavailableDescription": { "message": "Wybrany element już nie istnieje lub nie można go otworzyć." }
+  "vfsErrorUnavailableDescription": { "message": "Wybrany element już nie istnieje lub nie można go otworzyć." },
+  "vfsSetupDocumentTitle": { "message": "Połącz z Dyskiem Google" },
+  "vfsSetupTitle": { "message": "Połącz z Dyskiem Google" },
+  "vfsSetupRequestText": {
+    "message": "$ADDON$ chce korzystać z Dysku Google. Wybierz konto Google, które ma zostać udostępnione.",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "Przykładowy dodatek" }
+    }
+  },
+  "vfsConfigDocumentTitle": { "message": "Konfiguracja połączenia z Dyskiem Google" },
+  "vfsConfigTitle": { "message": "Konfiguracja połączenia z Dyskiem Google" },
+  "vfsConfigText": {
+    "message": "Wybierz konto Google i nazwę połączenia używane przez $ADDON$.",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "Przykładowy dodatek" }
+    }
+  },
+  "vfsConnectionAccountLabel": { "message": "Konto Google" },
+  "vfsConnectionNameLabel": { "message": "Nazwa połączenia" },
+  "vfsConnectionNameHelp": { "message": "Ta nazwa jest wyświetlana w podłączonym dodatku." },
+  "vfsConnectionNoAccounts": { "message": "Przed utworzeniem tego połączenia dodaj konto Google." },
+  "vfsConnectionDefaultName": {
+    "message": "Dysk Google — $ACCOUNT$",
+    "placeholders": {
+      "account": { "content": "$1", "example": "ada@example.com" }
+    }
+  },
+  "vfsConnectionCancel": { "message": "Anuluj" },
+  "vfsConnectionGrant": { "message": "Połącz" },
+  "vfsConnectionSave": { "message": "Zapisz" },
+  "vfsConnectionErrorInvalidRequest": { "message": "To żądanie połączenia VFS jest nieprawidłowe lub wygasło." },
+  "vfsConnectionErrorNotFound": { "message": "To połączenie VFS już nie istnieje." },
+  "vfsConnectionErrorAccountUnavailable": { "message": "Wybrane konto Google jest niedostępne lub wymaga ponownego logowania." },
+  "vfsConnectionErrorUnexpected": { "message": "Nie udało się zapisać połączenia VFS. Spróbuj ponownie." }
 }

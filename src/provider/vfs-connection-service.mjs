@@ -78,13 +78,15 @@ export class VfsConnectionService {
   #accountRepository;
   #reportConnection;
   #randomUUID;
+  #logger;
   #operationQueue = Promise.resolve();
 
   constructor({
     storageArea,
     accountRepository,
     reportConnection = reportNewConnection,
-    randomUUID = () => crypto.randomUUID()
+    randomUUID = () => crypto.randomUUID(),
+    logger
   }) {
     if (!storageArea?.get) {
       throw new TypeError("storageArea");
@@ -109,18 +111,22 @@ export class VfsConnectionService {
     this.#accountRepository = accountRepository;
     this.#reportConnection = reportConnection;
     this.#randomUUID = randomUUID;
+    this.#logger = logger;
   }
 
   async initialize() {
     return this.reconcileToolkitConnections();
   }
 
-  async reconcileToolkitConnections(connections) {
+  async reconcileToolkitConnections() {
     return this.#enqueue(async () => {
-      const current = connections === undefined
-        ? await this.#readConnections()
-        : this.#normalizeConnections(connections);
-      return this.#reconcile(current);
+      const current = await this.#readConnections();
+      const removed = await this.#reconcile(current);
+      this.#logger?.debug?.("vfs.connection.reconciled", {
+        connections: current.length,
+        status: removed.length ? "stale_removed" : "current"
+      });
+      return removed;
     });
   }
 
@@ -129,39 +135,46 @@ export class VfsConnectionService {
         !storageId || storageId.trim() !== storageId) {
       throw unauthorizedStorageError();
     }
-    const connections = await this.#readConnections();
-    const matches = connections.filter((entry) => entry.storageId === storageId);
-    if (matches.length !== 1 || !supportsCapability(matches[0], capability)) {
-      throw unauthorizedStorageError();
-    }
-    const binding = await this.#accountRepository.getConnectionBinding(storageId);
-    if (!binding) {
-      throw unauthorizedStorageError();
-    }
-    return binding;
+    return this.#enqueue(async () => {
+      const connections = await this.#readConnections();
+      const matches = connections.filter((entry) =>
+        entry.storageId === storageId);
+      if (matches.length !== 1 ||
+          !supportsCapability(matches[0], capability)) {
+        throw unauthorizedStorageError();
+      }
+      const binding = await this.#accountRepository
+        .getConnectionBinding(storageId);
+      if (!binding) {
+        throw unauthorizedStorageError();
+      }
+      return binding;
+    });
   }
 
   async getConnection({ addonId, storageId }) {
     const requestedAddonId = requiredString(addonId);
     const requestedStorageId = requiredString(storageId);
-    const connections = await this.#readConnections();
-    const matches = connections.filter((entry) =>
-      entry.storageId === requestedStorageId);
-    if (matches.length !== 1 || matches[0].addonId !== requestedAddonId) {
-      throw connectionError("connection_not_found");
-    }
-    const binding = await this.#accountRepository
-      .getConnectionBinding(requestedStorageId);
-    if (!binding) {
-      throw connectionError("connection_not_found");
-    }
-    return {
-      addonId: matches[0].addonId,
-      addonName: optionalLabel(matches[0].addonName, matches[0].addonId),
-      storageId: matches[0].storageId,
-      name: optionalLabel(matches[0].name, "Google Drive"),
-      accountId: binding.accountId
-    };
+    return this.#enqueue(async () => {
+      const connections = await this.#readConnections();
+      const matches = connections.filter((entry) =>
+        entry.storageId === requestedStorageId);
+      if (matches.length !== 1 || matches[0].addonId !== requestedAddonId) {
+        throw connectionError("connection_not_found");
+      }
+      const binding = await this.#accountRepository
+        .getConnectionBinding(requestedStorageId);
+      if (!binding) {
+        throw connectionError("connection_not_found");
+      }
+      return {
+        addonId: matches[0].addonId,
+        addonName: optionalLabel(matches[0].addonName, matches[0].addonId),
+        storageId: matches[0].storageId,
+        name: optionalLabel(matches[0].name, "Google Drive"),
+        accountId: binding.accountId
+      };
+    });
   }
 
   async createConnection({
@@ -196,8 +209,12 @@ export class VfsConnectionService {
         );
       } catch (error) {
         await this.#accountRepository.removeConnectionBinding(storageId);
+        this.#logger?.warn?.("vfs.connection.create_failed", { error });
         throw error;
       }
+      this.#logger?.info?.("vfs.connection.created", {
+        status: "connected"
+      });
       return {
         storageId,
         name: requestedName,
@@ -239,8 +256,12 @@ export class VfsConnectionService {
         );
       } catch (error) {
         await this.#accountRepository.bindConnection(previousBinding);
+        this.#logger?.warn?.("vfs.connection.update_failed", { error });
         throw error;
       }
+      this.#logger?.info?.("vfs.connection.updated", {
+        status: "connected"
+      });
       return {
         storageId: requestedStorageId,
         name: requestedName,
@@ -260,6 +281,9 @@ export class VfsConnectionService {
       const bindings = await this.#accountRepository.listConnectionBindings();
       if (bindings.some((binding) =>
         binding.accountId === requestedAccountId)) {
+        this.#logger?.warn?.("vfs.account.disconnect_blocked", {
+          status: "connections_present"
+        });
         throw connectionError("account_has_connections");
       }
       return disconnect();

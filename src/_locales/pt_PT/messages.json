@@ -10,10 +10,10 @@
   },
   "optionsDocumentLanguage": { "message": "pt-PT" },
   "optionsStatusText": {
-    "message": "Configure aqui as contas Google. As operações de ficheiros VFS ainda não estão disponíveis."
+    "message": "Configure contas Google e faça a gestão das preferências do fornecedor."
   },
   "optionsAccountsHeading": { "message": "Contas Google" },
-  "optionsAccountsText": { "message": "Cada conta é gerida separadamente e poderá depois ser escolhida para uma ligação VFS." },
+  "optionsAccountsText": { "message": "Cada conta é gerida separadamente e pode ser usada por uma ou mais ligações VFS." },
   "optionsAccountsDataNotice": { "message": "Ao iniciar sessão, permite que esta extensão leia e faça a gestão de ficheiros no Google Drive. Os dados só são transferidos para ações iniciadas por si ou por extensões VFS ligadas." },
   "optionsAddAccount": { "message": "Adicionar conta Google" },
   "optionsNoAccounts": { "message": "Ainda não foi configurada nenhuma conta Google." },
@@ -28,7 +28,7 @@
   "optionsAccountDisconnected": { "message": "Conta Google removida localmente." },
   "optionsAccountDisconnectedWithoutRevocation": { "message": "A conta Google foi removida localmente, mas não foi possível revogar o acesso no Google. Remova também o acesso na sua Conta Google." },
   "optionsPreferencesHeading": { "message": "Preferências" },
-  "optionsPreferencesText": { "message": "Estas definições aplicam-se ao fornecedor. Os formatos de exportação serão usados quando a leitura de ficheiros Google Workspace estiver disponível." },
+  "optionsPreferencesText": { "message": "Estas definições aplicam-se ao fornecedor. Os formatos de exportação escolhidos são usados ao ler ficheiros Google Workspace." },
   "optionsOAuthClientIdLabel": { "message": "ID de cliente OAuth" },
   "optionsOAuthClientIdHelp": { "message": "Para desenvolvimento ou instalações geridas: ID de cliente de uma aplicação Google para computador. Um ID de cliente não é segredo." },
   "optionsDebugLoggingLabel": { "message": "Ativar o registo de diagnóstico" },
@@ -50,6 +50,7 @@
   "optionsErrorOAuthReauthorizationRequired": { "message": "É necessário iniciar sessão novamente nesta conta Google." },
   "optionsErrorOAuthGeneric": { "message": "Não foi possível concluir o início de sessão Google. Verifique o ID de cliente e a configuração do Google Cloud." },
   "optionsErrorUnexpected": { "message": "Não foi possível carregar os dados atuais ou concluir a alteração pedida. Tente novamente." },
+  "optionsErrorAccountHasConnections": { "message": "Esta conta Google continua a ser usada por uma ou mais ligações VFS. Remova essas ligações nos extras ligados antes de terminar sessão." },
   "vfsRootMyDrive": { "message": "O meu disco" },
   "vfsRootSharedWithMe": { "message": "Partilhados comigo" },
   "vfsRootSharedDrives": { "message": "Drives partilhados" },
@@ -62,5 +63,38 @@
   "vfsErrorAccessTitle": { "message": "Acesso ao Google Drive recusado" },
   "vfsErrorAccessDescription": { "message": "O item selecionado não pode ser lido com esta conta Google." },
   "vfsErrorUnavailableTitle": { "message": "Item do Google Drive indisponível" },
-  "vfsErrorUnavailableDescription": { "message": "O item selecionado já não existe ou não pode ser aberto." }
+  "vfsErrorUnavailableDescription": { "message": "O item selecionado já não existe ou não pode ser aberto." },
+  "vfsSetupDocumentTitle": { "message": "Ligar ao Google Drive" },
+  "vfsSetupTitle": { "message": "Ligar ao Google Drive" },
+  "vfsSetupRequestText": {
+    "message": "$ADDON$ pretende usar o Google Drive. Escolha a conta Google que ficará disponível.",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "Extra de exemplo" }
+    }
+  },
+  "vfsConfigDocumentTitle": { "message": "Configurar ligação ao Google Drive" },
+  "vfsConfigTitle": { "message": "Configurar ligação ao Google Drive" },
+  "vfsConfigText": {
+    "message": "Escolha a conta Google e o nome da ligação usados por $ADDON$.",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "Extra de exemplo" }
+    }
+  },
+  "vfsConnectionAccountLabel": { "message": "Conta Google" },
+  "vfsConnectionNameLabel": { "message": "Nome da ligação" },
+  "vfsConnectionNameHelp": { "message": "Este nome é apresentado no extra ligado." },
+  "vfsConnectionNoAccounts": { "message": "Adicione uma conta Google antes de criar esta ligação." },
+  "vfsConnectionDefaultName": {
+    "message": "Google Drive de $ACCOUNT$",
+    "placeholders": {
+      "account": { "content": "$1", "example": "ada@example.com" }
+    }
+  },
+  "vfsConnectionCancel": { "message": "Cancelar" },
+  "vfsConnectionGrant": { "message": "Ligar" },
+  "vfsConnectionSave": { "message": "Guardar" },
+  "vfsConnectionErrorInvalidRequest": { "message": "Este pedido de ligação VFS é inválido ou expirou." },
+  "vfsConnectionErrorNotFound": { "message": "Esta ligação VFS já não existe." },
+  "vfsConnectionErrorAccountUnavailable": { "message": "A conta Google escolhida não está disponível ou requer novo início de sessão." },
+  "vfsConnectionErrorUnexpected": { "message": "Não foi possível guardar a ligação VFS. Tente novamente." }
 }

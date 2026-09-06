@@ -13,7 +13,9 @@ export function createRuntimeMessageHandler({
   readiness,
   accountRepository,
   preferencesRepository,
-  oauthClient
+  oauthClient,
+  connectionService,
+  logger
 }) {
   return function handleRuntimeMessage(message, sender) {
     if (sender?.id !== extensionId || typeof message?.type !== "string") {
@@ -32,13 +34,39 @@ export function createRuntimeMessageHandler({
         });
         break;
       case "googleDrive:account:disconnect":
-        operation = () => oauthClient.disconnectAccount(message.accountId);
+        operation = () => connectionService.disconnectAccount(
+          message.accountId,
+          () => oauthClient.disconnectAccount(message.accountId)
+        );
         break;
       case "googleDrive:preferences:get":
         operation = () => preferencesRepository.get();
         break;
       case "googleDrive:preferences:update":
         operation = () => preferencesRepository.update(message.changes);
+        break;
+      case "googleDrive:vfs:connection:get":
+        operation = () => connectionService.getConnection({
+          addonId: message.addonId,
+          storageId: message.storageId
+        });
+        break;
+      case "googleDrive:vfs:connection:create":
+        operation = () => connectionService.createConnection({
+          addonId: message.addonId,
+          addonName: message.addonName,
+          accountId: message.accountId,
+          name: message.name,
+          setupToken: message.setupToken
+        });
+        break;
+      case "googleDrive:vfs:connection:update":
+        operation = () => connectionService.updateConnection({
+          addonId: message.addonId,
+          storageId: message.storageId,
+          accountId: message.accountId,
+          name: message.name
+        });
         break;
       default:
         return undefined;
@@ -48,7 +76,13 @@ export function createRuntimeMessageHandler({
       .then(operation)
       .then(
         (value) => ({ ok: true, value }),
-        (error) => ({ ok: false, errorCode: errorCode(error) })
+        (error) => {
+          logger?.warn?.("runtime.operation.failed", {
+            operation: message.type,
+            error
+          });
+          return { ok: false, errorCode: errorCode(error) };
+        }
       );
   };
 }

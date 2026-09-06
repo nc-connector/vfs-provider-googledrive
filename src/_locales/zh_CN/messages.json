@@ -10,10 +10,10 @@
   },
   "optionsDocumentLanguage": { "message": "zh-CN" },
   "optionsStatusText": {
-    "message": "可在此设置 Google 账号。VFS 文件操作尚不可用。"
+    "message": "设置 Google 账号并管理提供程序首选项。"
   },
   "optionsAccountsHeading": { "message": "Google 账号" },
-  "optionsAccountsText": { "message": "每个账号均单独管理，稍后可为 VFS 连接选择相应账号。" },
+  "optionsAccountsText": { "message": "每个账号均单独管理，可供一个或多个 VFS 连接使用。" },
   "optionsAccountsDataNotice": { "message": "登录即表示允许此附加组件读取和管理 Google Drive 中的文件。只有您或已连接的 VFS 附加组件发起操作时才会传输数据。" },
   "optionsAddAccount": { "message": "添加 Google 账号" },
   "optionsNoAccounts": { "message": "尚未设置 Google 账号。" },
@@ -28,7 +28,7 @@
   "optionsAccountDisconnected": { "message": "已在本地移除 Google 账号。" },
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Google 账号已从本地移除，但无法撤销其在 Google 端的访问授权。请同时在您的 Google 账号中移除该访问权限。" },
   "optionsPreferencesHeading": { "message": "首选项" },
-  "optionsPreferencesText": { "message": "这些设置适用于提供程序。Google Workspace 文件读取功能可用后，将使用所选导出格式。" },
+  "optionsPreferencesText": { "message": "这些设置适用于提供程序。读取 Google Workspace 文件时会使用所选导出格式。" },
   "optionsOAuthClientIdLabel": { "message": "OAuth 客户端 ID" },
   "optionsOAuthClientIdHelp": { "message": "用于开发或托管安装：Google 桌面应用的客户端 ID。客户端 ID 并非机密。" },
   "optionsDebugLoggingLabel": { "message": "启用诊断日志" },
@@ -50,6 +50,7 @@
   "optionsErrorOAuthReauthorizationRequired": { "message": "此 Google 账号需要重新登录。" },
   "optionsErrorOAuthGeneric": { "message": "无法完成 Google 登录。请检查客户端 ID 和 Google Cloud 设置。" },
   "optionsErrorUnexpected": { "message": "无法加载当前数据或完成请求的更改。请重试。" },
+  "optionsErrorAccountHasConnections": { "message": "此 Google 账号仍被一个或多个 VFS 连接使用。请先在已连接的附加组件中移除这些连接，然后再退出账号。" },
   "vfsRootMyDrive": { "message": "我的云端硬盘" },
   "vfsRootSharedWithMe": { "message": "与我共享" },
   "vfsRootSharedDrives": { "message": "共享云端硬盘" },
@@ -62,5 +63,38 @@
   "vfsErrorAccessTitle": { "message": "Google 云端硬盘访问被拒绝" },
   "vfsErrorAccessDescription": { "message": "无法使用此 Google 账号读取所选项目。" },
   "vfsErrorUnavailableTitle": { "message": "Google 云端硬盘项目不可用" },
-  "vfsErrorUnavailableDescription": { "message": "所选项目已不存在或无法打开。" }
+  "vfsErrorUnavailableDescription": { "message": "所选项目已不存在或无法打开。" },
+  "vfsSetupDocumentTitle": { "message": "连接 Google 云端硬盘" },
+  "vfsSetupTitle": { "message": "连接 Google 云端硬盘" },
+  "vfsSetupRequestText": {
+    "message": "$ADDON$ 想要使用 Google 云端硬盘。请选择要向其提供的 Google 账号。",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "示例附加组件" }
+    }
+  },
+  "vfsConfigDocumentTitle": { "message": "配置 Google 云端硬盘连接" },
+  "vfsConfigTitle": { "message": "配置 Google 云端硬盘连接" },
+  "vfsConfigText": {
+    "message": "请选择 $ADDON$ 使用的 Google 账号和连接名称。",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "示例附加组件" }
+    }
+  },
+  "vfsConnectionAccountLabel": { "message": "Google 账号" },
+  "vfsConnectionNameLabel": { "message": "连接名称" },
+  "vfsConnectionNameHelp": { "message": "此名称会显示在已连接的附加组件中。" },
+  "vfsConnectionNoAccounts": { "message": "请先添加 Google 账号，然后再创建此连接。" },
+  "vfsConnectionDefaultName": {
+    "message": "$ACCOUNT$ 的 Google 云端硬盘",
+    "placeholders": {
+      "account": { "content": "$1", "example": "ada@example.com" }
+    }
+  },
+  "vfsConnectionCancel": { "message": "取消" },
+  "vfsConnectionGrant": { "message": "连接" },
+  "vfsConnectionSave": { "message": "保存" },
+  "vfsConnectionErrorInvalidRequest": { "message": "此 VFS 连接请求无效或已过期。" },
+  "vfsConnectionErrorNotFound": { "message": "此 VFS 连接已不存在。" },
+  "vfsConnectionErrorAccountUnavailable": { "message": "所选 Google 账号不可用或需要重新登录。" },
+  "vfsConnectionErrorUnexpected": { "message": "无法保存 VFS 连接。请重试。" }
 }

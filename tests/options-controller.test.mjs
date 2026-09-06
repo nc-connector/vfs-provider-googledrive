@@ -148,6 +148,10 @@ test("maps known and unknown OAuth errors to user-facing messages", async () => 
     "optionsErrorOAuthAccountMismatch"
   );
   assert.equal(errorMessageKey("unknown"), "optionsErrorOAuthGeneric");
+  assert.equal(
+    errorMessageKey("account_has_connections"),
+    "optionsErrorAccountHasConnections"
+  );
 
   const harness = createHarness({
     "googleDrive:account:authorize": {

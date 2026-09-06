@@ -10,6 +10,7 @@ const SAFE_DETAIL_KEYS = new Set([
   "bytes",
   "chunk",
   "chunks",
+  "connections",
   "currentFile",
   "driveType",
   "elapsedMs",

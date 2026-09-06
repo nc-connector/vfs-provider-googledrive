@@ -10,10 +10,10 @@
   },
   "optionsDocumentLanguage": { "message": "nl" },
   "optionsStatusText": {
-    "message": "Stel hier Google-accounts in. VFS-bestandsbewerkingen zijn nog niet beschikbaar."
+    "message": "Stel Google-accounts in en beheer de providervoorkeuren."
   },
   "optionsAccountsHeading": { "message": "Google-accounts" },
-  "optionsAccountsText": { "message": "Elk account wordt afzonderlijk beheerd en kan later voor een VFS-verbinding worden gekozen." },
+  "optionsAccountsText": { "message": "Elk account wordt afzonderlijk beheerd en kan door een of meer VFS-verbindingen worden gebruikt." },
   "optionsAccountsDataNotice": { "message": "Door aan te melden geeft u deze add-on toestemming om bestanden in Google Drive te lezen en beheren. Gegevens worden alleen overgedragen voor acties van u of verbonden VFS-add-ons." },
   "optionsAddAccount": { "message": "Google-account toevoegen" },
   "optionsNoAccounts": { "message": "Er is nog geen Google-account ingesteld." },
@@ -28,7 +28,7 @@
   "optionsAccountDisconnected": { "message": "Google-account lokaal verwijderd." },
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Het Google-account is lokaal verwijderd, maar de toegang bij Google kon niet worden ingetrokken. Verwijder de toegang ook in uw Google-account." },
   "optionsPreferencesHeading": { "message": "Voorkeuren" },
-  "optionsPreferencesText": { "message": "Deze instellingen gelden voor de provider. De exportindelingen worden gebruikt zodra Google Workspace-bestanden kunnen worden gelezen." },
+  "optionsPreferencesText": { "message": "Deze instellingen gelden voor de provider. De gekozen exportindelingen worden gebruikt bij het lezen van Google Workspace-bestanden." },
   "optionsOAuthClientIdLabel": { "message": "OAuth-client-ID" },
   "optionsOAuthClientIdHelp": { "message": "Voor ontwikkeling of beheerde installaties: client-ID van een Google-desktoptoepassing. Een client-ID is geen geheim." },
   "optionsDebugLoggingLabel": { "message": "Diagnostische logboekregistratie inschakelen" },
@@ -50,6 +50,7 @@
   "optionsErrorOAuthReauthorizationRequired": { "message": "Voor dit Google-account moet opnieuw worden aangemeld." },
   "optionsErrorOAuthGeneric": { "message": "De Google-aanmelding kon niet worden voltooid. Controleer de client-ID en Google Cloud-instellingen." },
   "optionsErrorUnexpected": { "message": "De huidige gegevens konden niet worden geladen of de gevraagde wijziging kon niet worden voltooid. Probeer het opnieuw." },
+  "optionsErrorAccountHasConnections": { "message": "Dit Google-account wordt nog door een of meer VFS-verbindingen gebruikt. Verwijder die verbindingen in de gekoppelde add-ons voordat u zich afmeldt." },
   "vfsRootMyDrive": { "message": "Mijn Drive" },
   "vfsRootSharedWithMe": { "message": "Gedeeld met mij" },
   "vfsRootSharedDrives": { "message": "Gedeelde drives" },
@@ -62,5 +63,38 @@
   "vfsErrorAccessTitle": { "message": "Toegang tot Google Drive geweigerd" },
   "vfsErrorAccessDescription": { "message": "Het geselecteerde item kan niet met dit Google-account worden gelezen." },
   "vfsErrorUnavailableTitle": { "message": "Google Drive-item niet beschikbaar" },
-  "vfsErrorUnavailableDescription": { "message": "Het geselecteerde item bestaat niet meer of kan niet worden geopend." }
+  "vfsErrorUnavailableDescription": { "message": "Het geselecteerde item bestaat niet meer of kan niet worden geopend." },
+  "vfsSetupDocumentTitle": { "message": "Google Drive verbinden" },
+  "vfsSetupTitle": { "message": "Google Drive verbinden" },
+  "vfsSetupRequestText": {
+    "message": "$ADDON$ wil Google Drive gebruiken. Kies het Google-account dat beschikbaar moet worden gesteld.",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "Voorbeeld-add-on" }
+    }
+  },
+  "vfsConfigDocumentTitle": { "message": "Google Drive-verbinding instellen" },
+  "vfsConfigTitle": { "message": "Google Drive-verbinding instellen" },
+  "vfsConfigText": {
+    "message": "Kies het Google-account en de verbindingsnaam die $ADDON$ gebruikt.",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "Voorbeeld-add-on" }
+    }
+  },
+  "vfsConnectionAccountLabel": { "message": "Google-account" },
+  "vfsConnectionNameLabel": { "message": "Verbindingsnaam" },
+  "vfsConnectionNameHelp": { "message": "Deze naam wordt in de gekoppelde add-on weergegeven." },
+  "vfsConnectionNoAccounts": { "message": "Voeg een Google-account toe voordat u deze verbinding maakt." },
+  "vfsConnectionDefaultName": {
+    "message": "Google Drive van $ACCOUNT$",
+    "placeholders": {
+      "account": { "content": "$1", "example": "ada@example.com" }
+    }
+  },
+  "vfsConnectionCancel": { "message": "Annuleren" },
+  "vfsConnectionGrant": { "message": "Verbinden" },
+  "vfsConnectionSave": { "message": "Opslaan" },
+  "vfsConnectionErrorInvalidRequest": { "message": "Deze VFS-verbindingsaanvraag is ongeldig of verlopen." },
+  "vfsConnectionErrorNotFound": { "message": "Deze VFS-verbinding bestaat niet meer." },
+  "vfsConnectionErrorAccountUnavailable": { "message": "Het gekozen Google-account is niet beschikbaar of moet opnieuw worden aangemeld." },
+  "vfsConnectionErrorUnexpected": { "message": "De VFS-verbinding kon niet worden opgeslagen. Probeer het opnieuw." }
 }

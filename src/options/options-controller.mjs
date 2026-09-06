@@ -22,6 +22,7 @@ const ERROR_MESSAGE_KEYS = Object.freeze({
   oauth_reauthorization_required: "optionsErrorOAuthReauthorizationRequired",
   oauth_token_refresh_failed: "optionsErrorOAuthReauthorizationRequired",
   oauth_refresh_token_missing: "optionsErrorOAuthReauthorizationRequired",
+  account_has_connections: "optionsErrorAccountHasConnections",
   unexpected_error: "optionsErrorUnexpected"
 });
 

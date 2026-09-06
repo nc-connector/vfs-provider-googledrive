@@ -7,17 +7,24 @@
 "use strict";
 
 import { ProviderLogger } from "./core/logger.mjs";
+import { GoogleDriveTransport } from "./google/drive-transport.mjs";
 import { GoogleOAuthClient } from "./google/oauth-client.mjs";
 import { OAuthSessionRepository } from "./google/oauth-session.mjs";
+import {
+  GoogleDriveVfsProvider
+} from "./provider/google-drive-vfs-provider.mjs";
+import {
+  VFS_TOOLKIT_CONNECTIONS_KEY,
+  VfsConnectionService
+} from "./provider/vfs-connection-service.mjs";
 import { createRuntimeMessageHandler } from "./runtime/message-handler.mjs";
 import {
   PROVIDER_PREFERENCES_KEY,
   ProviderPreferencesRepository
 } from "./state/provider-preferences.mjs";
 import { ProviderStateRepository } from "./state/provider-state.mjs";
-export {
-  GoogleDriveVfsProvider
-} from "./provider/google-drive-vfs-provider.mjs";
+
+export { GoogleDriveVfsProvider };
 
 const logger = new ProviderLogger();
 const accountRepository = new ProviderStateRepository({
@@ -36,31 +43,77 @@ const oauthClient = new GoogleOAuthClient({
   preferencesRepository,
   logger
 });
+const driveTransport = new GoogleDriveTransport({
+  oauthClient,
+  logger
+});
+const connectionService = new VfsConnectionService({
+  storageArea: browser.storage.local,
+  accountRepository,
+  logger
+});
 
 const readiness = Promise.all([
   accountRepository.initialize(),
   preferencesRepository.initialize(),
   oauthSessionRepository.initialize()
-]).then(([, preferences]) => {
+]).then(async ([, preferences]) => {
   logger.setDebugEnabled(preferences.debugLogging);
+  await connectionService.initialize();
 });
 readiness.catch((error) => {
   logger.error("runtime.initialization.failed", { error });
 });
+
+const getMessage = (key) => browser.i18n.getMessage(key);
+const provider = new GoogleDriveVfsProvider({
+  name: getMessage("extensionName"),
+  setupPath: "/connection/setup.html",
+  setupWidth: 600,
+  setupHeight: 560,
+  configPath: "/connection/config.html",
+  configWidth: 600,
+  configHeight: 560,
+  readiness,
+  connectionService,
+  accountRepository,
+  preferencesRepository,
+  transport: driveTransport,
+  rootLabels: {
+    myDrive: getMessage("vfsRootMyDrive"),
+    sharedWithMe: getMessage("vfsRootSharedWithMe"),
+    sharedDrives: getMessage("vfsRootSharedDrives")
+  },
+  getMessage,
+  logger
+});
+provider.init();
 
 browser.runtime.onMessage.addListener(createRuntimeMessageHandler({
   extensionId: browser.runtime.id,
   readiness,
   accountRepository,
   preferencesRepository,
-  oauthClient
+  oauthClient,
+  connectionService,
+  logger
 }));
 
 browser.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && changes[PROVIDER_PREFERENCES_KEY]?.newValue) {
+  if (areaName !== "local") {
+    return;
+  }
+  if (changes[PROVIDER_PREFERENCES_KEY]?.newValue) {
     logger.setDebugEnabled(
       changes[PROVIDER_PREFERENCES_KEY].newValue.debugLogging
     );
+  }
+  if (Object.hasOwn(changes, VFS_TOOLKIT_CONNECTIONS_KEY)) {
+    void readiness.then(() =>
+      connectionService.reconcileToolkitConnections()
+    ).catch((error) => {
+      logger.warn("vfs.connection.reconcile.failed", { error });
+    });
   }
 });
 

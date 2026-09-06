@@ -10,10 +10,10 @@
   },
   "optionsDocumentLanguage": { "message": "cs" },
   "optionsStatusText": {
-    "message": "Zde můžete nastavit účty Google. Operace se soubory VFS zatím nejsou dostupné."
+    "message": "Zde můžete nastavit účty Google a spravovat předvolby poskytovatele."
   },
   "optionsAccountsHeading": { "message": "Účty Google" },
-  "optionsAccountsText": { "message": "Každý účet je spravován samostatně a později jej lze vybrat pro připojení VFS." },
+  "optionsAccountsText": { "message": "Každý účet je spravován samostatně a může jej používat jedno nebo více připojení VFS." },
   "optionsAccountsDataNotice": { "message": "Přihlášením povolíte tomuto doplňku číst a spravovat soubory na Disku Google. Data se přenášejí jen při akcích spuštěných vámi nebo připojenými doplňky VFS." },
   "optionsAddAccount": { "message": "Přidat účet Google" },
   "optionsNoAccounts": { "message": "Zatím nebyl nastaven žádný účet Google." },
@@ -28,7 +28,7 @@
   "optionsAccountDisconnected": { "message": "Účet Google byl místně odebrán." },
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Účet Google byl místně odebrán, ale přístup u Googlu se nepodařilo zrušit. Odeberte přístup také ve svém účtu Google." },
   "optionsPreferencesHeading": { "message": "Předvolby" },
-  "optionsPreferencesText": { "message": "Tato nastavení platí pro poskytovatele. Formáty exportu se použijí, až bude dostupné čtení souborů Google Workspace." },
+  "optionsPreferencesText": { "message": "Tato nastavení platí pro poskytovatele. Vybrané formáty exportu se použijí při čtení souborů Google Workspace." },
   "optionsOAuthClientIdLabel": { "message": "ID klienta OAuth" },
   "optionsOAuthClientIdHelp": { "message": "Pro vývoj nebo spravované instalace: ID klienta desktopové aplikace Google. ID klienta není tajné." },
   "optionsDebugLoggingLabel": { "message": "Povolit diagnostické protokolování" },
@@ -50,6 +50,7 @@
   "optionsErrorOAuthReauthorizationRequired": { "message": "K tomuto účtu Google je nutné se znovu přihlásit." },
   "optionsErrorOAuthGeneric": { "message": "Přihlášení ke Googlu se nepodařilo dokončit. Zkontrolujte ID klienta a nastavení Google Cloud." },
   "optionsErrorUnexpected": { "message": "Aktuální data se nepodařilo načíst nebo požadovanou změnu dokončit. Zkuste to znovu." },
+  "optionsErrorAccountHasConnections": { "message": "Tento účet Google stále používá jedno nebo více připojení VFS. Před odhlášením tato připojení odeberte v připojených doplňcích." },
   "vfsRootMyDrive": { "message": "Můj disk" },
   "vfsRootSharedWithMe": { "message": "Sdíleno se mnou" },
   "vfsRootSharedDrives": { "message": "Sdílené disky" },
@@ -62,5 +63,38 @@
   "vfsErrorAccessTitle": { "message": "Přístup k Disku Google byl odepřen" },
   "vfsErrorAccessDescription": { "message": "Vybranou položku nelze pomocí tohoto účtu Google přečíst." },
   "vfsErrorUnavailableTitle": { "message": "Položka na Disku Google není dostupná" },
-  "vfsErrorUnavailableDescription": { "message": "Vybraná položka již neexistuje nebo ji nelze otevřít." }
+  "vfsErrorUnavailableDescription": { "message": "Vybraná položka již neexistuje nebo ji nelze otevřít." },
+  "vfsSetupDocumentTitle": { "message": "Připojit Google Drive" },
+  "vfsSetupTitle": { "message": "Připojit Google Drive" },
+  "vfsSetupRequestText": {
+    "message": "$ADDON$ chce používat Google Drive. Vyberte účet Google, který chcete zpřístupnit.",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "Ukázkový doplněk" }
+    }
+  },
+  "vfsConfigDocumentTitle": { "message": "Nastavit připojení ke Google Drive" },
+  "vfsConfigTitle": { "message": "Nastavit připojení ke Google Drive" },
+  "vfsConfigText": {
+    "message": "Vyberte účet Google a název připojení, které má používat $ADDON$.",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "Ukázkový doplněk" }
+    }
+  },
+  "vfsConnectionAccountLabel": { "message": "Účet Google" },
+  "vfsConnectionNameLabel": { "message": "Název připojení" },
+  "vfsConnectionNameHelp": { "message": "Tento název se zobrazí v připojeném doplňku." },
+  "vfsConnectionNoAccounts": { "message": "Před vytvořením tohoto připojení přidejte účet Google." },
+  "vfsConnectionDefaultName": {
+    "message": "Google Drive pro $ACCOUNT$",
+    "placeholders": {
+      "account": { "content": "$1", "example": "ada@example.com" }
+    }
+  },
+  "vfsConnectionCancel": { "message": "Zrušit" },
+  "vfsConnectionGrant": { "message": "Připojit" },
+  "vfsConnectionSave": { "message": "Uložit" },
+  "vfsConnectionErrorInvalidRequest": { "message": "Tento požadavek na připojení VFS je neplatný nebo vypršel." },
+  "vfsConnectionErrorNotFound": { "message": "Toto připojení VFS již neexistuje." },
+  "vfsConnectionErrorAccountUnavailable": { "message": "Vybraný účet Google není dostupný nebo vyžaduje nové přihlášení." },
+  "vfsConnectionErrorUnexpected": { "message": "Připojení VFS se nepodařilo uložit. Zkuste to znovu." }
 }

@@ -10,10 +10,10 @@
   },
   "optionsDocumentLanguage": { "message": "hu" },
   "optionsStatusText": {
-    "message": "Itt állíthatók be a Google-fiókok. A VFS-fájlműveletek még nem érhetők el."
+    "message": "Itt állíthatók be a Google-fiókok és a szolgáltatói beállítások."
   },
   "optionsAccountsHeading": { "message": "Google-fiókok" },
-  "optionsAccountsText": { "message": "Minden fiók külön kezelhető, és később kiválasztható egy VFS-kapcsolathoz." },
+  "optionsAccountsText": { "message": "Minden fiók külön kezelhető, és egy vagy több VFS-kapcsolat használhatja." },
   "optionsAccountsDataNotice": { "message": "A bejelentkezéssel engedélyezi, hogy ez a kiegészítő fájlokat olvasson és kezeljen a Google Drive-on. Adatátvitel csak az Ön vagy a csatlakoztatott VFS-kiegészítők által indított műveleteknél történik." },
   "optionsAddAccount": { "message": "Google-fiók hozzáadása" },
   "optionsNoAccounts": { "message": "Még nincs beállítva Google-fiók." },
@@ -28,7 +28,7 @@
   "optionsAccountDisconnected": { "message": "A Google-fiók helyileg eltávolítva." },
   "optionsAccountDisconnectedWithoutRevocation": { "message": "A Google-fiókot helyileg eltávolítottuk, de a Google-hozzáférést nem sikerült visszavonni. Távolítsa el a hozzáférést a Google-fiókjában is." },
   "optionsPreferencesHeading": { "message": "Beállítások" },
-  "optionsPreferencesText": { "message": "Ezek a beállítások a szolgáltatóra vonatkoznak. Az exportformátumok a Google Workspace-fájlok olvasásának elérhetővé válásakor lépnek életbe." },
+  "optionsPreferencesText": { "message": "Ezek a beállítások a szolgáltatóra vonatkoznak. A kiválasztott exportformátumokat a Google Workspace-fájlok olvasásakor használjuk." },
   "optionsOAuthClientIdLabel": { "message": "OAuth-kliensazonosító" },
   "optionsOAuthClientIdHelp": { "message": "Fejlesztéshez vagy felügyelt telepítéshez: egy Google asztali alkalmazás kliensazonosítója. A kliensazonosító nem titkos adat." },
   "optionsDebugLoggingLabel": { "message": "Diagnosztikai naplózás engedélyezése" },
@@ -50,6 +50,7 @@
   "optionsErrorOAuthReauthorizationRequired": { "message": "Ebbe a Google-fiókba újra be kell jelentkezni." },
   "optionsErrorOAuthGeneric": { "message": "A Google-bejelentkezés nem fejezhető be. Ellenőrizze a kliensazonosítót és a Google Cloud beállításait." },
   "optionsErrorUnexpected": { "message": "Az aktuális adatokat nem sikerült betölteni, vagy a kért módosítást nem sikerült végrehajtani. Próbálja újra." },
+  "optionsErrorAccountHasConnections": { "message": "Ezt a Google-fiókot még egy vagy több VFS-kapcsolat használja. Kijelentkezés előtt távolítsa el ezeket a kapcsolatokat a csatlakoztatott kiegészítőkben." },
   "vfsRootMyDrive": { "message": "Saját meghajtó" },
   "vfsRootSharedWithMe": { "message": "Velem megosztva" },
   "vfsRootSharedDrives": { "message": "Megosztott meghajtók" },
@@ -62,5 +63,38 @@
   "vfsErrorAccessTitle": { "message": "A Google Drive-hozzáférés megtagadva" },
   "vfsErrorAccessDescription": { "message": "A kijelölt elem nem olvasható ezzel a Google-fiókkal." },
   "vfsErrorUnavailableTitle": { "message": "A Google Drive eleme nem érhető el" },
-  "vfsErrorUnavailableDescription": { "message": "A kijelölt elem már nem létezik, vagy nem nyitható meg." }
+  "vfsErrorUnavailableDescription": { "message": "A kijelölt elem már nem létezik, vagy nem nyitható meg." },
+  "vfsSetupDocumentTitle": { "message": "Google Drive csatlakoztatása" },
+  "vfsSetupTitle": { "message": "Google Drive csatlakoztatása" },
+  "vfsSetupRequestText": {
+    "message": "A(z) $ADDON$ használni szeretné a Google Drive-ot. Válassza ki az elérhetővé tenni kívánt Google-fiókot.",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "Példa kiegészítő" }
+    }
+  },
+  "vfsConfigDocumentTitle": { "message": "Google Drive-kapcsolat beállítása" },
+  "vfsConfigTitle": { "message": "Google Drive-kapcsolat beállítása" },
+  "vfsConfigText": {
+    "message": "Válassza ki a(z) $ADDON$ által használt Google-fiókot és kapcsolatnevet.",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "Példa kiegészítő" }
+    }
+  },
+  "vfsConnectionAccountLabel": { "message": "Google-fiók" },
+  "vfsConnectionNameLabel": { "message": "Kapcsolat neve" },
+  "vfsConnectionNameHelp": { "message": "Ez a név jelenik meg a csatlakoztatott kiegészítőben." },
+  "vfsConnectionNoAccounts": { "message": "A kapcsolat létrehozása előtt adjon hozzá egy Google-fiókot." },
+  "vfsConnectionDefaultName": {
+    "message": "$ACCOUNT$ Google Drive-ja",
+    "placeholders": {
+      "account": { "content": "$1", "example": "ada@example.com" }
+    }
+  },
+  "vfsConnectionCancel": { "message": "Mégse" },
+  "vfsConnectionGrant": { "message": "Csatlakoztatás" },
+  "vfsConnectionSave": { "message": "Mentés" },
+  "vfsConnectionErrorInvalidRequest": { "message": "Ez a VFS-kapcsolati kérés érvénytelen vagy lejárt." },
+  "vfsConnectionErrorNotFound": { "message": "Ez a VFS-kapcsolat már nem létezik." },
+  "vfsConnectionErrorAccountUnavailable": { "message": "A kiválasztott Google-fiók nem érhető el, vagy újra be kell jelentkezni." },
+  "vfsConnectionErrorUnexpected": { "message": "A VFS-kapcsolat nem menthető. Próbálja újra." }
 }

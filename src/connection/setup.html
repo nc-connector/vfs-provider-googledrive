@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title data-i18n-content="vfsSetupDocumentTitle"></title>
+    <link rel="stylesheet" href="../options/styles.css">
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="page.js"></script>
+  </head>
+  <body data-mode="setup">
+    <main>
+      <header class="page-header">
+        <div class="product-mark" aria-hidden="true">GD</div>
+        <div>
+          <h1 data-i18n-content="vfsSetupTitle"></h1>
+          <p id="request-text"></p>
+        </div>
+      </header>
+
+      <p id="feedback" class="feedback" role="status" aria-live="polite" hidden></p>
+
+      <section class="panel connection-panel">
+        <form id="connection-form" novalidate>
+          <div class="account-row">
+            <div class="form-field">
+              <label for="connection-account" data-i18n-content="vfsConnectionAccountLabel"></label>
+              <select id="connection-account" name="accountId"></select>
+            </div>
+            <button id="add-account" class="secondary-action" type="button" data-i18n-content="optionsAddAccount"></button>
+            <button id="reauthorize-account" class="secondary-action" type="button" data-i18n-content="optionsReauthorizeAccount" hidden></button>
+          </div>
+          <p id="no-accounts" class="empty-state" data-i18n-content="vfsConnectionNoAccounts"></p>
+
+          <div class="form-field">
+            <label for="connection-name" data-i18n-content="vfsConnectionNameLabel"></label>
+            <input id="connection-name" name="name" type="text" maxlength="120" autocomplete="off">
+            <p class="field-help" data-i18n-content="vfsConnectionNameHelp"></p>
+          </div>
+
+          <p class="data-notice" data-i18n-content="optionsAccountsDataNotice"></p>
+
+          <div class="connection-actions">
+            <button id="cancel" type="button" data-i18n-content="vfsConnectionCancel"></button>
+            <button id="submit-connection" class="primary-action" type="submit" data-i18n-content="vfsConnectionGrant"></button>
+          </div>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

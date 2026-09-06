@@ -10,10 +10,10 @@
   },
   "optionsDocumentLanguage": { "message": "zh-TW" },
   "optionsStatusText": {
-    "message": "可在此設定 Google 帳戶。VFS 檔案操作尚未提供。"
+    "message": "設定 Google 帳戶並管理提供者偏好設定。"
   },
   "optionsAccountsHeading": { "message": "Google 帳戶" },
-  "optionsAccountsText": { "message": "每個帳戶都會分開管理，之後可為 VFS 連線選擇相應帳戶。" },
+  "optionsAccountsText": { "message": "每個帳戶都會分開管理，可供一個或多個 VFS 連線使用。" },
   "optionsAccountsDataNotice": { "message": "登入即表示允許此附加元件讀取及管理 Google Drive 中的檔案。只有您或已連線的 VFS 附加元件發起操作時才會傳輸資料。" },
   "optionsAddAccount": { "message": "新增 Google 帳戶" },
   "optionsNoAccounts": { "message": "尚未設定 Google 帳戶。" },
@@ -28,7 +28,7 @@
   "optionsAccountDisconnected": { "message": "已在本機移除 Google 帳戶。" },
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Google 帳戶已從本機移除，但無法撤銷其在 Google 端的存取授權。請同時在您的 Google 帳戶中移除該存取權。" },
   "optionsPreferencesHeading": { "message": "偏好設定" },
-  "optionsPreferencesText": { "message": "這些設定適用於提供者。Google Workspace 檔案讀取功能可用後，將使用所選的匯出格式。" },
+  "optionsPreferencesText": { "message": "這些設定適用於提供者。讀取 Google Workspace 檔案時會使用所選的匯出格式。" },
   "optionsOAuthClientIdLabel": { "message": "OAuth 用戶端 ID" },
   "optionsOAuthClientIdHelp": { "message": "供開發或受管理的安裝使用：Google 桌面應用程式的用戶端 ID。用戶端 ID 並非機密。" },
   "optionsDebugLoggingLabel": { "message": "啟用診斷記錄" },
@@ -50,6 +50,7 @@
   "optionsErrorOAuthReauthorizationRequired": { "message": "此 Google 帳戶需要重新登入。" },
   "optionsErrorOAuthGeneric": { "message": "無法完成 Google 登入。請檢查用戶端 ID 和 Google Cloud 設定。" },
   "optionsErrorUnexpected": { "message": "無法載入目前資料或完成要求的變更。請再試一次。" },
+  "optionsErrorAccountHasConnections": { "message": "此 Google 帳戶仍由一個或多個 VFS 連線使用。請先在已連線的附加元件中移除這些連線，再登出帳戶。" },
   "vfsRootMyDrive": { "message": "我的雲端硬碟" },
   "vfsRootSharedWithMe": { "message": "與我共用" },
   "vfsRootSharedDrives": { "message": "共用雲端硬碟" },
@@ -62,5 +63,38 @@
   "vfsErrorAccessTitle": { "message": "Google 雲端硬碟拒絕存取" },
   "vfsErrorAccessDescription": { "message": "無法使用此 Google 帳戶讀取所選項目。" },
   "vfsErrorUnavailableTitle": { "message": "Google 雲端硬碟項目無法使用" },
-  "vfsErrorUnavailableDescription": { "message": "所選項目已不存在或無法開啟。" }
+  "vfsErrorUnavailableDescription": { "message": "所選項目已不存在或無法開啟。" },
+  "vfsSetupDocumentTitle": { "message": "連接 Google 雲端硬碟" },
+  "vfsSetupTitle": { "message": "連接 Google 雲端硬碟" },
+  "vfsSetupRequestText": {
+    "message": "$ADDON$ 想要使用 Google 雲端硬碟。請選擇要提供給它的 Google 帳戶。",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "範例附加元件" }
+    }
+  },
+  "vfsConfigDocumentTitle": { "message": "設定 Google 雲端硬碟連線" },
+  "vfsConfigTitle": { "message": "設定 Google 雲端硬碟連線" },
+  "vfsConfigText": {
+    "message": "請選擇 $ADDON$ 使用的 Google 帳戶與連線名稱。",
+    "placeholders": {
+      "addon": { "content": "$1", "example": "範例附加元件" }
+    }
+  },
+  "vfsConnectionAccountLabel": { "message": "Google 帳戶" },
+  "vfsConnectionNameLabel": { "message": "連線名稱" },
+  "vfsConnectionNameHelp": { "message": "此名稱會顯示在已連線的附加元件中。" },
+  "vfsConnectionNoAccounts": { "message": "請先新增 Google 帳戶，再建立此連線。" },
+  "vfsConnectionDefaultName": {
+    "message": "$ACCOUNT$ 的 Google 雲端硬碟",
+    "placeholders": {
+      "account": { "content": "$1", "example": "ada@example.com" }
+    }
+  },
+  "vfsConnectionCancel": { "message": "取消" },
+  "vfsConnectionGrant": { "message": "連接" },
+  "vfsConnectionSave": { "message": "儲存" },
+  "vfsConnectionErrorInvalidRequest": { "message": "此 VFS 連線要求無效或已過期。" },
+  "vfsConnectionErrorNotFound": { "message": "此 VFS 連線已不存在。" },
+  "vfsConnectionErrorAccountUnavailable": { "message": "所選 Google 帳戶無法使用或需要重新登入。" },
+  "vfsConnectionErrorUnexpected": { "message": "無法儲存 VFS 連線。請再試一次。" }
 }

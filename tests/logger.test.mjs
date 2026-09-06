@@ -29,6 +29,7 @@ test("keeps only operation-safe diagnostic fields", () => {
     phase: "uploading",
     bytes: 2048,
     percent: 25,
+    connections: 2,
     accessToken: "secret-token",
     authorization: "Bearer secret-token",
     path: "/private/report.pdf",
@@ -40,7 +41,8 @@ test("keeps only operation-safe diagnostic fields", () => {
     operation: "write_file",
     phase: "uploading",
     bytes: 2048,
-    percent: 25
+    percent: 25,
+    connections: 2
   });
 });
 
