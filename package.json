@@ -12,7 +12,8 @@
   },
   "scripts": {
     "build": "node tools/build.js",
-    "test": "npm run test:review && npm run test:webext-linter",
+    "test": "npm run test:unit && npm run test:review && npm run test:webext-linter",
+    "test:unit": "node --test",
     "test:review": "node tools/review-check.js && node tools/build.js .tmp/review.xpi && node tools/package-check.js .tmp/review.xpi --remove",
     "test:webext-linter": "npm run webext-linter:update && npm run webext-linter:audit && npm run webext-linter:check",
     "webext-linter:update": "npm install --no-save --no-package-lock --prefer-online https://github.com/thunderbird/webext-linter/archive/refs/heads/main.tar.gz",

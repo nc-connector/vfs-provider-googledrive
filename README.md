@@ -16,15 +16,16 @@ The initial scaffold provides:
 
 - a Thunderbird Manifest V3 extension with a module background;
 - a localized status page;
+- a versioned state repository that keeps Google accounts separate from VFS
+  consumer connections;
 - the unmodified Thunderbird VFS provider and i18n modules at a fixed upstream
   revision;
 - a reproducible XPI build script;
 - local package and review checks; and
 - administrator and developer documentation.
 
-Google OAuth, account management, VFS connection grants, Google Drive API
-operations, progress, cancellation, and storage-change reporting are not yet
-implemented.
+Google OAuth, account setup, VFS connection grants, Google Drive API operations,
+progress, cancellation, and storage-change reporting are not yet implemented.
 
 ## Requirements
 

@@ -47,6 +47,7 @@ Drive, and this project does not include its WebDAV protocol code.
 |---|---|
 | `src/manifest.json` | Thunderbird MV3 manifest and product metadata |
 | `src/background.mjs` | module background entry point |
+| `src/state/` | versioned account and connection-binding storage |
 | `src/options/` | localized development-status page |
 | `src/_locales/` | WebExtension messages for all supported locales |
 | `src/vendor/vfs-toolkit/` | unmodified Thunderbird VFS provider module |
@@ -108,6 +109,16 @@ Account records and VFS connection records must remain distinct:
   storage ID; and
 - revoking a connection must not silently remove the Google account or grants
   belonging to other consumers.
+
+`ProviderStateRepository` stores only the account binding for a VFS storage ID.
+The vendored Toolkit remains the owner of consumer add-on IDs, picker names,
+capabilities, and discovery records in `vfs-toolkit-connections`. This avoids a
+second copy of Toolkit connection data. Repository account queries omit refresh
+tokens unless an internal authorization lookup is explicitly requested.
+
+The repository serializes writes performed by its background instance and uses
+a versioned storage record. UI pages must request state changes through the
+background instead of constructing independent writers.
 
 Incoming requests must validate the consumer, storage ID, requested capability,
 and current account state before accessing Google Drive. Setup data supplied by
