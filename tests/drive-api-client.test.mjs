@@ -194,7 +194,8 @@ test("creates a small file with metadata-first multipart upload", async () => {
 
   assert.deepEqual(await client.uploadMultipart({
     metadata: { name: "report.txt", parents: ["folder-1"] },
-    media
+    media,
+    resourceKeys: [{ fileId: "folder-1", resourceKey: "folder-key" }]
   }), { id: "created-file" });
 
   const options = calls[0].options;
@@ -212,6 +213,10 @@ test("creates a small file with metadata-first multipart upload", async () => {
     options.headers["Content-Type"],
     options.body.type
   );
+  assert.equal(
+    options.headers["X-Goog-Drive-Resource-Keys"],
+    "folder-1/folder-key"
+  );
   assert.equal(Object.hasOwn(options.headers, "Content-Length"), false);
   const body = await options.body.text();
   const metadataAt = body.indexOf(JSON.stringify({
@@ -223,6 +228,27 @@ test("creates a small file with metadata-first multipart upload", async () => {
   assert.equal(mediaAt > metadataAt, true);
   assert.match(body, /Content-Type: application\/json; charset=UTF-8/u);
   assert.match(body, /Content-Type: text\/plain/u);
+});
+
+test("starts a resource-key resumable upload session", async () => {
+  const sessionUrl =
+    "https://www.googleapis.com/upload/drive/v3/files?upload_id=session-key";
+  const { calls, client } = createClient(() => new Response(null, {
+    status: 200,
+    headers: { Location: sessionUrl }
+  }));
+
+  await client.startResumableUpload({
+    fileId: "file-id",
+    metadata: { name: "existing.txt" },
+    media: new Blob(["content"]),
+    resourceKeys: [{ fileId: "file-id", resourceKey: "file-key" }]
+  });
+
+  assert.equal(
+    calls[0].options.headers["X-Goog-Drive-Resource-Keys"],
+    "file-id/file-key"
+  );
 });
 
 test("updates a small file with an encoded multipart upload target", async () => {

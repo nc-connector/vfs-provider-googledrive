@@ -190,6 +190,7 @@ export class GoogleDriveUploader {
     file,
     metadata,
     existingFileId,
+    resourceKeys,
     signal,
     onProgress = () => {}
   }) {
@@ -223,12 +224,14 @@ export class GoogleDriveUploader {
           file,
           metadata,
           fileId,
+          resourceKeys,
           signal
         })
       : await this.#uploadResumable({
           file,
           metadata,
           fileId,
+          resourceKeys,
           signal,
           reportProgress
         });
@@ -242,11 +245,18 @@ export class GoogleDriveUploader {
     return result;
   }
 
-  async #uploadMultipart({ file, metadata, fileId, signal }) {
+  async #uploadMultipart({
+    file,
+    metadata,
+    fileId,
+    resourceKeys,
+    signal
+  }) {
     return this.#apiClient.uploadMultipart({
       fileId,
       metadata,
       media: file,
+      resourceKeys,
       signal
     });
   }
@@ -255,6 +265,7 @@ export class GoogleDriveUploader {
     file,
     metadata,
     fileId,
+    resourceKeys,
     signal,
     reportProgress
   }) {
@@ -262,6 +273,7 @@ export class GoogleDriveUploader {
       file,
       metadata,
       fileId,
+      resourceKeys,
       signal
     });
     let offset = 0;
@@ -283,6 +295,7 @@ export class GoogleDriveUploader {
             file,
             metadata,
             fileId,
+            resourceKeys,
             signal,
             sessionRestarts,
             cause: recovered.cause
@@ -319,6 +332,7 @@ export class GoogleDriveUploader {
             file,
             metadata,
             fileId,
+            resourceKeys,
             signal,
             sessionRestarts,
             cause: error
@@ -343,6 +357,7 @@ export class GoogleDriveUploader {
             file,
             metadata,
             fileId,
+            resourceKeys,
             signal,
             sessionRestarts,
             cause: recovered.cause
@@ -379,6 +394,7 @@ export class GoogleDriveUploader {
             file,
             metadata,
             fileId,
+            resourceKeys,
             signal,
             sessionRestarts,
             cause: recovered.cause
@@ -402,11 +418,18 @@ export class GoogleDriveUploader {
     }
   }
 
-  async #startSession({ file, metadata, fileId, signal }) {
+  async #startSession({
+    file,
+    metadata,
+    fileId,
+    resourceKeys,
+    signal
+  }) {
     return this.#apiClient.startResumableUpload({
       fileId,
       metadata,
       media: file,
+      resourceKeys,
       signal
     });
   }
@@ -415,6 +438,7 @@ export class GoogleDriveUploader {
     file,
     metadata,
     fileId,
+    resourceKeys,
     signal,
     sessionRestarts,
     cause
@@ -431,6 +455,7 @@ export class GoogleDriveUploader {
         file,
         metadata,
         fileId,
+        resourceKeys,
         signal
       }),
       sessionRestarts: nextRestarts

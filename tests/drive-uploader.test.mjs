@@ -95,6 +95,7 @@ test("uses multipart through the direct limit and reports empty files complete",
   await uploader.upload({
     file: new Blob(["12345"]),
     metadata: { name: "limit.txt" },
+    resourceKeys: [{ fileId: "folder", resourceKey: "folder-key" }],
     onProgress: (percent) => limitProgress.push(percent)
   });
 
@@ -104,6 +105,10 @@ test("uses multipart through the direct limit and reports empty files complete",
   ]);
   assert.deepEqual(emptyProgress, [0, 100]);
   assert.deepEqual(limitProgress, [0, 100]);
+  assert.deepEqual(calls[1].options.resourceKeys, [{
+    fileId: "folder",
+    resourceKey: "folder-key"
+  }]);
 });
 
 test("uses resumable upload above the direct limit", async () => {
@@ -116,6 +121,7 @@ test("uses resumable upload above the direct limit", async () => {
     file: new Blob(["123456"]),
     metadata: { name: "large.bin" },
     existingFileId: "existing-1",
+    resourceKeys: [{ fileId: "existing-1", resourceKey: "file-key" }],
     onProgress: (percent) => progress.push(percent)
   }), { id: "file-1" });
 
@@ -124,6 +130,10 @@ test("uses resumable upload above the direct limit", async () => {
     "sendResumableChunk"
   ]);
   assert.equal(calls[0].options.fileId, "existing-1");
+  assert.deepEqual(calls[0].options.resourceKeys, [{
+    fileId: "existing-1",
+    resourceKey: "file-key"
+  }]);
   assert.equal(calls[1].options.start, 0);
   assert.equal(calls[1].options.total, 6);
   assert.deepEqual(progress, [0, 100]);
@@ -242,12 +252,19 @@ test("restarts one rejected resumable session and does not restart twice", async
   await assert.rejects(
     uploader.upload({
       file: new Blob(["1234567890"]),
-      metadata: { name: "large.bin" }
+      metadata: { name: "large.bin" },
+      resourceKeys: [{ fileId: "folder", resourceKey: "folder-key" }]
     }),
     (error) => error instanceof GoogleDriveRequestError &&
       error.code === "drive_upload_session_unavailable"
   );
   assert.equal(sessionStarts, 2);
+  assert.equal(
+    calls
+      .filter((call) => call.method === "startResumableUpload")
+      .every((call) => call.options.resourceKeys?.[0].resourceKey === "folder-key"),
+    true
+  );
   assert.deepEqual(calls.map((call) => call.method), [
     "startResumableUpload",
     "sendResumableChunk",

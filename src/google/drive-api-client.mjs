@@ -374,6 +374,7 @@ export class GoogleDriveApiClient {
     fileId,
     metadata,
     media,
+    resourceKeys,
     signal
   }) {
     const normalizedFileId = optionalFileId(fileId);
@@ -391,7 +392,10 @@ export class GoogleDriveApiClient {
         fields: DRIVE_FILE_FIELDS
       },
       method: uploadMethod(normalizedFileId),
-      headers: { "Content-Type": contentType },
+      headers: {
+        ...resourceKeyHeaders(resourceKeys),
+        "Content-Type": contentType
+      },
       body,
       signal,
       operation: uploadOperation(normalizedFileId, "multipart"),
@@ -403,6 +407,7 @@ export class GoogleDriveApiClient {
     fileId,
     metadata,
     media,
+    resourceKeys,
     signal
   }) {
     const normalizedFileId = optionalFileId(fileId);
@@ -417,6 +422,7 @@ export class GoogleDriveApiClient {
       },
       method: uploadMethod(normalizedFileId),
       headers: {
+        ...resourceKeyHeaders(resourceKeys),
         "Content-Type": "application/json; charset=UTF-8",
         "X-Upload-Content-Type": mediaType(normalizedMedia),
         "X-Upload-Content-Length": String(normalizedMedia.size)
