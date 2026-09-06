@@ -1,8 +1,8 @@
 # Development Guide — VFS Provider for Google Drive
 
 > **Development status:** Version 0.1.0 includes the MV3 foundation and internal
-> Google OAuth account services and localized account settings. It does not
-> register a working VFS provider or implement Google Drive storage operations.
+> Google OAuth account services, localized account settings, and a reusable
+> read-only Drive API layer. It does not register a working VFS provider.
 
 ## 1. Product goal
 
@@ -49,7 +49,7 @@ Drive, and this project does not include its WebDAV protocol code.
 | `src/background.js` | module background entry point |
 | `src/state/` | versioned account, connection-binding, and preference storage |
 | `src/core/logger.mjs` | redacted provider diagnostics |
-| `src/google/` | Google OAuth and session-token services |
+| `src/google/` | Google OAuth, session-token, and Drive API services |
 | `src/runtime/` | internal extension message boundary |
 | `src/options/` | localized account and provider settings |
 | `src/_locales/` | WebExtension messages for all supported locales |
@@ -155,6 +155,31 @@ account's original OAuth client ID and login hint, and rejects a returned Google
 identity that does not match. The page renders account data as text and never
 receives refresh or access tokens.
 
+### Drive request layer
+
+`GoogleDriveTransport` obtains access tokens from the account service and adds
+the authorization header inside the background context. A 401 response causes
+one forced token refresh. Safe read requests use bounded exponential backoff
+with jitter for network failures, HTTP 429, HTTP 5xx, and Drive's documented
+rate-limit reasons. Requests that may mutate data are not repeated after an
+unknown network outcome unless a future caller explicitly selects that mode.
+If `Retry-After` exceeds the in-memory wait budget, the transport returns a
+typed deferred-retry error instead of retrying early or keeping an MV3
+background wait alive for an unbounded period.
+
+The same transport accepts only Google's Drive API path, Drive upload path, or
+a resumable-session URL below the validated Drive upload path. A raw response
+mode preserves the `Location`, HTTP 308, and `Range` values needed by the future
+resumable uploader. It does not make upload decisions or repeat a mutating
+request after an unknown result.
+
+`GoogleDriveApiClient` currently provides paginated file and shared-drive
+listing, metadata, storage quota, binary download, byte ranges, and Google
+Workspace export. File and account identifiers, query text, paths, and request
+URLs are excluded from diagnostic records. These modules are not loaded by the
+background yet; the provider callback layer will create them for an approved
+account binding.
+
 ## 6. Planned provider boundary
 
 Account records and VFS connection records must remain distinct:
@@ -209,9 +234,10 @@ Long operations need request-scoped progress and cancellation. Partial folder
 operations need storage-change reports for items already changed before an
 abort or error, as described by the upstream provider guide.
 
-Google API transport, upload strategy, retry policy, quota mapping, change
-tracking, and error translation are not implemented yet and must not be inferred
-from the vendored Toolkit.
+Upload strategy, quota-to-VFS mapping, change tracking, and VFS error
+translation are not implemented yet and must not be inferred from the vendored
+Toolkit. The current Drive client exposes read operations; write and upload
+orchestration remain absent.
 
 ### Diagnostic logging
 

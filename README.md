@@ -1,8 +1,8 @@
 # VFS Provider for Google Drive
 
 > **Development status:** This repository contains the Manifest V3 foundation
-> and Google account settings. It does not yet expose a discoverable VFS
-> storage or read and write Google Drive content. Do not use this build in
+> and Google account settings, plus a reusable read-only Drive API layer. It
+> does not yet expose a discoverable VFS storage. Do not use this build in
 > production.
 
 VFS Provider for Google Drive is intended to make Google Drive storage
@@ -24,15 +24,20 @@ The initial scaffold provides:
 - Google OAuth Authorization Code flow with PKCE, token refresh, revocation,
   and restart-safe session token storage;
 - localized account, diagnostic, and Google Workspace export settings;
+- authenticated Google Drive v3 requests with token refresh, bounded retry for
+  safe reads, validated upload-session URLs, pagination, quota, metadata,
+  download, and export helpers;
 - the unmodified Thunderbird VFS provider and i18n modules at a fixed upstream
   revision;
 - a reproducible XPI build script;
 - local package and review checks; and
 - administrator and developer documentation.
 
-VFS connection grants, Google Drive API operations, progress, cancellation, and
-storage-change reporting are not yet implemented. A Google Desktop OAuth client
-ID is required before the account flow can be smoke-tested.
+VFS connection grants, provider callbacks, write operations, progress,
+cancellation, and storage-change reporting are not yet implemented. The Drive
+API layer is not invoked by the background until those callbacks are connected.
+A Google Desktop OAuth client ID is required before the account flow can be
+smoke-tested.
 
 ## Requirements
 
