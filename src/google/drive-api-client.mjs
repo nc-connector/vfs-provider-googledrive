@@ -47,6 +47,16 @@ export const DRIVE_FIELDS = [
   "restrictions(adminManagedRestrictions,copyRequiresWriterPermission,domainUsersOnly,driveMembersOnly,sharingFoldersRequiresOrganizerPermission)"
 ].join(",");
 
+export const DRIVE_CHANGE_FIELDS = [
+  "changeType",
+  `drive(${DRIVE_FIELDS})`,
+  "driveId",
+  `file(${DRIVE_FILE_FIELDS})`,
+  "fileId",
+  "removed",
+  "time"
+].join(",");
+
 const STORAGE_QUOTA_FIELDS =
   "storageQuota(limit,usage,usageInDrive,usageInDriveTrash)";
 const DEFAULT_MEDIA_TYPE = "application/octet-stream";
@@ -77,6 +87,14 @@ function requireMetadata(value) {
     throw new TypeError("metadata");
   }
   return value;
+}
+
+function requireResponseText(response, field) {
+  if (!response || typeof response !== "object" || Array.isArray(response) ||
+      typeof response[field] !== "string" || !response[field]) {
+    throw new GoogleDriveRequestError("drive_response_invalid");
+  }
+  return response[field];
 }
 
 function optionalFileId(value) {
@@ -257,6 +275,68 @@ export class GoogleDriveApiClient {
       signal
     });
     return about?.storageQuota || null;
+  }
+
+  async getStartPageToken({
+    driveId,
+    supportsAllDrives = true,
+    signal
+  } = {}) {
+    const result = await this.#transport.request(this.#accountId, {
+      resourcePath: "changes/startPageToken",
+      query: {
+        driveId,
+        supportsAllDrives,
+        fields: "startPageToken"
+      },
+      signal,
+      operation: "changes.getStartPageToken"
+    });
+    return requireResponseText(result, "startPageToken");
+  }
+
+  async listChanges({
+    pageToken,
+    driveId,
+    includeCorpusRemovals = false,
+    includeItemsFromAllDrives = true,
+    includeRemoved = true,
+    restrictToMyDrive,
+    spaces = "drive",
+    supportsAllDrives = true,
+    pageSize = 1000,
+    changeFields = DRIVE_CHANGE_FIELDS,
+    signal
+  } = {}) {
+    const result = await this.#collectPages({
+      resourcePath: "changes",
+      query: {
+        driveId,
+        includeCorpusRemovals,
+        includeItemsFromAllDrives,
+        includeRemoved,
+        restrictToMyDrive,
+        spaces: Array.isArray(spaces) ? spaces.join(",") : spaces,
+        supportsAllDrives,
+        pageSize: requirePageSize(pageSize, 1000, "pageSize"),
+        fields: listProjection(
+          "changes",
+          changeFields,
+          ["newStartPageToken"]
+        )
+      },
+      collection: "changes",
+      operation: "changes.list",
+      initialPageToken: requireText(pageToken, "pageToken"),
+      signal
+    });
+    return {
+      changes: result.items,
+      newStartPageToken: requireResponseText(
+        result.pages.at(-1),
+        "newStartPageToken"
+      )
+    };
   }
 
   async listFiles({
@@ -577,12 +657,13 @@ export class GoogleDriveApiClient {
     headers,
     collection,
     operation,
+    initialPageToken,
     signal
   }) {
     const items = [];
     const pages = [];
-    const seenTokens = new Set();
-    let pageToken;
+    const seenTokens = new Set(initialPageToken ? [initialPageToken] : []);
+    let pageToken = initialPageToken;
 
     do {
       const page = await this.#transport.request(this.#accountId, {

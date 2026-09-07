@@ -9,6 +9,7 @@ import test from "node:test";
 
 import {
   DRIVE_ABOUT_FIELDS,
+  DRIVE_CHANGE_FIELDS,
   DRIVE_FIELDS,
   DRIVE_FILE_FIELDS,
   GoogleDriveApiClient
@@ -47,6 +48,119 @@ test("gets About data and the storage quota projection", async () => {
   assert.equal(calls[0].options.resourcePath, "about");
   assert.equal(calls[0].options.operation, "about.get");
   assert.equal(calls[1].options.query.fields.includes("storageQuota"), true);
+});
+
+test("gets a starting token for user and Shared Drive change logs", async () => {
+  const signal = new AbortController().signal;
+  const { calls, client } = createClient(() => ({
+    startPageToken: "start-token"
+  }));
+
+  assert.equal(await client.getStartPageToken({
+    driveId: "shared/drive",
+    signal
+  }), "start-token");
+  assert.deepEqual(calls[0], {
+    accountId: "account-1",
+    options: {
+      resourcePath: "changes/startPageToken",
+      query: {
+        driveId: "shared/drive",
+        supportsAllDrives: true,
+        fields: "startPageToken"
+      },
+      signal,
+      operation: "changes.getStartPageToken"
+    }
+  });
+});
+
+test("collects every change page and advances to the new start token", async () => {
+  const signal = new AbortController().signal;
+  const { calls, client } = createClient((options) => {
+    if (options.query.pageToken === "start-token") {
+      return {
+        changes: [{ fileId: "file-1" }],
+        nextPageToken: "next-token"
+      };
+    }
+    return {
+      changes: [{ fileId: "file-2", removed: true }],
+      newStartPageToken: "new-start-token"
+    };
+  });
+
+  assert.deepEqual(await client.listChanges({
+    pageToken: "start-token",
+    driveId: "shared-drive-id",
+    includeCorpusRemovals: true,
+    restrictToMyDrive: false,
+    spaces: ["drive"],
+    signal
+  }), {
+    changes: [
+      { fileId: "file-1" },
+      { fileId: "file-2", removed: true }
+    ],
+    newStartPageToken: "new-start-token"
+  });
+  assert.deepEqual(calls.map((call) => call.options.query.pageToken), [
+    "start-token",
+    "next-token"
+  ]);
+  const query = calls[0].options.query;
+  assert.equal(query.driveId, "shared-drive-id");
+  assert.equal(query.includeCorpusRemovals, true);
+  assert.equal(query.includeItemsFromAllDrives, true);
+  assert.equal(query.includeRemoved, true);
+  assert.equal(query.restrictToMyDrive, false);
+  assert.equal(query.spaces, "drive");
+  assert.equal(query.supportsAllDrives, true);
+  assert.equal(query.pageSize, 1000);
+  assert.equal(query.fields.includes("newStartPageToken"), true);
+  assert.equal(
+    query.fields.includes(`changes(${DRIVE_CHANGE_FIELDS})`),
+    true
+  );
+  assert.equal(calls[0].options.operation, "changes.list");
+  assert.equal(calls.every((call) => call.options.signal === signal), true);
+});
+
+test("rejects malformed change tokens and responses", async () => {
+  const invalidStart = createClient(() => ({})).client;
+  await assert.rejects(
+    invalidStart.getStartPageToken(),
+    (error) => error instanceof GoogleDriveRequestError &&
+      error.code === "drive_response_invalid"
+  );
+
+  const missingNextStart = createClient(() => ({ changes: [] })).client;
+  await assert.rejects(
+    missingNextStart.listChanges({ pageToken: "start-token" }),
+    (error) => error instanceof GoogleDriveRequestError &&
+      error.code === "drive_response_invalid"
+  );
+
+  const repeated = createClient(() => ({
+    changes: [],
+    nextPageToken: "start-token"
+  }));
+  await assert.rejects(
+    repeated.client.listChanges({ pageToken: "start-token" }),
+    (error) => error instanceof GoogleDriveRequestError &&
+      error.code === "drive_pagination_invalid"
+  );
+  assert.equal(repeated.calls.length, 1);
+
+  const { client } = createClient(() => ({
+    changes: [],
+    newStartPageToken: "new-start-token"
+  }));
+  await assert.rejects(client.listChanges(), /pageToken/);
+  await assert.rejects(
+    client.listChanges({ pageToken: "start-token", pageSize: 1001 }),
+    /pageSize/
+  );
 });
 
 test("collects every files.list page without dropping an empty page", async () => {
