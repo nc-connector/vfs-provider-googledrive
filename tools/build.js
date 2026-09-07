@@ -7,6 +7,7 @@ const zlib = require("node:zlib");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE_DIR = path.join(ROOT, "src");
 const PACKAGE_FILES = [
+  "CHANGELOG.md",
   "LICENSE",
   "README.md",
   "THIRD_PARTY_NOTICES.md",
