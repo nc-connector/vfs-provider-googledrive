@@ -66,6 +66,8 @@
   "vfsErrorTrashDescription": { "message": "This Google account cannot move the selected item to the Google Drive trash." },
   "vfsErrorMoveTitle": { "message": "Cannot move item" },
   "vfsErrorMoveDescription": { "message": "The selected item cannot be moved to this destination. Check the Google Drive permissions and restrictions." },
+  "vfsErrorCopyTitle": { "message": "Cannot copy item" },
+  "vfsErrorCopyDescription": { "message": "The selected item cannot be copied to this destination. Check the Google Drive permissions and restrictions." },
   "vfsErrorUnavailableTitle": { "message": "Google Drive item unavailable" },
   "vfsErrorUnavailableDescription": { "message": "The selected item no longer exists or cannot be opened." },
   "vfsSetupDocumentTitle": { "message": "Connect Google Drive" },

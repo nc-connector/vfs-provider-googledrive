@@ -573,6 +573,12 @@ export class GoogleDriveNamespace {
     if (target.existing?.item.id === source.presented.item.id) {
       throw targetExistsError();
     }
+    // Copied IDs can change duplicate-name suffixes; the existing parent remains addressable.
+    const reportCopyParentChange = () => onPartialChanges([{
+      kind: "directory",
+      action: "modified",
+      target: { path: target.parentPath }
+    }]);
 
     const plan = [];
     if (expectedKind === "file") {
@@ -632,7 +638,7 @@ export class GoogleDriveNamespace {
       plan,
       signal,
       onProgress,
-      onPartialChanges
+      reportCopyParentChange
     );
   }
 

@@ -78,6 +78,12 @@ function createProvider({
     async moveFolder(oldPath, newPath, options) {
       namespaceCalls.push({ method: "moveFolder", oldPath, newPath, options });
     },
+    async copyFile(oldPath, newPath, options) {
+      namespaceCalls.push({ method: "copyFile", oldPath, newPath, options });
+    },
+    async copyFolder(oldPath, newPath, options) {
+      namespaceCalls.push({ method: "copyFolder", oldPath, newPath, options });
+    },
     async deleteFile(path, options) {
       namespaceCalls.push({ method: "deleteFile", path, options });
     },
@@ -342,6 +348,89 @@ test("moves files and folders through their modify capabilities", async () => {
   ]);
 });
 
+test("copies files and folders through their modify capabilities", async () => {
+  const copyCalls = [];
+  const progressCalls = [];
+  const changeCalls = [];
+  const fileChange = [{
+    kind: "file",
+    action: "deleted",
+    target: { path: "/My Drive/target.txt" }
+  }];
+  const folderChange = [{
+    kind: "file",
+    action: "copied",
+    source: { path: "/My Drive/source/child.txt" },
+    target: { path: "/My Drive/target/child.txt" }
+  }];
+  const namespace = {
+    async copyFile(oldPath, newPath, options) {
+      copyCalls.push({ method: "copyFile", oldPath, newPath, options });
+      options.onProgress(50);
+      await options.onPartialChanges(fileChange);
+    },
+    async copyFolder(oldPath, newPath, options) {
+      copyCalls.push({ method: "copyFolder", oldPath, newPath, options });
+      options.onProgress(75);
+      await options.onPartialChanges(folderChange);
+    }
+  };
+  const { authorizationCalls, provider } = createProvider({ namespace });
+  provider.reportProgress = (...args) => progressCalls.push(args);
+  provider.reportStorageChange = async (...args) => changeCalls.push(args);
+
+  await provider.onCopyFile(
+    "request-copy-file",
+    "storage-1",
+    "/My Drive/source.txt",
+    "/My Drive/target.txt",
+    true
+  );
+  await provider.onCopyFolder(
+    "request-copy-folder",
+    "storage-1",
+    "/My Drive/source",
+    "/My Drive/target",
+    true
+  );
+
+  assert.deepEqual(authorizationCalls, [
+    { storageId: "storage-1", capability: "file.modify" },
+    { storageId: "storage-1", capability: "folder.modify" }
+  ]);
+  assert.deepEqual(copyCalls.map((call) => ({
+    method: call.method,
+    oldPath: call.oldPath,
+    newPath: call.newPath,
+    replace: call.options.overwrite ?? call.options.merge
+  })), [
+    {
+      method: "copyFile",
+      oldPath: "/My Drive/source.txt",
+      newPath: "/My Drive/target.txt",
+      replace: true
+    },
+    {
+      method: "copyFolder",
+      oldPath: "/My Drive/source",
+      newPath: "/My Drive/target",
+      replace: true
+    }
+  ]);
+  assert.equal(
+    copyCalls.every(({ options }) => options.signal instanceof AbortSignal),
+    true
+  );
+  assert.deepEqual(progressCalls, [
+    ["request-copy-file", 50],
+    ["request-copy-folder", 75]
+  ]);
+  assert.deepEqual(changeCalls, [
+    ["storage-1", fileChange],
+    ["storage-1", folderChange]
+  ]);
+});
+
 test("moves VFS file and folder deletions to trash", async () => {
   const deleteCalls = [];
   const progressCalls = [];
@@ -466,6 +555,16 @@ test("cancels active file and folder mutation requests", async () => {
       args: ["/My Drive/source", "/My Drive/target", false]
     },
     {
+      handler: "onCopyFile",
+      namespaceMethod: "copyFile",
+      args: ["/My Drive/source.txt", "/My Drive/target.txt", false]
+    },
+    {
+      handler: "onCopyFolder",
+      namespaceMethod: "copyFolder",
+      args: ["/My Drive/source", "/My Drive/target", false]
+    },
+    {
       handler: "onDeleteFile",
       namespaceMethod: "deleteFile",
       args: ["/My Drive/file.txt"]
@@ -550,6 +649,16 @@ test("maps user-actionable Drive failures to localized provider details", () => 
       new GoogleDriveNamespaceError("drive_move_unsupported"),
       "google-drive-move-forbidden",
       "vfsErrorMoveTitle"
+    ],
+    [
+      new GoogleDriveNamespaceError("drive_copy_forbidden"),
+      "google-drive-copy-forbidden",
+      "vfsErrorCopyTitle"
+    ],
+    [
+      new GoogleDriveNamespaceError("drive_copy_unsupported"),
+      "google-drive-copy-forbidden",
+      "vfsErrorCopyTitle"
     ],
     [
       new GoogleDriveNamespaceError("drive_path_not_found"),

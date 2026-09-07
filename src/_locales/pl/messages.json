@@ -66,6 +66,8 @@
   "vfsErrorTrashDescription": { "message": "To konto Google nie może przenieść wybranego elementu do kosza Dysku Google." },
   "vfsErrorMoveTitle": { "message": "Nie można przenieść elementu" },
   "vfsErrorMoveDescription": { "message": "Nie można przenieść wybranego elementu do tego miejsca. Sprawdź uprawnienia i ograniczenia Dysku Google." },
+  "vfsErrorCopyTitle": { "message": "Nie można skopiować elementu" },
+  "vfsErrorCopyDescription": { "message": "Nie można skopiować wybranego elementu do tego miejsca. Sprawdź uprawnienia i ograniczenia Dysku Google." },
   "vfsErrorUnavailableTitle": { "message": "Element Dysku Google jest niedostępny" },
   "vfsErrorUnavailableDescription": { "message": "Wybrany element już nie istnieje lub nie można go otworzyć." },
   "vfsSetupDocumentTitle": { "message": "Połącz z Dyskiem Google" },

@@ -66,6 +66,8 @@
   "vfsErrorTrashDescription": { "message": "Tento účet Google nemůže přesunout vybranou položku do koše Disku Google." },
   "vfsErrorMoveTitle": { "message": "Položku nelze přesunout" },
   "vfsErrorMoveDescription": { "message": "Vybranou položku nelze přesunout do tohoto umístění. Zkontrolujte oprávnění a omezení Disku Google." },
+  "vfsErrorCopyTitle": { "message": "Položku nelze zkopírovat" },
+  "vfsErrorCopyDescription": { "message": "Vybranou položku nelze zkopírovat do tohoto umístění. Zkontrolujte oprávnění a omezení Disku Google." },
   "vfsErrorUnavailableTitle": { "message": "Položka na Disku Google není dostupná" },
   "vfsErrorUnavailableDescription": { "message": "Vybraná položka již neexistuje nebo ji nelze otevřít." },
   "vfsSetupDocumentTitle": { "message": "Připojit Google Drive" },

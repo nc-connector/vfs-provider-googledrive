@@ -66,6 +66,8 @@
   "vfsErrorTrashDescription": { "message": "此 Google 账号无法将所选项目移至 Google 云端硬盘回收站。" },
   "vfsErrorMoveTitle": { "message": "无法移动项目" },
   "vfsErrorMoveDescription": { "message": "无法将所选项目移动到此目标位置。请检查 Google 云端硬盘的权限和限制。" },
+  "vfsErrorCopyTitle": { "message": "无法复制项目" },
+  "vfsErrorCopyDescription": { "message": "无法将所选项目复制到此目标位置。请检查 Google 云端硬盘的权限和限制。" },
   "vfsErrorUnavailableTitle": { "message": "Google 云端硬盘项目不可用" },
   "vfsErrorUnavailableDescription": { "message": "所选项目已不存在或无法打开。" },
   "vfsSetupDocumentTitle": { "message": "连接 Google 云端硬盘" },

@@ -2020,7 +2020,7 @@ test("requires overwrite and replaces a copied file target in order", async () =
   assert.deepEqual(progress, [0, 50, 100]);
 });
 
-test("reports a removed target when the following file copy fails", async () => {
+test("reports the stable parent when an overwritten file copy fails", async () => {
   const partialChanges = [];
   const source = file({
     id: "source-file",
@@ -2064,9 +2064,9 @@ test("reports a removed target when the following file copy fails", async () => 
   );
 
   assert.deepEqual(partialChanges, [[{
-    kind: "file",
-    action: "deleted",
-    target: { path: "/My Drive/Target.txt" }
+    kind: "directory",
+    action: "modified",
+    target: { path: "/My Drive" }
   }]]);
 });
 
@@ -2314,7 +2314,7 @@ test("merges copied folders and replaces matching files", async () => {
   ]);
 });
 
-test("reports a created copy folder and stops after an abort", async () => {
+test("reports the stable copy parent and stops after an abort", async () => {
   const partialChanges = [];
   const progress = [];
   const sourceFolder = file({
@@ -2369,8 +2369,81 @@ test("reports a created copy folder and stops after an abort", async () => {
   assert.deepEqual(progress, [0, 50]);
   assert.deepEqual(partialChanges, [[{
     kind: "directory",
-    action: "created",
-    target: { path: "/My Drive/Copy" }
+    action: "modified",
+    target: { path: "/My Drive" }
+  }]]);
+});
+
+test("does not report source IDs for partial duplicate-name copies", async () => {
+  const partialChanges = [];
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true }
+  });
+  const firstSource = file({
+    id: "source-a",
+    name: "Report.pdf",
+    capabilities: { canDownload: true, canCopy: true }
+  });
+  const secondSource = file({
+    id: "source-b",
+    name: "Report.pdf",
+    capabilities: { canDownload: true, canCopy: true }
+  });
+  const failure = new Error("copy failed");
+  let copyCount = 0;
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return { files: [sourceFolder], incompleteSearch: false };
+      }
+      return {
+        files: [firstSource, secondSource],
+        incompleteSearch: false
+      };
+    },
+    async getFile() {
+      return file({
+        id: "root",
+        name: "My Drive",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    },
+    async createFileMetadata(metadata) {
+      return file({
+        id: "copy-folder",
+        name: metadata.name,
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canListChildren: true, canAddChildren: true }
+      });
+    },
+    async copyFile(_fileId, metadata) {
+      copyCount += 1;
+      if (copyCount === 2) {
+        throw failure;
+      }
+      return file({ id: "copied-a", name: metadata.name });
+    }
+  });
+
+  await assert.rejects(
+    namespace.copyFolder(
+      "/My Drive/Source",
+      "/My Drive/Copy",
+      {
+        onPartialChanges: (entries) => partialChanges.push(entries)
+      }
+    ),
+    (error) => error === failure
+  );
+
+  assert.deepEqual(partialChanges, [[{
+    kind: "directory",
+    action: "modified",
+    target: { path: "/My Drive" }
   }]]);
 });
 

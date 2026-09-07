@@ -66,6 +66,8 @@
   "vfsErrorTrashDescription": { "message": "此 Google 帳戶無法將所選項目移至 Google 雲端硬碟垃圾桶。" },
   "vfsErrorMoveTitle": { "message": "無法移動項目" },
   "vfsErrorMoveDescription": { "message": "無法將所選項目移至此目的地。請檢查 Google 雲端硬碟的權限與限制。" },
+  "vfsErrorCopyTitle": { "message": "無法複製項目" },
+  "vfsErrorCopyDescription": { "message": "無法將所選項目複製到此目的地。請檢查 Google 雲端硬碟的權限與限制。" },
   "vfsErrorUnavailableTitle": { "message": "Google 雲端硬碟項目無法使用" },
   "vfsErrorUnavailableDescription": { "message": "所選項目已不存在或無法開啟。" },
   "vfsSetupDocumentTitle": { "message": "連接 Google 雲端硬碟" },

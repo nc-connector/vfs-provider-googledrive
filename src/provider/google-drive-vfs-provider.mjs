@@ -46,6 +46,9 @@ const FALLBACK_MESSAGES = Object.freeze({
   vfsErrorMoveTitle: "Cannot move item",
   vfsErrorMoveDescription:
     "The selected item cannot be moved to this destination. Check the Google Drive permissions and restrictions.",
+  vfsErrorCopyTitle: "Cannot copy item",
+  vfsErrorCopyDescription:
+    "The selected item cannot be copied to this destination. Check the Google Drive permissions and restrictions.",
   vfsErrorUnavailableTitle: "Google Drive item unavailable",
   vfsErrorUnavailableDescription:
     "The selected item no longer exists or cannot be opened."
@@ -155,6 +158,16 @@ export function mapVfsProviderError(error, getMessage) {
       "google-drive-move-forbidden",
       "vfsErrorMoveTitle",
       "vfsErrorMoveDescription",
+      error
+    );
+  }
+  if (error?.code === "drive_copy_forbidden" ||
+      error?.code === "drive_copy_unsupported") {
+    return providerError(
+      getMessage,
+      "google-drive-copy-forbidden",
+      "vfsErrorCopyTitle",
+      "vfsErrorCopyDescription",
       error
     );
   }
@@ -289,6 +302,30 @@ export class GoogleDriveVfsProvider extends VfsProviderImplementation {
     return this.#abortRegistry.run(requestId, (signal) =>
       this.#run("move_folder", storageId, "folder.modify", (namespace) =>
         namespace.moveFolder(oldPath, newPath, {
+          merge,
+          signal,
+          onProgress: (percent) => this.reportProgress(requestId, percent),
+          onPartialChanges: (entries) =>
+            this.reportStorageChange(storageId, entries)
+        })));
+  }
+
+  async onCopyFile(requestId, storageId, oldPath, newPath, overwrite) {
+    return this.#abortRegistry.run(requestId, (signal) =>
+      this.#run("copy_file", storageId, "file.modify", (namespace) =>
+        namespace.copyFile(oldPath, newPath, {
+          overwrite,
+          signal,
+          onProgress: (percent) => this.reportProgress(requestId, percent),
+          onPartialChanges: (entries) =>
+            this.reportStorageChange(storageId, entries)
+        })));
+  }
+
+  async onCopyFolder(requestId, storageId, oldPath, newPath, merge) {
+    return this.#abortRegistry.run(requestId, (signal) =>
+      this.#run("copy_folder", storageId, "folder.modify", (namespace) =>
+        namespace.copyFolder(oldPath, newPath, {
           merge,
           signal,
           onProgress: (percent) => this.reportProgress(requestId, percent),
