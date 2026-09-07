@@ -2,9 +2,9 @@
 
 > **Development status:** This repository contains a working VFS provider for
 > Google Drive. Consumer add-ons can create an account-bound connection, browse
-> and read Drive content, upload new files, and create folders. The remaining
-> write operations and release work listed below are not complete, so this
-> build is not ready for production.
+> and read Drive content, upload new files, create folders, and move items to
+> the Google Drive trash. The remaining write operations and release work
+> listed below are not complete, so this build is not ready for production.
 
 VFS Provider for Google Drive is intended to make Google Drive storage
 available to compatible Thunderbird add-ons through Thunderbird's VFS Toolkit.
@@ -32,20 +32,23 @@ The initial scaffold provides:
   configuration popups;
 - VFS access to My Drive, Shared with me, and Shared drives, including Google
   Workspace export, shortcuts, duplicate names, new file and folder creation,
-  request progress and cancellation, and storage quota reporting;
+  removal to the Google Drive trash, request progress and cancellation, and
+  storage quota reporting;
 - the unmodified Thunderbird VFS provider and i18n modules at a fixed upstream
   revision;
 - a reproducible XPI build script;
 - local package and review checks; and
 - administrator and developer documentation.
 
-The provider advertises file/folder read and add capabilities. New files use a
-multipart upload through 5 MB and a resumable upload above that limit. Existing
-consumer connections receive the current capability set during startup. File
-replacement, move, copy, delete, and storage-change reporting are not yet
-available. The settings page does not yet list or revoke individual consumer
-connections. A Google Desktop OAuth client ID is required for live account and
-provider testing.
+The provider advertises file/folder read, add, and delete capabilities. New
+files use a multipart upload through 5 MB and a resumable upload above that
+limit. Deleting through VFS moves the selected file, folder, or shortcut to the
+Google Drive trash; it never permanently deletes content. Existing consumer
+connections receive the current capability set during startup. File
+replacement, move, copy, and storage-change reporting are not yet available.
+The settings page does not yet list or revoke individual consumer connections.
+A Google Desktop OAuth client ID is required for live account and provider
+testing.
 
 ## Requirements
 

@@ -2,8 +2,9 @@
 
 > **Development status:** The current package provides Google Drive storage
 > through VFS, including account-bound setup, browsing, reading, new file
-> uploads, and folder creation. It is not ready for production deployment
-> because the remaining write operations and release validation are incomplete.
+> uploads, folder creation, and removal to the Google Drive trash. It is not
+> ready for production deployment because the remaining write operations and
+> release validation are incomplete.
 
 This guide records the administrative boundary of the project while the
 provider is under development. Runtime setup, managed deployment, OAuth
@@ -22,10 +23,13 @@ Desktop OAuth client ID, add or reauthorize Google accounts, remove an unused
 account, choose Workspace export formats, and enable diagnostic logging. A
 compatible VFS consumer can create a connection for one account, rename that
 connection, switch its account, browse and read Drive content, upload new files,
-and create folders. Previously granted connections receive these add
-capabilities when the provider starts. It does not yet:
+create folders, and move files or folders to the Google Drive trash. A VFS
+delete is recoverable through Google Drive until Google removes the trashed
+item; the provider does not permanently delete it. Previously granted
+connections receive the current add and delete capabilities when the provider
+starts. It does not yet:
 
-- replace, move, copy, or delete Drive content;
+- replace, move, or copy Drive content;
 - report remote Drive changes to connected consumers; or
 - list and revoke individual consumer connections in the provider settings.
 

@@ -86,7 +86,7 @@ kept in sync with the repository.
 - [x] Add the Drive namespace operations for binary file create/replace and
   recursive folder creation. They preserve literal client filenames, stable
   duplicate IDs, Shared Drive boundaries, link-shared resource keys, and Drive
-  write capabilities. VFS exposes create-only file and folder callbacks;
+  write capabilities. VFS exposes file and folder create and trash callbacks;
   replacement remains internal until `file.modify` is ready.
 
 ## VFS operations
@@ -108,10 +108,10 @@ kept in sync with the repository.
   behavior.
 - [ ] File/folder copy: use Drive server-side copy where supported and report
   partial folder results on cancel or error.
-- [ ] File/folder delete: define trash versus permanent deletion and expose only
-  the selected behavior.
-- [x] Cancellation for list, file read, new file upload, and folder creation by
-  Toolkit request ID.
+- [x] File/folder delete: move the selected Drive item to the recoverable trash.
+  Never expose permanent deletion through the VFS delete callbacks.
+- [x] Cancellation for list, file read, new file upload, folder creation, and
+  trash operations by Toolkit request ID.
 - [ ] Partial mutation reporting: report work that completed before a future
   multi-item operation stopped.
 - [ ] Change notifications: persist a Drive Changes page token and schedule checks
@@ -151,7 +151,7 @@ kept in sync with the repository.
 - [x] Verify current logs contain useful phases but no credentials, tokens, file content,
   or full sensitive request URLs.
 - [ ] Run the complete review matrix and a freshly downloaded Thunderbird
-  webext-linter before every committed product change.
+  webext-linter before the first release candidate.
 - [ ] Smoke-test the XPI on the oldest supported Thunderbird and the current ESR.
 - [ ] Run live tests against My Drive and a real Shared Drive, including token
   expiry, refresh, rate-limit retry, resumable upload, and change polling.

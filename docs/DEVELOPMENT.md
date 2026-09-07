@@ -2,8 +2,9 @@
 
 > **Development status:** Version 0.1.0 includes the MV3 foundation, Google
 > OAuth account services, localized account and connection settings, and a
-> working VFS provider for browsing, reading, and creating files and folders.
-> The remaining write operations and release validation are still in progress.
+> working VFS provider for browsing, reading, creating files and folders, and
+> moving items to the Google Drive trash. The remaining write operations and
+> release validation are still in progress.
 
 ## 1. Product goal
 
@@ -248,7 +249,10 @@ filenames containing percent or tilde characters are not decoded as provider
 metadata. File creates and folder creates check the target parent's Drive
 capabilities, create missing parents in order, retain resource keys, and reject
 writes at virtual roots. Binary overwrite updates the selected Drive item by ID;
-Google-native files and shortcuts are not replaced with binary media.
+Google-native files and shortcuts are not replaced with binary media. Delete
+resolves the same visible paths, checks the selected item's `canTrash`
+capability, and updates its `trashed` metadata. A selected shortcut is trashed
+by its own ID rather than modifying its target.
 
 ## 7. VFS operations
 
@@ -261,20 +265,23 @@ The provider API exposes callbacks for:
 - deleting files or folders; and
 - canceling a request.
 
-The current provider advertises `file.read`, `file.add`, `folder.read`, and
-`folder.add`. It implements root and folder listing, storage quota, binary
-download, Workspace export, new file upload, recursive folder creation,
-localized VFS errors, progress, and request-scoped cancellation. The account
-binding and requested capability are checked for every operation.
+The current provider advertises `file.read`, `file.add`, `file.delete`,
+`folder.read`, `folder.add`, and `folder.delete`. It implements root and folder
+listing, storage quota, binary download, Workspace export, new file upload,
+recursive folder creation, removal to the Google Drive trash, localized VFS
+errors, progress, and request-scoped cancellation. The account binding and
+requested capability are checked for every operation.
 
 `writeFile` requests `file.add` for a new target. An overwrite request requires
 `file.modify`, which is not advertised and is rejected before the namespace is
-called. Move, copy, and delete callbacks remain unavailable for the same reason.
-File and folder creation report progress through the Toolkit request ID and use
-the same abort registry as read operations. A later multi-step mutation still
-needs storage-change reports for items changed before an abort or error, as
-described by the upstream provider guide. Upload strategy and change tracking
-remain product-owned work and are not part of the vendored Toolkit.
+called. Move and copy callbacks remain unavailable. Delete requests set the
+selected Drive item's `trashed` field and do not call Drive's permanent-delete
+endpoint. File creation, folder creation, and delete report progress through the
+Toolkit request ID and use the same abort registry as read operations. A later
+multi-step mutation still needs storage-change reports for items changed before
+an abort or error, as described by the upstream provider guide. Upload strategy
+and change tracking remain product-owned work and are not part of the vendored
+Toolkit.
 
 ### Diagnostic logging
 
@@ -349,7 +356,8 @@ Before committing a functional provider change:
    the change applies.
 6. Update `README.md`, `docs/ADMIN.md`, `docs/DEVELOPMENT.md`, `Translations.md`,
    or `VENDOR.md` when their statements change.
-7. Run `npm run test:review` and `npm test`.
+7. Run `npm run test:unit` and `npm run test:review`. Run `npm test` before the
+   first release candidate or review handoff.
 
 ## 12. Pending release inputs
 
