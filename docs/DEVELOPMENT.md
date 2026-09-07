@@ -48,7 +48,7 @@ Drive, and this project does not include its WebDAV protocol code.
 |---|---|
 | `src/manifest.json` | Thunderbird MV3 manifest and product metadata |
 | `src/background.js` | module background entry point |
-| `src/state/` | versioned account, connection-binding, and preference storage |
+| `src/state/` | versioned account, connection-binding, change-cursor, and preference storage |
 | `src/core/logger.mjs` | redacted provider diagnostics |
 | `src/google/` | Google OAuth, session-token, and Drive API services |
 | `src/provider/` | VFS adapter and account-bound connection lifecycle |
@@ -180,18 +180,19 @@ mode preserves the `Location`, HTTP 308, and `Range` values used by the
 resumable uploader. It does not make upload decisions or repeat a mutating
 request after an unknown result.
 
-`GoogleDriveApiClient` provides paginated file and shared-drive
-listing, metadata, storage quota, binary download, byte ranges, and Google
-Workspace export. It also provides metadata-first multipart uploads and the
-resumable session primitives used by `GoogleDriveUploader`. Files of 5 MB or
-less use multipart upload. Larger files use 8 MiB chunks, whose size is a
-multiple of Drive's required 256 KiB unit. Progress advances only to the byte
-offset confirmed by Drive. After an unknown chunk result, the uploader queries
-the session before sending more data; it never blindly repeats that chunk. A
-session rejected by Drive can be restarted once during the active request.
-Resource keys for link-shared files and parent folders are included in
-multipart requests and resumable-session creation, including a restarted
-session.
+`GoogleDriveApiClient` provides paginated file and shared-drive listing,
+metadata, storage quota, binary download, byte ranges, Google Workspace export,
+and the user and Shared Drive change logs. Change-log reads follow every page
+and return the next start token only after the final page. It also provides
+metadata-first multipart uploads and the resumable session primitives used by
+`GoogleDriveUploader`. Files of 5 MB or less use multipart upload. Larger files
+use 8 MiB chunks, whose size is a multiple of Drive's required 256 KiB unit.
+Progress advances only to the byte offset confirmed by Drive. After an unknown
+chunk result, the uploader queries the session before sending more data; it
+never blindly repeats that chunk. A session rejected by Drive can be restarted
+once during the active request. Resource keys for link-shared files and parent
+folders are included in multipart requests and resumable-session creation,
+including a restarted session.
 
 Upload state, source bytes, session URLs, and abort controllers remain bound to
 the active VFS request and are not presented as surviving an MV3 background
@@ -211,11 +212,18 @@ Account records and VFS connection records must remain distinct:
 - revoking a connection must not silently remove the Google account or grants
   belonging to other consumers.
 
-`ProviderStateRepository` stores only the account binding for a VFS storage ID.
+`ProviderStateRepository` stores the account binding for a VFS storage ID and
+per-account change cursors for the user log and individual Shared Drive logs.
 The vendored Toolkit remains the owner of consumer add-on IDs, picker names,
 capabilities, and discovery records in `vfs-toolkit-connections`. This avoids a
 second copy of Toolkit connection data. Repository account queries omit refresh
 tokens unless an internal authorization lookup is explicitly requested.
+
+Provider state version 2 adds the change-cursor collection. Version 1 records
+are migrated by retaining their accounts and connection bindings and starting
+with an empty cursor collection. Removing an account also removes all of its
+change cursors in the same state write. Automatic polling and VFS storage
+invalidations are not active yet.
 
 At startup, the connection service re-reports an outdated capability set for
 each uniquely matched local binding through the Toolkit helper. It does not
@@ -392,5 +400,5 @@ The implementation still needs these inputs or later release decisions:
 - the oldest Thunderbird version verified by smoke testing;
 - write timeout behavior;
 - account and connection migration rules;
-- storage-change polling or Google change-token strategy; and
+- storage-change polling cadence and notification behavior; and
 - release signing, update channel, and managed deployment.

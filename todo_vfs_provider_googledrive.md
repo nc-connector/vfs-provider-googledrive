@@ -115,8 +115,16 @@ kept in sync with the repository.
   move/copy/merge, and trash operations by Toolkit request ID.
 - [x] Partial mutation reporting for move/copy/merge: report work completed
   before a multi-step operation stopped.
-- [ ] Change notifications: persist a Drive Changes page token and schedule checks
-  with an MV3-compatible event rather than relying on `setInterval()`.
+- [ ] Change notifications: schedule Drive Changes checks with an MV3-compatible
+  event and publish VFS storage invalidations rather than relying on
+  `setInterval()`.
+  - [x] Read paginated user and Shared Drive logs and advance to their new start
+    tokens only after the final page.
+  - [x] Persist per-account user and Shared Drive cursors across background
+    restarts and remove them with their account.
+  - [ ] Poll only current, unambiguous account-bound VFS connections.
+  - [ ] Coalesce Drive changes into one safe storage-root invalidation per
+    connection and advance cursors only after successful processing.
 - [x] Advertise every current VFS capability only after its callback and error
   path passes the provider API tests.
 - [x] Update existing unique account-bound Toolkit connections through the
