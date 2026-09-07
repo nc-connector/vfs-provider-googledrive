@@ -9,6 +9,7 @@ const SOURCE_DIR = path.join(ROOT, "src");
 const PACKAGE_FILES = [
   "CHANGELOG.md",
   "LICENSE",
+  "PRIVACY.md",
   "README.md",
   "THIRD_PARTY_NOTICES.md",
   "Translations.md",

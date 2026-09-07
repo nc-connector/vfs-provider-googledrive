@@ -172,6 +172,8 @@ kept in sync with the repository.
     OAuth scope and verification boundaries, Shared Drives, and Workspace exports.
   - [x] Document current credential storage, diagnostic redaction, source review,
     and third-party notices.
+  - [x] Provide a complete add-on-specific privacy policy for the ATN privacy
+    field and packaged documentation.
   - [x] Document the release test matrix and manual evidence to retain.
   - [ ] Complete the ATN submission and release checklist once product identity,
     production OAuth, and supported Thunderbird versions are settled.

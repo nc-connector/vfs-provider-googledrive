@@ -215,6 +215,10 @@ for support.
 Before sharing a future diagnostic log, review it for user identifiers, file
 names, folder names, and storage IDs.
 
+The complete add-on-specific data handling disclosure is maintained in
+[PRIVACY.md](../PRIVACY.md). The same full text must be supplied in ATN's
+privacy policy field for the submitted version.
+
 ## 8. Source and vendor review
 
 The Thunderbird VFS provider and HTML localization modules are packaged from a

@@ -65,6 +65,7 @@ Drive, and this project does not include its WebDAV protocol code.
 | `docs/ADMIN.md` | deployment and operational status |
 | `docs/TESTING.md` | automated and live release test matrix |
 | `CHANGELOG.md` | release notes |
+| `PRIVACY.md` | add-on data handling and user-control policy |
 | `VENDOR.md` | upstream revision, license, source URL, and hash record |
 | `THIRD_PARTY_NOTICES.md` | packaged third-party attributions and license notices |
 
@@ -412,8 +413,9 @@ Before committing a functional provider change:
 4. Keep secrets, authorization data, and file content out of logs.
 5. Cover success, error, cancellation, and background-restart behavior where
    the change applies.
-6. Update `README.md`, `CHANGELOG.md`, `docs/ADMIN.md`, `docs/DEVELOPMENT.md`,
-   `Translations.md`, or `VENDOR.md` when their statements change.
+6. Update `README.md`, `CHANGELOG.md`, `PRIVACY.md`, `docs/ADMIN.md`,
+   `docs/DEVELOPMENT.md`, `Translations.md`, or `VENDOR.md` when their
+   statements change.
 7. Run `npm run test:unit` and `npm run test:review`. Run `npm test` before the
    first release candidate or review handoff.
 
