@@ -139,6 +139,7 @@ function checkFiles() {
     "VENDOR.md",
     "docs/ADMIN.md",
     "docs/DEVELOPMENT.md",
+    "docs/RELEASE.md",
     "docs/TESTING.md",
     "src/assets/icon.svg",
     "src/background.js",

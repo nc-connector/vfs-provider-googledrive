@@ -16,6 +16,7 @@ const PACKAGE_FILES = [
   "VENDOR.md",
   "docs/ADMIN.md",
   "docs/DEVELOPMENT.md",
+  "docs/RELEASE.md",
   "docs/TESTING.md"
 ];
 

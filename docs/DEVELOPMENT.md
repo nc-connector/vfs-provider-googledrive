@@ -64,6 +64,7 @@ Drive, and this project does not include its WebDAV protocol code.
 | `tools/webext-linter-*.js` | Thunderbird linter and dependency checks |
 | `docs/ADMIN.md` | deployment and operational status |
 | `docs/TESTING.md` | automated and live release test matrix |
+| `docs/RELEASE.md` | candidate and ATN submission checklist |
 | `CHANGELOG.md` | release notes |
 | `PRIVACY.md` | add-on data handling and user-control policy |
 | `VENDOR.md` | upstream revision, license, source URL, and hash record |

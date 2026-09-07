@@ -8,6 +8,10 @@ kept in sync with the repository.
 - [ ] Register the production Google OAuth application and record its client ID.
 - [ ] Decide whether releases use one project-owned OAuth client or optionally
   support administrator-provided client IDs.
+- [ ] Complete restricted-scope verification with the final product identity,
+  privacy text, support contact, and production test instructions.
+- [ ] Confirm the permanent Gecko add-on ID before the first ATN submission. The
+  development manifest currently uses `{90c66d9f-a142-43a8-8ffb-707a48d8eb7a}`.
 - [x] Confirm the Drive scope. A full VFS tree needs access beyond files created
   or explicitly opened by this add-on; document the Google verification impact
   before requesting a restricted scope. The provider uses the restricted full
@@ -167,7 +171,7 @@ kept in sync with the repository.
 - [ ] Smoke-test the XPI on the oldest supported Thunderbird and the current ESR.
 - [ ] Run live tests against My Drive and a real Shared Drive, including token
   expiry, refresh, rate-limit retry, resumable upload, and change polling.
-- [ ] Complete release documentation.
+- [x] Add release documentation for the implemented scope.
   - [x] Document development Google Cloud setup, account connection and recovery,
     OAuth scope and verification boundaries, Shared Drives, and Workspace exports.
   - [x] Document current credential storage, diagnostic redaction, source review,
@@ -175,9 +179,11 @@ kept in sync with the repository.
   - [x] Provide a complete add-on-specific privacy policy for the ATN privacy
     field and packaged documentation.
   - [x] Document the release test matrix and manual evidence to retain.
-  - [ ] Complete the ATN submission and release checklist once product identity,
-    production OAuth, and supported Thunderbird versions are settled.
+  - [x] Document the ATN submission and release checklist, with unresolved
+    product identity, production OAuth, and compatibility values kept as gates.
 - [x] Add a release changelog before the first release candidate.
 - [x] Complete license and third-party notices for all currently packaged source.
+- [ ] Replace the open PR #96 VFS review revision with its merged upstream commit,
+  or confirm ATN acceptance of the pinned Thunderbird-owned revision.
 - [ ] Verify the reproducible release XPI contains exactly the reviewed source
   payload and no development-only files.

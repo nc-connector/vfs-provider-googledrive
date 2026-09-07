@@ -228,4 +228,5 @@ The license attributions shipped with the XPI are collected in
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
 Developer architecture, reference projects, and review commands are documented
-in [DEVELOPMENT.md](DEVELOPMENT.md).
+in [DEVELOPMENT.md](DEVELOPMENT.md). Candidate validation and ATN submission are
+covered by [TESTING.md](TESTING.md) and [RELEASE.md](RELEASE.md).
