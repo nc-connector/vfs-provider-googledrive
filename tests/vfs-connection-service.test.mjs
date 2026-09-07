@@ -16,16 +16,16 @@ import { ProviderStateRepository } from "../src/state/provider-state.mjs";
 import { FakeStorageArea } from "./helpers/fake-storage.mjs";
 
 const CLIENT_ID = "123456.apps.googleusercontent.com";
-const READ_ONLY_CAPABILITIES = Object.freeze({
+const PREVIOUS_CAPABILITIES = Object.freeze({
   file: Object.freeze({
     read: true,
-    add: false,
+    add: true,
     modify: false,
     delete: false
   }),
   folder: Object.freeze({
     read: true,
-    add: false,
+    add: true,
     modify: false,
     delete: false
   })
@@ -99,17 +99,17 @@ test("reconciles product bindings with Toolkit connection records", async () => 
 
 test("updates capabilities only for unique account-bound connections", async () => {
   const oldConnection = toolkitConnection({
-    capabilities: READ_ONLY_CAPABILITIES
+    capabilities: PREVIOUS_CAPABILITIES
   });
   const currentConnection = toolkitConnection({ storageId: "storage-2" });
   const duplicateConnection = toolkitConnection({
     addonId: "duplicate-one@example.invalid",
     storageId: "storage-3",
-    capabilities: READ_ONLY_CAPABILITIES
+    capabilities: PREVIOUS_CAPABILITIES
   });
   const unboundConnection = toolkitConnection({
     storageId: "storage-4",
-    capabilities: READ_ONLY_CAPABILITIES
+    capabilities: PREVIOUS_CAPABILITIES
   });
   const reports = [];
   let fixture;
@@ -175,7 +175,7 @@ test("updates capabilities only for unique account-bound connections", async () 
 test("keeps an existing binding when its capability update fails", async () => {
   let reports = 0;
   const connection = toolkitConnection({
-    capabilities: READ_ONLY_CAPABILITIES
+    capabilities: PREVIOUS_CAPABILITIES
   });
   const { accountRepository, service } = await createFixture({
     connections: [connection],
@@ -220,6 +220,14 @@ test("authorizes only one current connection with the requested capability", asy
   );
   assert.equal(
     (await service.getAuthorizedBinding("storage-1", "folder.add")).accountId,
+    "account-1"
+  );
+  assert.equal(
+    (await service.getAuthorizedBinding("storage-1", "file.delete")).accountId,
+    "account-1"
+  );
+  assert.equal(
+    (await service.getAuthorizedBinding("storage-1", "folder.delete")).accountId,
     "account-1"
   );
   await assert.rejects(

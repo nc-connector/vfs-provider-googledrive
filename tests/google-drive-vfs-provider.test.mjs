@@ -41,8 +41,10 @@ function createProvider({
   logger,
   supportedCapabilities = new Set([
     "file.add",
+    "file.delete",
     "file.read",
     "folder.add",
+    "folder.delete",
     "folder.read"
   ])
 } = {}) {
@@ -67,6 +69,12 @@ function createProvider({
     },
     async addFolder(path, options) {
       namespaceCalls.push({ method: "addFolder", path, options });
+    },
+    async deleteFile(path, options) {
+      namespaceCalls.push({ method: "deleteFile", path, options });
+    },
+    async deleteFolder(path, options) {
+      namespaceCalls.push({ method: "deleteFolder", path, options });
     }
   };
   const provider = new GoogleDriveVfsProvider({
@@ -117,8 +125,8 @@ function createProvider({
 
 test("advertises only implemented VFS operations", () => {
   assert.deepEqual(GOOGLE_DRIVE_CAPABILITIES, {
-    file: { read: true, add: true, modify: false, delete: false },
-    folder: { read: true, add: true, modify: false, delete: false }
+    file: { read: true, add: true, modify: false, delete: true },
+    folder: { read: true, add: true, modify: false, delete: true }
   });
   assert.equal(Object.isFrozen(GOOGLE_DRIVE_CAPABILITIES.file), true);
   assert.equal(Object.isFrozen(GOOGLE_DRIVE_CAPABILITIES.folder), true);
@@ -242,6 +250,51 @@ test("creates folders through folder.add and forwards progress", async () => {
   assert.deepEqual(progressCalls, [["request-folder", 100]]);
 });
 
+test("moves VFS file and folder deletions to trash", async () => {
+  const deleteCalls = [];
+  const progressCalls = [];
+  const namespace = {
+    async deleteFile(path, options) {
+      deleteCalls.push({ method: "deleteFile", path, options });
+      options.onProgress(50);
+    },
+    async deleteFolder(path, options) {
+      deleteCalls.push({ method: "deleteFolder", path, options });
+      options.onProgress(100);
+    }
+  };
+  const { authorizationCalls, provider } = createProvider({ namespace });
+  provider.reportProgress = (...args) => progressCalls.push(args);
+
+  await provider.onDeleteFile(
+    "request-delete-file",
+    "storage-1",
+    "/My Drive/file.txt"
+  );
+  await provider.onDeleteFolder(
+    "request-delete-folder",
+    "storage-1",
+    "/My Drive/Folder"
+  );
+
+  assert.deepEqual(authorizationCalls, [
+    { storageId: "storage-1", capability: "file.delete" },
+    { storageId: "storage-1", capability: "folder.delete" }
+  ]);
+  assert.deepEqual(deleteCalls.map(({ method, path }) => ({ method, path })), [
+    { method: "deleteFile", path: "/My Drive/file.txt" },
+    { method: "deleteFolder", path: "/My Drive/Folder" }
+  ]);
+  assert.equal(
+    deleteCalls.every(({ options }) => options.signal instanceof AbortSignal),
+    true
+  );
+  assert.deepEqual(progressCalls, [
+    ["request-delete-file", 50],
+    ["request-delete-folder", 100]
+  ]);
+});
+
 test("rejects storage IDs that have no account binding", async () => {
   const { provider } = createProvider({ binding: null });
 
@@ -298,7 +351,7 @@ test("cancels the active Drive request by its Toolkit request ID", async () => {
   assert.equal(operationSignal.aborted, true);
 });
 
-test("cancels active file and folder creation requests", async () => {
+test("cancels active file and folder mutation requests", async () => {
   const cases = [
     {
       handler: "onWriteFile",
@@ -308,6 +361,16 @@ test("cancels active file and folder creation requests", async () => {
     {
       handler: "onAddFolder",
       namespaceMethod: "addFolder",
+      args: ["/My Drive/Folder"]
+    },
+    {
+      handler: "onDeleteFile",
+      namespaceMethod: "deleteFile",
+      args: ["/My Drive/file.txt"]
+    },
+    {
+      handler: "onDeleteFolder",
+      namespaceMethod: "deleteFolder",
       args: ["/My Drive/Folder"]
     }
   ];
@@ -370,6 +433,11 @@ test("maps user-actionable Drive failures to localized provider details", () => 
       new GoogleDriveNamespaceError("drive_write_forbidden"),
       "google-drive-access",
       "vfsErrorAccessTitle"
+    ],
+    [
+      new GoogleDriveNamespaceError("drive_delete_forbidden"),
+      "google-drive-trash-forbidden",
+      "vfsErrorTrashTitle"
     ],
     [
       new GoogleDriveNamespaceError("drive_path_not_found"),

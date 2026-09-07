@@ -17,13 +17,13 @@ export const GOOGLE_DRIVE_CAPABILITIES = Object.freeze({
     read: true,
     add: true,
     modify: false,
-    delete: false
+    delete: true
   }),
   folder: Object.freeze({
     read: true,
     add: true,
     modify: false,
-    delete: false
+    delete: true
   })
 });
 
@@ -39,7 +39,10 @@ const FALLBACK_MESSAGES = Object.freeze({
     "Check the network connection and try again.",
   vfsErrorAccessTitle: "Google Drive access denied",
   vfsErrorAccessDescription:
-    "The selected item cannot be read with this Google account.",
+    "The selected item cannot be accessed with this Google account.",
+  vfsErrorTrashTitle: "Cannot move item to trash",
+  vfsErrorTrashDescription:
+    "This Google account cannot move the selected item to the Google Drive trash.",
   vfsErrorUnavailableTitle: "Google Drive item unavailable",
   vfsErrorUnavailableDescription:
     "The selected item no longer exists or cannot be opened."
@@ -130,6 +133,15 @@ export function mapVfsProviderError(error, getMessage) {
       "google-drive-access",
       "vfsErrorAccessTitle",
       "vfsErrorAccessDescription",
+      error
+    );
+  }
+  if (error?.code === "drive_delete_forbidden") {
+    return providerError(
+      getMessage,
+      "google-drive-trash-forbidden",
+      "vfsErrorTrashTitle",
+      "vfsErrorTrashDescription",
       error
     );
   }
@@ -243,6 +255,24 @@ export class GoogleDriveVfsProvider extends VfsProviderImplementation {
     return this.#abortRegistry.run(requestId, (signal) =>
       this.#run("add_folder", storageId, "folder.add", (namespace) =>
         namespace.addFolder(path, {
+          signal,
+          onProgress: (percent) => this.reportProgress(requestId, percent)
+        })));
+  }
+
+  async onDeleteFile(requestId, storageId, path) {
+    return this.#abortRegistry.run(requestId, (signal) =>
+      this.#run("delete_file", storageId, "file.delete", (namespace) =>
+        namespace.deleteFile(path, {
+          signal,
+          onProgress: (percent) => this.reportProgress(requestId, percent)
+        })));
+  }
+
+  async onDeleteFolder(requestId, storageId, path) {
+    return this.#abortRegistry.run(requestId, (signal) =>
+      this.#run("delete_folder", storageId, "folder.delete", (namespace) =>
+        namespace.deleteFolder(path, {
           signal,
           onProgress: (percent) => this.reportProgress(requestId, percent)
         })));
