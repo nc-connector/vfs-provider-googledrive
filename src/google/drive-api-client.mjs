@@ -389,7 +389,7 @@ export class GoogleDriveApiClient {
       body: serializeMetadata(metadata),
       signal,
       operation: "files.create.metadata",
-      retryMode: "never"
+      retryMode: "rate-limit"
     });
   }
 
@@ -422,7 +422,7 @@ export class GoogleDriveApiClient {
       body,
       signal,
       operation: uploadOperation(normalizedFileId, "multipart"),
-      retryMode: "never"
+      retryMode: "rate-limit"
     });
   }
 
@@ -454,7 +454,7 @@ export class GoogleDriveApiClient {
       responseType: "response",
       signal,
       operation: uploadOperation(normalizedFileId, "resumable.start"),
-      retryMode: "never"
+      retryMode: "rate-limit"
     });
     const location = response.headers.get("Location");
     try {

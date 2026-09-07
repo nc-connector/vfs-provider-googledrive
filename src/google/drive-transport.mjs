@@ -14,7 +14,7 @@ const RETRYABLE_FORBIDDEN_REASONS = new Set([
   "userRateLimitExceeded"
 ]);
 const RESPONSE_TYPES = new Set(["blob", "json", "response"]);
-const RETRY_MODES = new Set(["safe", "always", "never"]);
+const RETRY_MODES = new Set(["safe", "always", "never", "rate-limit"]);
 const SAFE_RETRY_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const EXTRA_SUCCESS_STATUSES = new Set([308]);
 
@@ -172,12 +172,17 @@ function parseRetryAfter(value, now) {
   return Math.max(0, timestamp - now);
 }
 
-function isRetryableStatus(status, reasons) {
-  if (status === 429 || (status >= 500 && status <= 599)) {
+function isExplicitRateLimit(status, reasons) {
+  if (status === 429) {
     return true;
   }
   return status === 403 && reasons.some((reason) =>
     RETRYABLE_FORBIDDEN_REASONS.has(reason));
+}
+
+function isRetryableStatus(status, reasons) {
+  return isExplicitRateLimit(status, reasons) ||
+    (status >= 500 && status <= 599);
 }
 
 export class GoogleDriveRequestError extends Error {
@@ -276,7 +281,7 @@ export class GoogleDriveTransport {
       uploadSessionUrl
     });
     const normalizedMethod = method.trim().toUpperCase();
-    const canRetry = retryMode === "always" ||
+    const canRetryNetwork = retryMode === "always" ||
       (retryMode === "safe" && SAFE_RETRY_METHODS.has(normalizedMethod));
     throwIfAborted(signal);
     let accessToken = await this.#oauthClient.getAccessToken(accountId);
@@ -301,7 +306,7 @@ export class GoogleDriveTransport {
           throw error;
         }
         retries = await this.#handleNetworkFailure(error, {
-          canRetry,
+          canRetry: canRetryNetwork,
           operation,
           retries,
           signal
@@ -330,7 +335,7 @@ export class GoogleDriveTransport {
             throw error;
           }
           retries = await this.#handleNetworkFailure(error, {
-            canRetry,
+            canRetry: canRetryNetwork,
             operation,
             retries,
             signal
@@ -342,11 +347,14 @@ export class GoogleDriveTransport {
       const payload = await readErrorPayload(response, signal);
       const reasons = errorReasons(payload);
       const retryable = isRetryableStatus(response.status, reasons);
+      const canRetryResponse = canRetryNetwork ||
+        (retryMode === "rate-limit" &&
+          isExplicitRateLimit(response.status, reasons));
       const retryAfterMs = parseRetryAfter(
         response.headers.get("Retry-After"),
         this.#now()
       );
-      if (canRetry && retryable && retries < this.#maxRetries) {
+      if (canRetryResponse && retryable && retries < this.#maxRetries) {
         const nextRetries = retries + 1;
         const backoffDelayMs = this.#backoffDelay(nextRetries);
         if (retryAfterMs !== null && retryAfterMs > this.#maxDelayMs) {
@@ -382,7 +390,7 @@ export class GoogleDriveTransport {
         {
           status: response.status,
           reasons,
-          retryable: canRetry && retryable,
+          retryable: canRetryResponse && retryable,
           retryAfterMs
         }
       );

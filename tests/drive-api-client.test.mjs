@@ -212,7 +212,7 @@ test("creates metadata in My Drive and Shared Drive folders", async () => {
   });
   assert.equal(calls[0].options.body, JSON.stringify(metadata));
   assert.equal(calls[0].options.operation, "files.create.metadata");
-  assert.equal(calls[0].options.retryMode, "never");
+  assert.equal(calls[0].options.retryMode, "rate-limit");
 });
 
 test("creates a small file with metadata-first multipart upload", async () => {
@@ -234,7 +234,7 @@ test("creates a small file with metadata-first multipart upload", async () => {
     fields: DRIVE_FILE_FIELDS
   });
   assert.equal(options.method, "POST");
-  assert.equal(options.retryMode, "never");
+  assert.equal(options.retryMode, "rate-limit");
   assert.equal(options.body instanceof Blob, true);
   assert.equal(
     options.headers["Content-Type"],
@@ -331,7 +331,7 @@ test("starts create and update resumable sessions without replaying initiation",
     assert.equal(options.headers["X-Upload-Content-Length"], "7");
     assert.equal(Object.hasOwn(options.headers, "Content-Length"), false);
     assert.equal(options.responseType, "response");
-    assert.equal(options.retryMode, "never");
+    assert.equal(options.retryMode, "rate-limit");
   }
 });
 

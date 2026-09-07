@@ -373,6 +373,206 @@ test("defers a retry rather than shortening a long Retry-After value", async () 
   assert.deepEqual(harness.delays, []);
 });
 
+test("retries explicit rate-limit responses for mutating requests", async () => {
+  let requests = 0;
+  const harness = createHarness({
+    fetchApi: async () => {
+      requests++;
+      if (requests === 1) {
+        return jsonResponse({ error: {} }, 429);
+      }
+      if (requests === 2) {
+        return jsonResponse({
+          error: { errors: [{ reason: "userRateLimitExceeded" }] }
+        }, 403);
+      }
+      return jsonResponse({ id: "created" });
+    }
+  });
+
+  assert.deepEqual(await harness.transport.request("account-1", {
+    resourcePath: "files",
+    method: "POST",
+    retryMode: "rate-limit"
+  }), { id: "created" });
+  assert.equal(requests, 3);
+  assert.deepEqual(harness.delays, [100, 200]);
+});
+
+test("does not replay mutating requests after uncertain failures", async () => {
+  const cases = [
+    {
+      fetchApi: async () => {
+        throw new TypeError("network unavailable");
+      },
+      code: "drive_network_error",
+      status: 0
+    },
+    {
+      fetchApi: async () => jsonResponse({ error: {} }, 503),
+      code: "drive_request_failed",
+      status: 503
+    },
+    {
+      fetchApi: async () => jsonResponse({
+        error: { errors: [{ reason: "insufficientFilePermissions" }] }
+      }, 403),
+      code: "drive_request_failed",
+      status: 403
+    }
+  ];
+
+  for (const expected of cases) {
+    let requests = 0;
+    const harness = createHarness({
+      fetchApi: async (...args) => {
+        requests++;
+        return expected.fetchApi(...args);
+      }
+    });
+    await assert.rejects(
+      harness.transport.request("account-1", {
+        resourcePath: "files",
+        method: "POST",
+        retryMode: "rate-limit"
+      }),
+      (error) => error instanceof GoogleDriveRequestError &&
+        error.code === expected.code &&
+        error.status === expected.status &&
+        error.retryable === false
+    );
+    assert.equal(requests, 1);
+    assert.deepEqual(harness.delays, []);
+  }
+});
+
+test("does not replay a mutation after an invalid success body", async () => {
+  let requests = 0;
+  const harness = createHarness({
+    fetchApi: async () => {
+      requests++;
+      return new Response("not json", { status: 200 });
+    }
+  });
+
+  await assert.rejects(
+    harness.transport.request("account-1", {
+      resourcePath: "files",
+      method: "POST",
+      retryMode: "rate-limit"
+    }),
+    (error) => error instanceof GoogleDriveRequestError &&
+      error.code === "drive_response_invalid" &&
+      error.status === 200
+  );
+  assert.equal(requests, 1);
+  assert.deepEqual(harness.delays, []);
+});
+
+test("does not replay a mutation when reading its success body fails", async () => {
+  let requests = 0;
+  const harness = createHarness({
+    fetchApi: async () => {
+      requests++;
+      return brokenBodyResponse(new TypeError("connection reset"));
+    }
+  });
+
+  await assert.rejects(
+    harness.transport.request("account-1", {
+      resourcePath: "files",
+      method: "POST",
+      retryMode: "rate-limit"
+    }),
+    (error) => error instanceof GoogleDriveRequestError &&
+      error.code === "drive_network_error" &&
+      error.retryable === false
+  );
+  assert.equal(requests, 1);
+  assert.deepEqual(harness.delays, []);
+});
+
+test("stops after a rate-limit retry ends in an uncertain failure", async () => {
+  const finalResponses = [
+    async () => {
+      throw new TypeError("network unavailable");
+    },
+    async () => jsonResponse({ error: {} }, 503)
+  ];
+
+  for (const finalResponse of finalResponses) {
+    let requests = 0;
+    const harness = createHarness({
+      fetchApi: async () => {
+        requests++;
+        return requests === 1
+          ? jsonResponse({ error: {} }, 429)
+          : finalResponse();
+      }
+    });
+    await assert.rejects(
+      harness.transport.request("account-1", {
+        resourcePath: "files",
+        method: "POST",
+        retryMode: "rate-limit"
+      }),
+      (error) => error instanceof GoogleDriveRequestError &&
+        error.retryable === false
+    );
+    assert.equal(requests, 2);
+    assert.deepEqual(harness.delays, [100]);
+  }
+});
+
+test("requires a readable rate-limit reason before repeating a 403 mutation", async () => {
+  let requests = 0;
+  const harness = createHarness({
+    fetchApi: async () => {
+      requests++;
+      return new Response(new ReadableStream({
+        start(controller) {
+          controller.error(new TypeError("connection reset"));
+        }
+      }), { status: 403 });
+    }
+  });
+
+  await assert.rejects(
+    harness.transport.request("account-1", {
+      resourcePath: "files",
+      method: "POST",
+      retryMode: "rate-limit"
+    }),
+    (error) => error instanceof GoogleDriveRequestError &&
+      error.status === 403 && error.retryable === false
+  );
+  assert.equal(requests, 1);
+  assert.deepEqual(harness.delays, []);
+});
+
+test("refreshes authorization once for a rejected mutation", async () => {
+  const authorizationHeaders = [];
+  const harness = createHarness({
+    fetchApi: async (_url, options) => {
+      authorizationHeaders.push(options.headers.get("Authorization"));
+      return authorizationHeaders.length === 1
+        ? jsonResponse({ error: {} }, 401)
+        : jsonResponse({ id: "created" });
+    }
+  });
+
+  assert.deepEqual(await harness.transport.request("account-1", {
+    resourcePath: "files",
+    method: "POST",
+    retryMode: "rate-limit"
+  }), { id: "created" });
+  assert.deepEqual(authorizationHeaders, [
+    "Bearer cached-token",
+    "Bearer refreshed-token"
+  ]);
+  assert.deepEqual(harness.delays, []);
+});
+
 test("does not retry an unsafe request after an unknown network outcome", async () => {
   let requests = 0;
   const harness = createHarness({

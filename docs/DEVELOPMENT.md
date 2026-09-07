@@ -166,7 +166,9 @@ the authorization header inside the background context. A 401 response causes
 one forced token refresh. Safe read requests use bounded exponential backoff
 with jitter for network failures, HTTP 429, HTTP 5xx, and Drive's documented
 rate-limit reasons. Requests that may mutate data are not repeated after an
-unknown network outcome unless a future caller explicitly selects that mode.
+unknown network outcome. Their initiation may be repeated only after an
+explicit HTTP 429 response or a 403 response carrying a documented rate-limit
+reason; a rejected 401 may also be repeated once after token refresh.
 If `Retry-After` exceeds the in-memory wait budget, the transport returns a
 typed deferred-retry error instead of retrying early or keeping an MV3
 background wait alive for an unbounded period.
