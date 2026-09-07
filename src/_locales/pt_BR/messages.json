@@ -64,6 +64,8 @@
   "vfsErrorAccessDescription": { "message": "O item selecionado não pode ser acessado com esta conta do Google." },
   "vfsErrorTrashTitle": { "message": "Não foi possível mover o item para a lixeira" },
   "vfsErrorTrashDescription": { "message": "Esta conta do Google não pode mover o item selecionado para a lixeira do Google Drive." },
+  "vfsErrorMoveTitle": { "message": "Não foi possível mover o item" },
+  "vfsErrorMoveDescription": { "message": "O item selecionado não pode ser movido para este destino. Verifique as permissões e restrições do Google Drive." },
   "vfsErrorUnavailableTitle": { "message": "Item do Google Drive indisponível" },
   "vfsErrorUnavailableDescription": { "message": "O item selecionado não existe mais ou não pode ser aberto." },
   "vfsSetupDocumentTitle": { "message": "Conectar ao Google Drive" },

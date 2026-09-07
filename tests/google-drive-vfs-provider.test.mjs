@@ -42,9 +42,11 @@ function createProvider({
   supportedCapabilities = new Set([
     "file.add",
     "file.delete",
+    "file.modify",
     "file.read",
     "folder.add",
     "folder.delete",
+    "folder.modify",
     "folder.read"
   ])
 } = {}) {
@@ -69,6 +71,12 @@ function createProvider({
     },
     async addFolder(path, options) {
       namespaceCalls.push({ method: "addFolder", path, options });
+    },
+    async moveFile(oldPath, newPath, options) {
+      namespaceCalls.push({ method: "moveFile", oldPath, newPath, options });
+    },
+    async moveFolder(oldPath, newPath, options) {
+      namespaceCalls.push({ method: "moveFolder", oldPath, newPath, options });
     },
     async deleteFile(path, options) {
       namespaceCalls.push({ method: "deleteFile", path, options });
@@ -125,8 +133,8 @@ function createProvider({
 
 test("advertises only implemented VFS operations", () => {
   assert.deepEqual(GOOGLE_DRIVE_CAPABILITIES, {
-    file: { read: true, add: true, modify: false, delete: true },
-    folder: { read: true, add: true, modify: false, delete: true }
+    file: { read: true, add: true, modify: true, delete: true },
+    folder: { read: true, add: true, modify: true, delete: true }
   });
   assert.equal(Object.isFrozen(GOOGLE_DRIVE_CAPABILITIES.file), true);
   assert.equal(Object.isFrozen(GOOGLE_DRIVE_CAPABILITIES.folder), true);
@@ -198,30 +206,31 @@ test("creates files through file.add and forwards upload progress", async () => 
   assert.deepEqual(progressCalls, [["request-write", 45]]);
 });
 
-test("does not expose file replacement through writeFile", async () => {
-  let namespaceCalled = false;
+test("replaces files through file.modify", async () => {
+  let writeCall;
   const namespace = {
-    async writeFile() {
-      namespaceCalled = true;
+    async writeFile(path, file, options) {
+      writeCall = { path, file, options };
     }
   };
   const { authorizationCalls, provider } = createProvider({ namespace });
+  const replacement = new Blob(["replacement"]);
 
-  await assert.rejects(
-    provider.onWriteFile(
-      "request-overwrite",
-      "storage-1",
-      "/My Drive/file.txt",
-      new Blob(["replacement"]),
-      true
-    ),
-    (error) => error.code === "E:AUTH" && !error.details
+  await provider.onWriteFile(
+    "request-overwrite",
+    "storage-1",
+    "/My Drive/file.txt",
+    replacement,
+    true
   );
 
   assert.deepEqual(authorizationCalls, [
     { storageId: "storage-1", capability: "file.modify" }
   ]);
-  assert.equal(namespaceCalled, false);
+  assert.equal(writeCall.path, "/My Drive/file.txt");
+  assert.equal(writeCall.file, replacement);
+  assert.equal(writeCall.options.overwrite, true);
+  assert.equal(writeCall.options.signal instanceof AbortSignal, true);
 });
 
 test("creates folders through folder.add and forwards progress", async () => {
@@ -248,6 +257,89 @@ test("creates folders through folder.add and forwards progress", async () => {
   assert.equal(addFolderCall.path, "/My Drive/Folder");
   assert.equal(addFolderCall.options.signal instanceof AbortSignal, true);
   assert.deepEqual(progressCalls, [["request-folder", 100]]);
+});
+
+test("moves files and folders through their modify capabilities", async () => {
+  const moveCalls = [];
+  const progressCalls = [];
+  const changeCalls = [];
+  const fileChange = [{
+    kind: "file",
+    action: "deleted",
+    target: { path: "/My Drive/target.txt" }
+  }];
+  const folderChange = [{
+    kind: "file",
+    action: "moved",
+    source: { path: "/My Drive/source/child.txt" },
+    target: { path: "/My Drive/target/child.txt" }
+  }];
+  const namespace = {
+    async moveFile(oldPath, newPath, options) {
+      moveCalls.push({ method: "moveFile", oldPath, newPath, options });
+      options.onProgress(50);
+      await options.onPartialChanges(fileChange);
+    },
+    async moveFolder(oldPath, newPath, options) {
+      moveCalls.push({ method: "moveFolder", oldPath, newPath, options });
+      options.onProgress(75);
+      await options.onPartialChanges(folderChange);
+    }
+  };
+  const { authorizationCalls, provider } = createProvider({ namespace });
+  provider.reportProgress = (...args) => progressCalls.push(args);
+  provider.reportStorageChange = async (...args) => changeCalls.push(args);
+
+  await provider.onMoveFile(
+    "request-move-file",
+    "storage-1",
+    "/My Drive/source.txt",
+    "/My Drive/target.txt",
+    true
+  );
+  await provider.onMoveFolder(
+    "request-move-folder",
+    "storage-1",
+    "/My Drive/source",
+    "/My Drive/target",
+    true
+  );
+
+  assert.deepEqual(authorizationCalls, [
+    { storageId: "storage-1", capability: "file.modify" },
+    { storageId: "storage-1", capability: "folder.modify" }
+  ]);
+  assert.deepEqual(moveCalls.map((call) => ({
+    method: call.method,
+    oldPath: call.oldPath,
+    newPath: call.newPath,
+    replace: call.options.overwrite ?? call.options.merge
+  })), [
+    {
+      method: "moveFile",
+      oldPath: "/My Drive/source.txt",
+      newPath: "/My Drive/target.txt",
+      replace: true
+    },
+    {
+      method: "moveFolder",
+      oldPath: "/My Drive/source",
+      newPath: "/My Drive/target",
+      replace: true
+    }
+  ]);
+  assert.equal(
+    moveCalls.every(({ options }) => options.signal instanceof AbortSignal),
+    true
+  );
+  assert.deepEqual(progressCalls, [
+    ["request-move-file", 50],
+    ["request-move-folder", 75]
+  ]);
+  assert.deepEqual(changeCalls, [
+    ["storage-1", fileChange],
+    ["storage-1", folderChange]
+  ]);
 });
 
 test("moves VFS file and folder deletions to trash", async () => {
@@ -364,6 +456,16 @@ test("cancels active file and folder mutation requests", async () => {
       args: ["/My Drive/Folder"]
     },
     {
+      handler: "onMoveFile",
+      namespaceMethod: "moveFile",
+      args: ["/My Drive/source.txt", "/My Drive/target.txt", false]
+    },
+    {
+      handler: "onMoveFolder",
+      namespaceMethod: "moveFolder",
+      args: ["/My Drive/source", "/My Drive/target", false]
+    },
+    {
       handler: "onDeleteFile",
       namespaceMethod: "deleteFile",
       args: ["/My Drive/file.txt"]
@@ -438,6 +540,16 @@ test("maps user-actionable Drive failures to localized provider details", () => 
       new GoogleDriveNamespaceError("drive_delete_forbidden"),
       "google-drive-trash-forbidden",
       "vfsErrorTrashTitle"
+    ],
+    [
+      new GoogleDriveNamespaceError("drive_move_forbidden"),
+      "google-drive-move-forbidden",
+      "vfsErrorMoveTitle"
+    ],
+    [
+      new GoogleDriveNamespaceError("drive_move_unsupported"),
+      "google-drive-move-forbidden",
+      "vfsErrorMoveTitle"
     ],
     [
       new GoogleDriveNamespaceError("drive_path_not_found"),

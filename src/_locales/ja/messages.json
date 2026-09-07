@@ -64,6 +64,8 @@
   "vfsErrorAccessDescription": { "message": "この Google アカウントでは、選択したアイテムにアクセスできません。" },
   "vfsErrorTrashTitle": { "message": "アイテムをゴミ箱に移動できません" },
   "vfsErrorTrashDescription": { "message": "この Google アカウントでは、選択したアイテムを Google ドライブのゴミ箱に移動できません。" },
+  "vfsErrorMoveTitle": { "message": "アイテムを移動できません" },
+  "vfsErrorMoveDescription": { "message": "選択したアイテムをこの移動先に移動できません。Google ドライブの権限と制限を確認してください。" },
   "vfsErrorUnavailableTitle": { "message": "Google ドライブのアイテムを利用できません" },
   "vfsErrorUnavailableDescription": { "message": "選択したアイテムは存在しないか、開くことができません。" },
   "vfsSetupDocumentTitle": { "message": "Google Drive に接続" },

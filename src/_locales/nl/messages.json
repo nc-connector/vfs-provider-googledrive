@@ -64,6 +64,8 @@
   "vfsErrorAccessDescription": { "message": "Het geselecteerde item is niet toegankelijk met dit Google-account." },
   "vfsErrorTrashTitle": { "message": "Item kan niet naar de prullenbak worden verplaatst" },
   "vfsErrorTrashDescription": { "message": "Dit Google-account kan het geselecteerde item niet naar de prullenbak van Google Drive verplaatsen." },
+  "vfsErrorMoveTitle": { "message": "Item kan niet worden verplaatst" },
+  "vfsErrorMoveDescription": { "message": "Het geselecteerde item kan niet naar deze bestemming worden verplaatst. Controleer de Google Drive-machtigingen en -beperkingen." },
   "vfsErrorUnavailableTitle": { "message": "Google Drive-item niet beschikbaar" },
   "vfsErrorUnavailableDescription": { "message": "Het geselecteerde item bestaat niet meer of kan niet worden geopend." },
   "vfsSetupDocumentTitle": { "message": "Google Drive verbinden" },

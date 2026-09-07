@@ -64,6 +64,8 @@
   "vfsErrorAccessDescription": { "message": "Auf das ausgewählte Element kann mit diesem Google-Konto nicht zugegriffen werden." },
   "vfsErrorTrashTitle": { "message": "Element kann nicht in den Papierkorb verschoben werden" },
   "vfsErrorTrashDescription": { "message": "Dieses Google-Konto kann das ausgewählte Element nicht in den Google-Drive-Papierkorb verschieben." },
+  "vfsErrorMoveTitle": { "message": "Element kann nicht verschoben werden" },
+  "vfsErrorMoveDescription": { "message": "Das ausgewählte Element kann nicht an dieses Ziel verschoben werden. Prüfen Sie die Berechtigungen und Beschränkungen von Google Drive." },
   "vfsErrorUnavailableTitle": { "message": "Google-Drive-Element nicht verfügbar" },
   "vfsErrorUnavailableDescription": { "message": "Das ausgewählte Element existiert nicht mehr oder kann nicht geöffnet werden." },
   "vfsSetupDocumentTitle": { "message": "Google Drive verbinden" },

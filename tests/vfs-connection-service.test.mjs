@@ -230,9 +230,13 @@ test("authorizes only one current connection with the requested capability", asy
     (await service.getAuthorizedBinding("storage-1", "folder.delete")).accountId,
     "account-1"
   );
-  await assert.rejects(
-    service.getAuthorizedBinding("storage-1", "file.modify"),
-    (error) => error.code === "E:AUTH"
+  assert.equal(
+    (await service.getAuthorizedBinding("storage-1", "file.modify")).accountId,
+    "account-1"
+  );
+  assert.equal(
+    (await service.getAuthorizedBinding("storage-1", "folder.modify")).accountId,
+    "account-1"
   );
   await assert.rejects(
     service.getAuthorizedBinding("unknown", "file.read"),

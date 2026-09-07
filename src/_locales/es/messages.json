@@ -64,6 +64,8 @@
   "vfsErrorAccessDescription": { "message": "No se puede acceder al elemento seleccionado con esta cuenta de Google." },
   "vfsErrorTrashTitle": { "message": "No se puede mover el elemento a la papelera" },
   "vfsErrorTrashDescription": { "message": "Esta cuenta de Google no puede mover el elemento seleccionado a la papelera de Google Drive." },
+  "vfsErrorMoveTitle": { "message": "No se puede mover el elemento" },
+  "vfsErrorMoveDescription": { "message": "El elemento seleccionado no se puede mover a este destino. Comprueba los permisos y las restricciones de Google Drive." },
   "vfsErrorUnavailableTitle": { "message": "Elemento de Google Drive no disponible" },
   "vfsErrorUnavailableDescription": { "message": "El elemento seleccionado ya no existe o no se puede abrir." },
   "vfsSetupDocumentTitle": { "message": "Conectar Google Drive" },

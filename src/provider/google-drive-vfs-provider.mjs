@@ -16,13 +16,13 @@ export const GOOGLE_DRIVE_CAPABILITIES = Object.freeze({
   file: Object.freeze({
     read: true,
     add: true,
-    modify: false,
+    modify: true,
     delete: true
   }),
   folder: Object.freeze({
     read: true,
     add: true,
-    modify: false,
+    modify: true,
     delete: true
   })
 });
@@ -43,6 +43,9 @@ const FALLBACK_MESSAGES = Object.freeze({
   vfsErrorTrashTitle: "Cannot move item to trash",
   vfsErrorTrashDescription:
     "This Google account cannot move the selected item to the Google Drive trash.",
+  vfsErrorMoveTitle: "Cannot move item",
+  vfsErrorMoveDescription:
+    "The selected item cannot be moved to this destination. Check the Google Drive permissions and restrictions.",
   vfsErrorUnavailableTitle: "Google Drive item unavailable",
   vfsErrorUnavailableDescription:
     "The selected item no longer exists or cannot be opened."
@@ -142,6 +145,16 @@ export function mapVfsProviderError(error, getMessage) {
       "google-drive-trash-forbidden",
       "vfsErrorTrashTitle",
       "vfsErrorTrashDescription",
+      error
+    );
+  }
+  if (error?.code === "drive_move_forbidden" ||
+      error?.code === "drive_move_unsupported") {
+    return providerError(
+      getMessage,
+      "google-drive-move-forbidden",
+      "vfsErrorMoveTitle",
+      "vfsErrorMoveDescription",
       error
     );
   }
@@ -257,6 +270,30 @@ export class GoogleDriveVfsProvider extends VfsProviderImplementation {
         namespace.addFolder(path, {
           signal,
           onProgress: (percent) => this.reportProgress(requestId, percent)
+        })));
+  }
+
+  async onMoveFile(requestId, storageId, oldPath, newPath, overwrite) {
+    return this.#abortRegistry.run(requestId, (signal) =>
+      this.#run("move_file", storageId, "file.modify", (namespace) =>
+        namespace.moveFile(oldPath, newPath, {
+          overwrite,
+          signal,
+          onProgress: (percent) => this.reportProgress(requestId, percent),
+          onPartialChanges: (entries) =>
+            this.reportStorageChange(storageId, entries)
+        })));
+  }
+
+  async onMoveFolder(requestId, storageId, oldPath, newPath, merge) {
+    return this.#abortRegistry.run(requestId, (signal) =>
+      this.#run("move_folder", storageId, "folder.modify", (namespace) =>
+        namespace.moveFolder(oldPath, newPath, {
+          merge,
+          signal,
+          onProgress: (percent) => this.reportProgress(requestId, percent),
+          onPartialChanges: (entries) =>
+            this.reportStorageChange(storageId, entries)
         })));
   }
 

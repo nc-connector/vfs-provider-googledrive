@@ -64,6 +64,8 @@
   "vfsErrorAccessDescription": { "message": "A kijelölt elem nem érhető el ezzel a Google-fiókkal." },
   "vfsErrorTrashTitle": { "message": "Az elem nem helyezhető a kukába" },
   "vfsErrorTrashDescription": { "message": "Ez a Google-fiók nem helyezheti a kijelölt elemet a Google Drive kukájába." },
+  "vfsErrorMoveTitle": { "message": "Az elem nem helyezhető át" },
+  "vfsErrorMoveDescription": { "message": "A kijelölt elem nem helyezhető át erre a helyre. Ellenőrizze a Google Drive engedélyeit és korlátozásait." },
   "vfsErrorUnavailableTitle": { "message": "A Google Drive eleme nem érhető el" },
   "vfsErrorUnavailableDescription": { "message": "A kijelölt elem már nem létezik, vagy nem nyitható meg." },
   "vfsSetupDocumentTitle": { "message": "Google Drive csatlakoztatása" },

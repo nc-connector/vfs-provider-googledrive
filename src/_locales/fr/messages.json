@@ -64,6 +64,8 @@
   "vfsErrorAccessDescription": { "message": "L’élément sélectionné n’est pas accessible avec ce compte Google." },
   "vfsErrorTrashTitle": { "message": "Impossible de placer l’élément dans la corbeille" },
   "vfsErrorTrashDescription": { "message": "Ce compte Google ne peut pas placer l’élément sélectionné dans la corbeille Google Drive." },
+  "vfsErrorMoveTitle": { "message": "Impossible de déplacer l’élément" },
+  "vfsErrorMoveDescription": { "message": "L’élément sélectionné ne peut pas être déplacé vers cet emplacement. Vérifiez les autorisations et les restrictions de Google Drive." },
   "vfsErrorUnavailableTitle": { "message": "Élément Google Drive indisponible" },
   "vfsErrorUnavailableDescription": { "message": "L’élément sélectionné n’existe plus ou ne peut pas être ouvert." },
   "vfsSetupDocumentTitle": { "message": "Connecter Google Drive" },

@@ -64,6 +64,8 @@
   "vfsErrorAccessDescription": { "message": "Non è possibile accedere all’elemento selezionato con questo account Google." },
   "vfsErrorTrashTitle": { "message": "Impossibile spostare l’elemento nel cestino" },
   "vfsErrorTrashDescription": { "message": "Questo account Google non può spostare l’elemento selezionato nel cestino di Google Drive." },
+  "vfsErrorMoveTitle": { "message": "Impossibile spostare l’elemento" },
+  "vfsErrorMoveDescription": { "message": "L’elemento selezionato non può essere spostato in questa destinazione. Controlla le autorizzazioni e le limitazioni di Google Drive." },
   "vfsErrorUnavailableTitle": { "message": "Elemento di Google Drive non disponibile" },
   "vfsErrorUnavailableDescription": { "message": "L’elemento selezionato non esiste più o non può essere aperto." },
   "vfsSetupDocumentTitle": { "message": "Collega Google Drive" },
