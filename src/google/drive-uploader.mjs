@@ -100,6 +100,7 @@ function isRecoverableUploadError(error) {
     return false;
   }
   if (error.code === "drive_network_error" ||
+      error.code === "drive_request_timeout" ||
       error.code === "drive_upload_response_invalid") {
     return true;
   }

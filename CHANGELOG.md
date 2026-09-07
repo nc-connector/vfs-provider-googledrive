@@ -17,8 +17,8 @@ This file records user-visible changes for each release.
   folder merges, and recoverable removal through the Google Drive trash.
 - Multiple Google accounts with OAuth 2.0 PKCE, token refresh, reauthorization,
   and account-bound VFS connections.
-- Request progress, cancellation, bounded retry, storage quota reporting, and
-  periodic remote-change updates.
+- Request progress, cancellation, bounded retry, stalled-request deadlines,
+  storage quota reporting, and periodic remote-change updates.
 - Localized settings and connection pages in all supported project languages.
 
 ### Security and review

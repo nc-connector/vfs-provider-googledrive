@@ -152,6 +152,10 @@ test("maps known and unknown OAuth errors to user-facing messages", async () => 
     errorMessageKey("account_has_connections"),
     "optionsErrorAccountHasConnections"
   );
+  assert.equal(
+    errorMessageKey("oauth_request_timeout"),
+    "vfsErrorNetworkDescription"
+  );
 
   const harness = createHarness({
     "googleDrive:account:authorize": {

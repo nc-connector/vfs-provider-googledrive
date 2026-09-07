@@ -4,7 +4,13 @@
 
 "use strict";
 
+import {
+  RequestDeadline,
+  RequestTimeoutError
+} from "../core/request-deadline.mjs";
+
 export const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
+export const OAUTH_REQUEST_TIMEOUT_MS = 30 * 1000;
 
 const AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -35,12 +41,22 @@ function requireClientId(value) {
   return clientId;
 }
 
-async function readJson(response) {
+async function readJson(response, signal) {
   try {
     return await response.json();
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) {
+      throw signal.reason instanceof Error ? signal.reason : error;
+    }
     return {};
   }
+}
+
+function requirePositiveNumber(value, name) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new TypeError(name);
+  }
+  return value;
 }
 
 function tokenExpiry(now, expiresIn) {
@@ -95,6 +111,7 @@ export class GoogleOAuthClient {
   #logger;
   #crypto;
   #now;
+  #requestTimeoutMs;
   #refreshPromises = new Map();
 
   constructor({
@@ -105,7 +122,8 @@ export class GoogleOAuthClient {
     fetchApi = fetch,
     logger,
     cryptoApi = crypto,
-    now = () => Date.now()
+    now = () => Date.now(),
+    requestTimeoutMs = OAUTH_REQUEST_TIMEOUT_MS
   }) {
     this.#identityApi = identityApi;
     this.#sessionRepository = sessionRepository;
@@ -115,6 +133,10 @@ export class GoogleOAuthClient {
     this.#logger = logger;
     this.#crypto = cryptoApi;
     this.#now = now;
+    this.#requestTimeoutMs = requirePositiveNumber(
+      requestTimeoutMs,
+      "requestTimeoutMs"
+    );
   }
 
   async authorize({ accountId, clientId, interactive = true } = {}) {
@@ -287,7 +309,7 @@ export class GoogleOAuthClient {
     clientId,
     redirectUri
   }) {
-    const response = await this.#fetch(TOKEN_ENDPOINT, {
+    const { response, payload } = await this.#request(TOKEN_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
@@ -299,8 +321,7 @@ export class GoogleOAuthClient {
         grant_type: "authorization_code",
         redirect_uri: redirectUri
       }).toString()
-    });
-    const payload = await readJson(response);
+    }, { readBody: true });
     if (!response.ok || typeof payload.access_token !== "string") {
       throw new GoogleOAuthError("oauth_token_request_failed", response.status);
     }
@@ -317,7 +338,7 @@ export class GoogleOAuthClient {
     if (!token) {
       return false;
     }
-    const response = await this.#fetch(REVOCATION_ENDPOINT, {
+    const { response } = await this.#request(REVOCATION_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
@@ -336,12 +357,11 @@ export class GoogleOAuthClient {
       "fields",
       "user(displayName,emailAddress,permissionId)"
     );
-    const response = await this.#fetch(url.toString(), {
+    const { response, payload } = await this.#request(url.toString(), {
       headers: {
         Authorization: `Bearer ${accessToken}`
       }
-    });
-    const payload = await readJson(response);
+    }, { readBody: true });
     if (!response.ok || !payload.user?.permissionId) {
       throw new GoogleOAuthError("oauth_profile_request_failed", response.status);
     }
@@ -355,7 +375,7 @@ export class GoogleOAuthClient {
   async #refreshAccessToken(accountId, authorization) {
     const clientId = requireClientId(authorization.oauthClientId);
     this.#logger.debug("oauth.token.refresh.start", { phase: "refresh" });
-    const response = await this.#fetch(TOKEN_ENDPOINT, {
+    const { response, payload } = await this.#request(TOKEN_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
@@ -365,8 +385,7 @@ export class GoogleOAuthClient {
         refresh_token: authorization.refreshToken,
         grant_type: "refresh_token"
       }).toString()
-    });
-    const payload = await readJson(response);
+    }, { readBody: true });
     if (!response.ok || typeof payload.access_token !== "string") {
       if (payload.error === "invalid_grant") {
         await this.#accountRepository.setAccountStatus(
@@ -399,5 +418,30 @@ export class GoogleOAuthClient {
     );
     this.#logger.debug("oauth.token.refresh.complete", { status: "connected" });
     return payload.access_token;
+  }
+
+  async #request(url, options, { readBody = false } = {}) {
+    const deadline = new RequestDeadline({
+      timeoutMs: this.#requestTimeoutMs
+    });
+    try {
+      const response = await this.#fetch(url, {
+        ...options,
+        signal: deadline.signal
+      });
+      const payload = readBody
+        ? await readJson(response, deadline.signal)
+        : null;
+      deadline.throwIfTimedOut();
+      return { response, payload };
+    } catch (error) {
+      const failure = deadline.normalizeError(error);
+      if (failure instanceof RequestTimeoutError) {
+        throw new GoogleOAuthError("oauth_request_timeout");
+      }
+      throw failure;
+    } finally {
+      deadline.stopTimeout();
+    }
   }
 }

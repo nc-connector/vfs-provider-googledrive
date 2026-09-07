@@ -4,6 +4,13 @@
 
 "use strict";
 
+import {
+  RequestDeadline,
+  RequestTimeoutError
+} from "../core/request-deadline.mjs";
+
+export const DRIVE_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
+
 const DRIVE_ENDPOINT_ROOTS = Object.freeze({
   api: "https://www.googleapis.com/drive/v3/",
   upload: "https://www.googleapis.com/upload/drive/v3/"
@@ -216,6 +223,7 @@ export class GoogleDriveTransport {
   #maxRetries;
   #baseDelayMs;
   #maxDelayMs;
+  #requestTimeoutMs;
 
   constructor({
     oauthClient,
@@ -226,7 +234,8 @@ export class GoogleDriveTransport {
     random = () => Math.random(),
     maxRetries = 4,
     baseDelayMs = 1000,
-    maxDelayMs = 32_000
+    maxDelayMs = 32_000,
+    requestTimeoutMs = DRIVE_REQUEST_TIMEOUT_MS
   }) {
     if (!oauthClient || typeof oauthClient.getAccessToken !== "function") {
       throw new TypeError("oauthClient");
@@ -244,6 +253,10 @@ export class GoogleDriveTransport {
     this.#maxRetries = requireNonNegativeInteger(maxRetries, "maxRetries");
     this.#baseDelayMs = requirePositiveNumber(baseDelayMs, "baseDelayMs");
     this.#maxDelayMs = requirePositiveNumber(maxDelayMs, "maxDelayMs");
+    this.#requestTimeoutMs = requirePositiveNumber(
+      requestTimeoutMs,
+      "requestTimeoutMs"
+    );
   }
 
   async request(accountId, {
@@ -292,6 +305,10 @@ export class GoogleDriveTransport {
       throwIfAborted(signal);
       const requestHeaders = new Headers(headers);
       requestHeaders.set("Authorization", `Bearer ${accessToken}`);
+      const deadline = new RequestDeadline({
+        signal,
+        timeoutMs: this.#requestTimeoutMs
+      });
 
       let response;
       try {
@@ -299,14 +316,21 @@ export class GoogleDriveTransport {
           method: normalizedMethod,
           headers: requestHeaders,
           body,
-          signal
+          signal: deadline.signal
         });
+        deadline.throwIfTimedOut();
+        deadline.stopTimeout();
       } catch (error) {
-        if (isAbortError(error, signal)) {
-          throw error;
+        const failure = deadline.normalizeError(error);
+        deadline.stopTimeout();
+        if (isAbortError(failure, signal)) {
+          throw failure;
         }
-        retries = await this.#handleNetworkFailure(error, {
+        retries = await this.#handleNetworkFailure(failure, {
           canRetry: canRetryNetwork,
+          failureCode: failure instanceof RequestTimeoutError
+            ? "drive_request_timeout"
+            : "drive_network_error",
           operation,
           retries,
           signal
@@ -330,12 +354,14 @@ export class GoogleDriveTransport {
         try {
           return await this.#readSuccess(response, responseType);
         } catch (error) {
-          if (isAbortError(error, signal) ||
-              error instanceof GoogleDriveRequestError) {
-            throw error;
+          const failure = deadline.normalizeError(error);
+          if (isAbortError(failure, signal) ||
+              failure instanceof GoogleDriveRequestError) {
+            throw failure;
           }
-          retries = await this.#handleNetworkFailure(error, {
+          retries = await this.#handleNetworkFailure(failure, {
             canRetry: canRetryNetwork,
+            failureCode: "drive_network_error",
             operation,
             retries,
             signal
@@ -344,7 +370,12 @@ export class GoogleDriveTransport {
         }
       }
 
-      const payload = await readErrorPayload(response, signal);
+      let payload;
+      try {
+        payload = await readErrorPayload(response, deadline.signal);
+      } catch (error) {
+        throw deadline.normalizeError(error);
+      }
       const reasons = errorReasons(payload);
       const retryable = isRetryableStatus(response.status, reasons);
       const canRetryResponse = canRetryNetwork ||
@@ -422,13 +453,14 @@ export class GoogleDriveTransport {
 
   async #handleNetworkFailure(error, {
     canRetry,
+    failureCode,
     operation,
     retries,
     signal
   }) {
     if (!canRetry || retries >= this.#maxRetries) {
       const requestError = new GoogleDriveRequestError(
-        "drive_network_error",
+        failureCode,
         { retryable: canRetry, cause: error }
       );
       this.#logger?.warn?.("drive.request.failed", {

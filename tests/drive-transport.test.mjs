@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  DRIVE_REQUEST_TIMEOUT_MS,
   GoogleDriveRequestError,
   GoogleDriveTransport
 } from "../src/google/drive-transport.mjs";
@@ -33,11 +34,24 @@ function brokenBodyResponse(error, contentType = "application/json") {
   });
 }
 
+function rejectWhenAborted(signal) {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    signal.addEventListener("abort", () => reject(signal.reason), {
+      once: true
+    });
+  });
+}
+
 function createHarness({
   fetchApi = async () => jsonResponse({ ok: true }),
   maxRetries = 4,
   now = () => 1_000,
-  random = () => 0
+  random = () => 0,
+  requestTimeoutMs
 } = {}) {
   const tokenCalls = [];
   const oauthClient = {
@@ -61,10 +75,15 @@ function createHarness({
     random,
     maxRetries,
     baseDelayMs: 100,
-    maxDelayMs: 10_000
+    maxDelayMs: 10_000,
+    requestTimeoutMs
   });
   return { delays, logCalls, oauthClient, tokenCalls, transport };
 }
+
+test("uses the documented Drive request deadline", () => {
+  assert.equal(DRIVE_REQUEST_TIMEOUT_MS, 5 * 60 * 1000);
+});
 
 test("sends an authenticated Drive v3 request and returns JSON", async () => {
   const requests = [];
@@ -323,6 +342,50 @@ test("retries network failures, quota 403 responses, and 5xx responses", async (
   );
   assert.equal(requests, 4);
   assert.deepEqual(harness.delays, [100, 200, 400]);
+});
+
+test("retries a timed-out safe request", async () => {
+  let requests = 0;
+  const harness = createHarness({
+    maxRetries: 1,
+    requestTimeoutMs: 5,
+    fetchApi: async (_url, { signal }) => {
+      requests++;
+      return requests === 1
+        ? rejectWhenAborted(signal)
+        : jsonResponse({ id: "file-1" });
+    }
+  });
+
+  assert.deepEqual(await harness.transport.request("account-1", {
+    resourcePath: "files/file-1"
+  }), { id: "file-1" });
+  assert.equal(requests, 2);
+  assert.deepEqual(harness.delays, [100]);
+});
+
+test("does not replay a timed-out mutation", async () => {
+  let requests = 0;
+  const harness = createHarness({
+    requestTimeoutMs: 5,
+    fetchApi: async (_url, { signal }) => {
+      requests++;
+      return rejectWhenAborted(signal);
+    }
+  });
+
+  await assert.rejects(
+    harness.transport.request("account-1", {
+      resourcePath: "files",
+      method: "POST",
+      retryMode: "rate-limit"
+    }),
+    (error) => error instanceof GoogleDriveRequestError &&
+      error.code === "drive_request_timeout" &&
+      error.retryable === false
+  );
+  assert.equal(requests, 1);
+  assert.deepEqual(harness.delays, []);
 });
 
 test("honors Retry-After and does not expose the request URL in logs", async () => {

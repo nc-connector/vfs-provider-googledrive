@@ -103,6 +103,17 @@ export function mapVfsProviderError(error, getMessage) {
       error?.code === "E:PROVIDER") {
     return error;
   }
+  if (error?.code === "oauth_request_timeout" ||
+      error?.code === "drive_request_timeout" ||
+      error?.code === "drive_network_error") {
+    return providerError(
+      getMessage,
+      "google-drive-network",
+      "vfsErrorNetworkTitle",
+      "vfsErrorNetworkDescription",
+      error
+    );
+  }
   if (error instanceof GoogleOAuthError ||
       AUTH_ERROR_CODES.has(error?.code) || error?.status === 401) {
     return providerError(
@@ -110,15 +121,6 @@ export function mapVfsProviderError(error, getMessage) {
       "google-drive-authentication",
       "vfsErrorAuthenticationTitle",
       "vfsErrorAuthenticationDescription",
-      error
-    );
-  }
-  if (error?.code === "drive_network_error") {
-    return providerError(
-      getMessage,
-      "google-drive-network",
-      "vfsErrorNetworkTitle",
-      "vfsErrorNetworkDescription",
       error
     );
   }

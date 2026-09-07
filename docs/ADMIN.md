@@ -178,6 +178,13 @@ A Google authorization window must not open during installation, startup, or
 simply opening the settings. An account cannot be removed while a current VFS
 connection still uses it; remove the connection from the consumer first.
 
+Google account HTTP requests stop after 30 seconds without a completed
+response. Drive requests stop after five minutes if no response has started.
+This Drive deadline includes transmitting an individual upload request but is
+removed when download response headers arrive, so it is not a total-duration
+limit for large downloads. Consumer cancellation remains available throughout
+the file operation.
+
 Use **Sign in again** when Google rejects a stored grant or the account is
 marked for reauthorization. Removing an unused account asks Google to revoke
 its grant and then removes the local credentials. If Google cannot be reached,

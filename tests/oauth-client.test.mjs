@@ -10,6 +10,7 @@ import test from "node:test";
 import {
   GoogleOAuthClient,
   GoogleOAuthError,
+  OAUTH_REQUEST_TIMEOUT_MS,
   createGoogleRedirectUri,
   createPkceValues
 } from "../src/google/oauth-client.mjs";
@@ -27,7 +28,7 @@ function jsonResponse(payload, status = 200) {
   });
 }
 
-function createHarness({ fetchApi } = {}) {
+function createHarness({ fetchApi, requestTimeoutMs } = {}) {
   const localArea = new FakeStorageArea();
   const sessionArea = new FakeStorageArea();
   const accountRepository = new ProviderStateRepository({
@@ -63,7 +64,8 @@ function createHarness({ fetchApi } = {}) {
     preferencesRepository,
     fetchApi,
     logger,
-    now: () => 1_000
+    now: () => 1_000,
+    requestTimeoutMs
   });
   return {
     accountRepository,
@@ -75,6 +77,22 @@ function createHarness({ fetchApi } = {}) {
     sessionRepository
   };
 }
+
+function rejectWhenAborted(signal) {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    signal.addEventListener("abort", () => reject(signal.reason), {
+      once: true
+    });
+  });
+}
+
+test("uses the documented Google account request deadline", () => {
+  assert.equal(OAUTH_REQUEST_TIMEOUT_MS, 30 * 1000);
+});
 
 test("builds the Google-compatible Mozilla loopback redirect", async () => {
   const redirectUri = await createGoogleRedirectUri({
@@ -149,6 +167,24 @@ test("rejects a mismatched state and clears the PKCE transaction", async () => {
     harness.client.authorize(),
     (error) => error instanceof GoogleOAuthError &&
       error.code === "oauth_state_mismatch"
+  );
+  assert.deepEqual(
+    harness.sessionArea.snapshot()["google-drive-oauth-session"].transactions,
+    {}
+  );
+});
+
+test("times out token exchange and clears the PKCE transaction", async () => {
+  const harness = createHarness({
+    requestTimeoutMs: 5,
+    fetchApi: async (_url, { signal }) => rejectWhenAborted(signal)
+  });
+  await harness.preferencesRepository.update({ oauthClientId: CLIENT_ID });
+
+  await assert.rejects(
+    harness.client.authorize(),
+    (error) => error instanceof GoogleOAuthError &&
+      error.code === "oauth_request_timeout"
   );
   assert.deepEqual(
     harness.sessionArea.snapshot()["google-drive-oauth-session"].transactions,
@@ -297,6 +333,29 @@ test("marks an account for reauthorization after invalid_grant", async () => {
   assert.equal(
     (await harness.accountRepository.getAccount("account-1")).status,
     "reauthorization_required"
+  );
+});
+
+test("keeps an account connected after a token refresh timeout", async () => {
+  const harness = createHarness({
+    requestTimeoutMs: 5,
+    fetchApi: async (_url, { signal }) => rejectWhenAborted(signal)
+  });
+  await harness.preferencesRepository.update({ oauthClientId: CLIENT_ID });
+  await harness.accountRepository.upsertAccount({
+    googleUserId: "google-user-1",
+    oauthClientId: CLIENT_ID,
+    refreshToken: "refresh-secret"
+  });
+
+  await assert.rejects(
+    harness.client.getAccessToken("account-1"),
+    (error) => error instanceof GoogleOAuthError &&
+      error.code === "oauth_request_timeout"
+  );
+  assert.equal(
+    (await harness.accountRepository.getAccount("account-1")).status,
+    "connected"
   );
 });
 

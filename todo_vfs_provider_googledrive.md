@@ -77,6 +77,10 @@ kept in sync with the repository.
   backoff and `Retry-After`; report offline and exhausted retries clearly.
   This includes response-body failures, deferred long `Retry-After` values, and
   localized VFS-facing error text.
+- [x] Bound stalled account HTTP requests to 30 seconds and Drive requests to
+  five minutes until response headers. Do not replay uncertain writes; recover
+  resumable chunks from Drive's confirmed offset and leave large download bodies
+  without an arbitrary total-duration cap.
 
 ### Implemented building blocks
 

@@ -113,10 +113,15 @@ Run these cases with disposable files and retain the provider's redacted log:
 - revoke a Google grant, confirm the account is marked for reauthorization,
   and reconnect it through **Sign in again**;
 - interrupt a safe read before a retry and confirm cancellation stops backoff;
+- stall token exchange or refresh beyond 30 seconds and confirm the operation
+  reports a network failure without marking a connected account for
+  reauthorization;
+- stall a Drive request before response headers beyond five minutes and confirm
+  a safe read retries while an uncertain metadata or multipart write does not;
 - exercise an HTTP 429 or documented Drive rate-limit response and confirm the
   bounded retry behavior;
-- interrupt a resumable upload response and confirm the provider queries the
-  server-confirmed offset before continuing;
+- interrupt or time out a resumable upload response and confirm the provider
+  queries the server-confirmed offset before continuing;
 - close an unfinished connection setup and confirm no account binding is
   published;
 - restart Thunderbird with idle accounts and connections, then browse without

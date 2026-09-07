@@ -26,9 +26,9 @@ The current build provides:
 - Google OAuth Authorization Code flow with PKCE, token refresh, revocation,
   and restart-safe session token storage;
 - localized account, diagnostic, and Google Workspace export settings;
-- authenticated Google Drive v3 requests with token refresh, bounded retry for
-  safe reads, validated upload-session URLs, pagination, quota, metadata,
-  download, and export helpers;
+- authenticated Google Drive v3 requests with token refresh, bounded retry and
+  request deadlines, validated upload-session URLs, pagination, quota,
+  metadata, download, and export helpers;
 - a consumer-bound VFS connection lifecycle with localized setup and
   configuration popups;
 - VFS access to My Drive, Shared with me, and Shared drives, including Google

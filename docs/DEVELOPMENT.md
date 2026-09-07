@@ -49,7 +49,7 @@ Drive, and this project does not include its WebDAV protocol code.
 | `src/manifest.json` | Thunderbird MV3 manifest and product metadata |
 | `src/background.js` | module background entry point |
 | `src/state/` | versioned account, connection-binding, change-cursor, and preference storage |
-| `src/core/logger.mjs` | redacted provider diagnostics |
+| `src/core/` | request cancellation, network deadlines, and redacted provider diagnostics |
 | `src/google/` | Google OAuth, session-token, and Drive API services |
 | `src/provider/` | VFS adapter and account-bound connection lifecycle |
 | `src/runtime/` | internal extension message boundary |
@@ -168,6 +168,12 @@ settings page reports when the account was removed locally but its Google grant
 may remain. An interactive authorization window is opened only for an internal
 user action, never during startup.
 
+Token exchange, token refresh, profile lookup, and revocation requests have a
+30-second deadline. A deadline failure does not mark a connected account for
+reauthorization because it says nothing about the validity of the stored grant.
+It is reported as a network failure and can be retried by the user or a later
+VFS request.
+
 The options page saves provider preferences before it starts a new login. A
 reauthorization request includes the selected local account ID, uses that
 account's original OAuth client ID and login hint, and rejects a returned Google
@@ -193,6 +199,16 @@ a resumable-session URL below the validated Drive upload path. A raw response
 mode preserves the `Location`, HTTP 308, and `Range` values used by the
 resumable uploader. It does not make upload decisions or repeat a mutating
 request after an unknown result.
+
+Each Drive fetch has a five-minute deadline until response headers arrive. For
+writes, that interval includes sending the multipart body or one resumable
+8 MiB chunk. A timed-out safe read may use the normal bounded retry path. A
+timed-out multipart or metadata mutation is not replayed because its server
+outcome is unknown. After a resumable chunk timeout, the uploader queries the
+server-confirmed offset before sending more bytes. The deadline is removed once
+response headers arrive, so it does not impose a fixed total duration on a
+large file download. The VFS request's cancellation signal remains connected
+while the response body is read.
 
 `GoogleDriveApiClient` provides paginated file and shared-drive listing,
 metadata, storage quota, binary download, byte ranges, Google Workspace export,
@@ -450,5 +466,4 @@ The implementation still needs these inputs or later release decisions:
 - a project-owned production Google OAuth Desktop client ID;
 - the final product icon and Google brand review;
 - the oldest Thunderbird version verified by smoke testing;
-- write timeout behavior;
 - release signing, update channel, and managed deployment.

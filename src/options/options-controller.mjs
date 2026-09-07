@@ -19,6 +19,7 @@ const ERROR_MESSAGE_KEYS = Object.freeze({
   oauth_denied: "optionsErrorOAuthCancelled",
   oauth_account_mismatch: "optionsErrorOAuthAccountMismatch",
   oauth_flow_failed: "optionsErrorOAuthGeneric",
+  oauth_request_timeout: "vfsErrorNetworkDescription",
   oauth_reauthorization_required: "optionsErrorOAuthReauthorizationRequired",
   oauth_token_refresh_failed: "optionsErrorOAuthReauthorizationRequired",
   oauth_refresh_token_missing: "optionsErrorOAuthReauthorizationRequired",

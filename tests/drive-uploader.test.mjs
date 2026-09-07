@@ -178,7 +178,7 @@ test("queries resumable state after an unknown chunk outcome", async () => {
       starts.push(options.start);
       sends++;
       if (sends === 1) {
-        throw requestError("drive_network_error");
+        throw requestError("drive_request_timeout");
       }
       return { complete: true, nextOffset: file.size, file: { id: "done" } };
     },

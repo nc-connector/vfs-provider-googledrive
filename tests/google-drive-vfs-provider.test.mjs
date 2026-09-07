@@ -618,6 +618,16 @@ test("maps user-actionable Drive failures to localized provider details", () => 
       "vfsErrorNetworkTitle"
     ],
     [
+      new GoogleDriveRequestError("drive_request_timeout"),
+      "google-drive-network",
+      "vfsErrorNetworkTitle"
+    ],
+    [
+      new GoogleOAuthError("oauth_request_timeout"),
+      "google-drive-network",
+      "vfsErrorNetworkTitle"
+    ],
+    [
       new GoogleDriveRequestError("drive_retry_deferred", {
         status: 429,
         retryable: true

@@ -262,6 +262,10 @@ test("keeps the popup open and shows connection failures", async () => {
     "vfsConnectionErrorAccountUnavailable"
   );
   assert.equal(
+    connectionErrorMessageKey("oauth_request_timeout"),
+    "vfsErrorNetworkDescription"
+  );
+  assert.equal(
     connectionErrorMessageKey("unknown"),
     "vfsConnectionErrorUnexpected"
   );
