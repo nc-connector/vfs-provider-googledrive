@@ -13,6 +13,7 @@
     "128": "assets/icon.svg"
   },
   "permissions": [
+    "alarms",
     "identity",
     "storage"
   ],

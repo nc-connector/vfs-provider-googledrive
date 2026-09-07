@@ -7,6 +7,9 @@
 "use strict";
 
 import { ProviderLogger } from "./core/logger.mjs";
+import {
+  GoogleDriveChangeMonitor
+} from "./google/drive-change-monitor.mjs";
 import { GoogleDriveTransport } from "./google/drive-transport.mjs";
 import { GoogleOAuthClient } from "./google/oauth-client.mjs";
 import { OAuthSessionRepository } from "./google/oauth-session.mjs";
@@ -17,6 +20,7 @@ import {
   VFS_TOOLKIT_CONNECTIONS_KEY,
   VfsConnectionService
 } from "./provider/vfs-connection-service.mjs";
+import { ChangePollScheduler } from "./runtime/change-poll-scheduler.mjs";
 import { createRuntimeMessageHandler } from "./runtime/message-handler.mjs";
 import {
   PROVIDER_PREFERENCES_KEY,
@@ -89,6 +93,37 @@ const provider = new GoogleDriveVfsProvider({
 });
 provider.init();
 
+const changeMonitor = new GoogleDriveChangeMonitor({
+  accountRepository,
+  connectionService,
+  transport: driveTransport,
+  reportStorageChange: (storageId, entries) =>
+    provider.reportStorageChange(storageId, entries),
+  logger
+});
+const changePollScheduler = new ChangePollScheduler({
+  alarmsApi: browser.alarms,
+  poll: () => readiness.then(() => changeMonitor.poll()),
+  logger
+});
+
+async function startChangePolling() {
+  try {
+    await readiness;
+    const created = await changePollScheduler.reconcileSchedule();
+    if (created) {
+      await changePollScheduler.pollNow();
+    }
+  } catch (error) {
+    logger.warn("drive.changes.schedule.failed", {
+      error,
+      phase: "schedule"
+    });
+  }
+}
+
+void startChangePolling();
+
 browser.runtime.onMessage.addListener(createRuntimeMessageHandler({
   extensionId: browser.runtime.id,
   readiness,
@@ -109,14 +144,27 @@ browser.storage.onChanged.addListener((changes, areaName) => {
     );
   }
   if (Object.hasOwn(changes, VFS_TOOLKIT_CONNECTIONS_KEY)) {
-    void readiness.then(() =>
-      connectionService.reconcileToolkitConnections()
-    ).catch((error) => {
+    void readiness.then(async () => {
+      try {
+        await connectionService.reconcileToolkitConnections();
+      } catch (error) {
+        logger.warn("vfs.connection.reconcile.failed", { error });
+        return;
+      }
+      try {
+        await changeMonitor.poll();
+      } catch (error) {
+        logger.warn("drive.changes.poll.failed", {
+          error,
+          phase: "connection_change"
+        });
+      }
+    }).catch((error) => {
       logger.warn("vfs.connection.reconcile.failed", { error });
     });
   }
 });
 
 browser.runtime.onStartup.addListener(() => {
-  void readiness;
+  void startChangePolling();
 });

@@ -79,7 +79,7 @@ function checkManifest() {
   assert(manifest.default_locale === "de", "German must remain the default locale");
   assert(manifest.version === packageJson.version, "Package and manifest versions differ");
   assert(!manifest.experiment_apis, "The provider must not include an Experiment API");
-  assert(JSON.stringify(manifest.permissions) === JSON.stringify(["identity", "storage"]), "Unexpected extension permissions");
+  assert(JSON.stringify(manifest.permissions) === JSON.stringify(["alarms", "identity", "storage"]), "Unexpected extension permissions");
   assert(JSON.stringify(manifest.host_permissions) === JSON.stringify([
     "https://oauth2.googleapis.com/*",
     "https://www.googleapis.com/*"
