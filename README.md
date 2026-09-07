@@ -103,7 +103,6 @@ the Thunderbird `webext-linter` repository.
 
 ## Documentation
 
-- [Changelog](CHANGELOG.md)
 - [Privacy policy](PRIVACY.md)
 - [Administration guide](docs/ADMIN.md)
 - [Development guide](docs/DEVELOPMENT.md)

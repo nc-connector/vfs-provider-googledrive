@@ -191,7 +191,7 @@ kept in sync with the repository.
   - [x] Document the release test matrix and manual evidence to retain.
   - [x] Document the ATN submission and release checklist, with unresolved
     product identity, production OAuth, and compatibility values kept as gates.
-- [x] Add a release changelog before the first release candidate.
+- [ ] Add a release changelog with the first release candidate.
 - [x] Complete license and third-party notices for all currently packaged source.
 - [ ] Replace the open PR #96 VFS review revision with its merged upstream commit,
   or confirm ATN acceptance of the pinned Thunderbird-owned revision.

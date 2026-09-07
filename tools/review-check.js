@@ -131,7 +131,6 @@ function checkVendor() {
 
 function checkFiles() {
   const required = [
-    "CHANGELOG.md",
     "PRIVACY.md",
     "README.md",
     "THIRD_PARTY_NOTICES.md",

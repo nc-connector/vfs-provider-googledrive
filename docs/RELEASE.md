@@ -52,8 +52,9 @@ Do not carry local Toolkit patches into a release candidate.
 
 1. Finish the release scope and remove or postpone every unresolved release
    blocker.
-2. Update the version in `src/manifest.json` and the matching release heading in
-   `CHANGELOG.md`.
+2. Update the version in `src/manifest.json`. Create `CHANGELOG.md` for the
+   first release candidate, add its release heading, and include it in the
+   build, package, and review file lists.
 3. Update `README.md`, `PRIVACY.md`, `docs/ADMIN.md`, `docs/DEVELOPMENT.md`,
    `docs/TESTING.md`, `Translations.md`, `VENDOR.md`, and
    `THIRD_PARTY_NOTICES.md` wherever behavior or source inputs changed.
