@@ -167,8 +167,14 @@ kept in sync with the repository.
 - [ ] Smoke-test the XPI on the oldest supported Thunderbird and the current ESR.
 - [ ] Run live tests against My Drive and a real Shared Drive, including token
   expiry, refresh, rate-limit retry, resumable upload, and change polling.
-- [ ] Complete setup, Google Cloud Console, OAuth scope, Shared Drive, export,
-  security, testing, and ATN release documentation.
+- [ ] Complete release documentation.
+  - [x] Document development Google Cloud setup, account connection and recovery,
+    OAuth scope and verification boundaries, Shared Drives, and Workspace exports.
+  - [x] Document current credential storage, diagnostic redaction, source review,
+    and third-party notices.
+  - [ ] Document the release test matrix and manual evidence to retain.
+  - [ ] Complete the ATN submission and release checklist once product identity,
+    production OAuth, and supported Thunderbird versions are settled.
 - [x] Add a release changelog before the first release candidate.
 - [x] Complete license and third-party notices for all currently packaged source.
 - [ ] Verify the reproducible release XPI contains exactly the reviewed source

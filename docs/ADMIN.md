@@ -6,10 +6,9 @@
 > copies and merges, and removal to the Google Drive trash. It is not ready for
 > production deployment because release validation is incomplete.
 
-This guide records the administrative boundary of the project while the
-provider is under development. Runtime setup, managed deployment, OAuth
-registration, and recovery procedures will be added when those functions
-exist.
+This guide records the current setup and administrative boundary of the
+project while the provider is under development. Decisions that still depend
+on release infrastructure or policy are listed separately.
 
 ## 1. Intended service scope
 
@@ -47,19 +46,100 @@ not request access to arbitrary sites or include Experiment APIs. The provider
 registers during background startup and advertises only connections previously
 approved by the user for the requesting consumer add-on.
 
-## 3. Google Cloud development setup
+## 3. Google Cloud and account setup
 
-Live OAuth testing needs a separate Google Cloud project with the Google Drive
-API enabled, an OAuth consent screen, and a Desktop app OAuth client. Enter that
-client ID in the provider settings. Do not
-place a client secret in this repository or the XPI; a desktop client is public
-and the implementation uses PKCE.
+### 3.1 Create a development project
 
-The requested full Drive scope is restricted. A production release needs a
-project-owned client, public privacy and support information, and Google's
-app-verification process. A Google Cloud project left in external testing mode
-is suitable only for listed testers and its refresh grants can expire after
-seven days.
+Use a separate Google Cloud project for development and live tests:
+
+1. Create or select the development project in Google Cloud Console.
+2. Enable the Google Drive API in the project's API library.
+3. Configure the Google Auth Platform branding and audience. An Internal
+   audience is limited to the project's Google Workspace organization. For an
+   External audience in Testing status, add every tester explicitly.
+4. Add `https://www.googleapis.com/auth/drive` to the project's requested data
+   access scopes.
+5. Create an OAuth client with application type **Desktop app**.
+6. Copy the client ID ending in `.apps.googleusercontent.com`.
+
+Do not place a client secret in this repository, an XPI, or provider settings.
+An installed desktop client cannot keep a shared secret; this implementation
+uses PKCE and the Mozilla loopback callback returned through
+`browser.identity`.
+
+Google limits an External project in Testing status to its listed test users.
+For scopes beyond basic identity, those authorizations and their refresh tokens
+normally expire after seven days. That mode is therefore suitable for
+development, not a public release.
+
+Official setup references:
+
+- [OAuth 2.0 for desktop apps](https://developers.google.com/identity/protocols/oauth2/native-app)
+- [Drive API scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)
+- [Google OAuth test audiences](https://support.google.com/cloud/answer/15549945)
+
+### 3.2 Configure the provider
+
+1. Build and install the development XPI.
+2. Open the add-on settings.
+3. Enter the Desktop app client ID and save the provider settings.
+4. Select **Add account**, complete the Google consent flow, and confirm that
+   the expected account appears as connected.
+5. Repeat the account step for each Google account that should be available to
+   VFS consumers.
+6. In a compatible VFS consumer, create a new provider connection, choose one
+   connected account, review the requesting add-on name and ID, and grant the
+   requested access.
+
+Changing the client ID preference affects new authorizations. Existing account
+records retain the client ID that created their grant so token refresh and
+reauthorization continue against the matching Google project.
+
+### 3.3 Scope and verification boundary
+
+The provider requests the full Drive scope because a filesystem-style VFS
+connection must browse and manage an existing Drive tree. The narrower
+`drive.file` scope covers files created by the application or explicitly opened
+for it and cannot expose an existing arbitrary tree to connected VFS clients.
+
+Google classifies the full Drive scope as restricted. Before a public release,
+the project owner must complete the applicable Google verification work and
+provide the required homepage, privacy, support, scope justification, and test
+instructions. Whether an additional security assessment applies depends on the
+final production data handling and must be confirmed with Google's current
+requirements. Development and production should use separate Cloud projects.
+
+### 3.4 Shared Drives
+
+Shared Drives are available only when the selected account belongs to a Google
+Workspace edition that provides them and the account is a member of the drive.
+They appear below the provider's **Shared drives** root. The provider uses
+Drive-specific queries and `supportsAllDrives` handling; it does not grant
+membership or raise the user's role. Every read or mutation remains limited by
+the permissions Google returns for that account.
+
+Moving folders across drive boundaries is not generally supported by Google.
+The provider rejects such moves rather than simulating them with a download and
+upload. File copies use Google's server-side copy operation where allowed.
+
+See [Google's Shared Drive API guide](https://developers.google.com/workspace/drive/api/guides/enable-shareddrives)
+for the underlying account, query, and permission rules.
+
+### 3.5 Google Workspace exports
+
+Google Docs, Sheets, Slides, and Drawings do not have downloadable native file
+content. The provider exports them when a VFS client reads the file. Settings
+apply across the provider accounts:
+
+| Google file | Available format | Initial choice |
+| --- | --- | --- |
+| Docs | DOCX or PDF | DOCX |
+| Sheets | XLSX or PDF | XLSX |
+| Slides | PPTX or PDF | PPTX |
+| Drawings | PDF | PDF |
+
+The chosen extension is shown in the VFS tree and used for the downloaded
+file. Export does not alter the original Google Workspace file.
 
 ## 4. Build inspection
 
@@ -97,6 +177,13 @@ shows both the consumer name and its add-on ID before an account is granted.
 A Google authorization window must not open during installation, startup, or
 simply opening the settings. An account cannot be removed while a current VFS
 connection still uses it; remove the connection from the consumer first.
+
+Use **Sign in again** when Google rejects a stored grant or the account is
+marked for reauthorization. Removing an unused account asks Google to revoke
+its grant and then removes the local credentials. If Google cannot be reached,
+the local account is still removed and the settings page reports that remote
+revocation could not be confirmed. A user can also revoke access from their
+Google Account; the provider will then require authorization again.
 
 ## 6. Planned administrative decisions
 
