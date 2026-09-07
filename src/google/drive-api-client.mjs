@@ -399,6 +399,30 @@ export class GoogleDriveApiClient {
     });
   }
 
+  async copyFile(fileId, metadata, {
+    supportsAllDrives = true,
+    resourceKeys,
+    signal
+  } = {}) {
+    const normalizedFileId = requireText(fileId, "fileId");
+    return this.#transport.request(this.#accountId, {
+      resourcePath: `files/${encodeURIComponent(normalizedFileId)}/copy`,
+      query: {
+        supportsAllDrives,
+        fields: DRIVE_FILE_FIELDS
+      },
+      method: "POST",
+      headers: {
+        ...resourceKeyHeaders(resourceKeys),
+        "Content-Type": "application/json; charset=UTF-8"
+      },
+      body: serializeMetadata(metadata),
+      signal,
+      operation: "files.copy",
+      retryMode: "rate-limit"
+    });
+  }
+
   async updateFileMetadata(fileId, metadata, {
     addParents,
     removeParents,

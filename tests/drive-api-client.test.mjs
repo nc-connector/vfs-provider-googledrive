@@ -215,6 +215,38 @@ test("creates metadata in My Drive and Shared Drive folders", async () => {
   assert.equal(calls[0].options.retryMode, "rate-limit");
 });
 
+test("copies a file into a Drive folder without downloading its content", async () => {
+  const metadata = { name: "Copy.txt", parents: ["target-parent"] };
+  const signal = new AbortController().signal;
+  const { calls, client } = createClient(() => ({ id: "copy-id" }));
+
+  assert.deepEqual(await client.copyFile("source:id", metadata, {
+    resourceKeys: [
+      { fileId: "source:id", resourceKey: "source-key" },
+      { fileId: "target-parent", resourceKey: "parent-key" }
+    ],
+    signal
+  }), { id: "copy-id" });
+
+  assert.equal(calls[0].options.resourcePath, "files/source%3Aid/copy");
+  assert.deepEqual(calls[0].options.query, {
+    supportsAllDrives: true,
+    fields: DRIVE_FILE_FIELDS
+  });
+  assert.equal(calls[0].options.method, "POST");
+  assert.deepEqual(calls[0].options.headers, {
+    "X-Goog-Drive-Resource-Keys": [
+      "source:id/source-key",
+      "target-parent/parent-key"
+    ].join(","),
+    "Content-Type": "application/json; charset=UTF-8"
+  });
+  assert.equal(calls[0].options.body, JSON.stringify(metadata));
+  assert.equal(calls[0].options.signal, signal);
+  assert.equal(calls[0].options.operation, "files.copy");
+  assert.equal(calls[0].options.retryMode, "rate-limit");
+});
+
 test("updates metadata for an encoded shared-drive item", async () => {
   const metadata = { trashed: true };
   const signal = new AbortController().signal;
