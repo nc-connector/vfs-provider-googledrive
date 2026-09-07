@@ -3,8 +3,8 @@
 > **Development status:** Version 0.1.0 includes the MV3 foundation, Google
 > OAuth account services, localized account and connection settings, and a
 > working VFS provider for browsing, reading, creating and replacing files,
-> creating folders, moving and merging items, and moving items to the Google
-> Drive trash. Copy operations and release validation are still in progress.
+> creating folders, moving, copying, and merging items, and moving items to the
+> Google Drive trash. Release validation is still in progress.
 
 ## 1. Product goal
 
@@ -265,6 +265,14 @@ the namespace rejects combinations the API cannot perform. A move that stops
 after one or more metadata updates reports the completed entry changes through
 the provider adapter.
 
+File copies use Drive's server-side copy endpoint and do not read file content
+through the extension. Folder copies build a complete action list before the
+first write, create destination folders, and copy each file through Drive.
+Existing destinations require the caller's explicit overwrite or merge option.
+If a copy stops after changing Drive, the provider reports the stable destination
+parent so connected clients can refresh paths whose copied Drive IDs may differ
+from their source IDs.
+
 Delete resolves the same visible paths, checks the selected item's `canTrash`
 capability, and updates its `trashed` metadata. A selected shortcut is trashed by
 its own ID rather than modifying its target.
@@ -284,20 +292,20 @@ The current provider advertises `file.read`, `file.add`, `file.modify`,
 `file.delete`, `folder.read`, `folder.add`, `folder.modify`, and
 `folder.delete`. It implements root and folder listing, storage quota, binary
 download, Workspace export, new and replacement file upload, recursive folder
-creation, file and folder moves, folder merge, removal to the Google Drive trash,
-localized VFS errors, progress, and request-scoped cancellation. The account
-binding and requested capability are checked for every operation.
+creation, file and folder moves and copies, folder merge, removal to the Google
+Drive trash, localized VFS errors, progress, and request-scoped cancellation.
+The account binding and requested capability are checked for every operation.
 
 `writeFile` requests `file.add` for a new target and `file.modify` for an
-overwrite. Move requests use `file.modify` or `folder.modify`. Copy callbacks
-remain unavailable. Delete requests set the selected Drive item's `trashed`
-field and do not call Drive's permanent-delete endpoint. File creation,
-replacement, folder creation, move, merge, and delete report progress through
-the Toolkit request ID and use the same abort registry as read operations.
-Multi-step move failures and cancellations report entries changed before the
-operation stopped, as described by the upstream provider guide. Upload strategy
-and change tracking remain product-owned work and are not part of the vendored
-Toolkit.
+overwrite. Move and copy requests use `file.modify` or `folder.modify`; the
+Toolkit has no separate copy capability. Delete requests set the selected Drive
+item's `trashed` field and do not call Drive's permanent-delete endpoint. File
+creation, replacement, folder creation, move, copy, merge, and delete report
+progress through the Toolkit request ID and use the same abort registry as read
+operations. Multi-step move and copy failures or cancellations report changes
+made before the operation stopped, as described by the upstream provider guide.
+Upload strategy and change tracking remain product-owned work and are not part
+of the vendored Toolkit.
 
 ### Diagnostic logging
 

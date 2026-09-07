@@ -107,15 +107,14 @@ kept in sync with the repository.
 - [x] File/folder move: update parents and names without transferring content,
   apply explicit overwrite/merge behavior, honor Drive move permissions and
   cross-drive restrictions, and include every available resource key.
-- [ ] File/folder copy: use Drive server-side copy where supported and report
+- [x] File/folder copy: use Drive server-side copy where supported and report
   partial folder results on cancel or error.
 - [x] File/folder delete: move the selected Drive item to the recoverable trash.
   Never expose permanent deletion through the VFS delete callbacks.
 - [x] Cancellation for list, file read, file upload/replacement, folder creation,
-  move/merge, and trash operations by Toolkit request ID.
-- [x] Partial mutation reporting for move/merge: report work completed before a
-  multi-step operation stopped. Copy operations must add the same behavior when
-  implemented.
+  move/copy/merge, and trash operations by Toolkit request ID.
+- [x] Partial mutation reporting for move/copy/merge: report work completed
+  before a multi-step operation stopped.
 - [ ] Change notifications: persist a Drive Changes page token and schedule checks
   with an MV3-compatible event rather than relying on `setInterval()`.
 - [x] Advertise every current VFS capability only after its callback and error
