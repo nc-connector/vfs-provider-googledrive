@@ -169,7 +169,7 @@ kept in sync with the repository.
   expiry, refresh, rate-limit retry, resumable upload, and change polling.
 - [ ] Complete setup, Google Cloud Console, OAuth scope, Shared Drive, export,
   security, testing, and ATN release documentation.
-- [ ] Add a release changelog and complete license and third-party notices before
-  the first release candidate.
+- [ ] Add a release changelog before the first release candidate.
+- [x] Complete license and third-party notices for all currently packaged source.
 - [ ] Verify the reproducible release XPI contains exactly the reviewed source
   payload and no development-only files.

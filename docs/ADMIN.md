@@ -133,6 +133,8 @@ names, folder names, and storage IDs.
 The Thunderbird VFS provider and HTML localization modules are packaged from a
 fixed `thunderbird/webext-support` revision without local changes. Their source
 URLs, licenses, and SHA-256 values are recorded in [VENDOR.md](../VENDOR.md).
+The license attributions shipped with the XPI are collected in
+[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
 Developer architecture, reference projects, and review commands are documented
 in [DEVELOPMENT.md](DEVELOPMENT.md).

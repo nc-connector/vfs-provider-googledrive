@@ -64,6 +64,7 @@ Drive, and this project does not include its WebDAV protocol code.
 | `tools/webext-linter-*.js` | Thunderbird linter and dependency checks |
 | `docs/ADMIN.md` | deployment and operational status |
 | `VENDOR.md` | upstream revision, license, source URL, and hash record |
+| `THIRD_PARTY_NOTICES.md` | packaged third-party attributions and license notices |
 
 ## 4. Manifest V3 rules
 
@@ -353,7 +354,8 @@ packaged without local changes:
 - `src/vendor/i18n/i18n.mjs`
 
 Their individual revisions and hashes are recorded in
-[VENDOR.md](../VENDOR.md).
+[VENDOR.md](../VENDOR.md). The notices shipped in the XPI are recorded in
+[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
 Do not patch product behavior into these files. Update a vendor file only by
 selecting a new upstream revision, copying the upstream content, and updating

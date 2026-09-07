@@ -112,19 +112,27 @@ function checkLocales() {
 
 function checkVendor() {
   const vendorNotes = fs.readFileSync(path.join(ROOT, "VENDOR.md"), "utf8").toLowerCase();
+  const thirdPartyNotes = fs.readFileSync(
+    path.join(ROOT, "THIRD_PARTY_NOTICES.md"),
+    "utf8"
+  ).toLowerCase();
   for (const [relativePath, expectedHash] of EXPECTED_VENDOR_HASHES) {
     const filePath = path.join(SOURCE_DIR, relativePath);
     const hash = crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
     assert(hash === expectedHash, `Vendored file changed: ${relativePath}`);
     assert(vendorNotes.includes(expectedHash), `VENDOR.md is missing the hash for ${relativePath}`);
+    assert(thirdPartyNotes.includes(expectedHash), `THIRD_PARTY_NOTICES.md is missing the hash for ${relativePath}`);
   }
   assert(vendorNotes.includes("a82f2b767f4183f582ed33e81cd35a1c45639430"), "VENDOR.md is missing the VFS provider revision");
   assert(vendorNotes.includes("3476faa0870bb6dbe63c7c72fc3dab2b67731f4e"), "VENDOR.md is missing the i18n revision");
+  assert(thirdPartyNotes.includes("a82f2b767f4183f582ed33e81cd35a1c45639430"), "THIRD_PARTY_NOTICES.md is missing the VFS provider revision");
+  assert(thirdPartyNotes.includes("3476faa0870bb6dbe63c7c72fc3dab2b67731f4e"), "THIRD_PARTY_NOTICES.md is missing the i18n revision");
 }
 
 function checkFiles() {
   const required = [
     "README.md",
+    "THIRD_PARTY_NOTICES.md",
     "Translations.md",
     "VENDOR.md",
     "docs/ADMIN.md",

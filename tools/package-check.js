@@ -7,6 +7,7 @@ const ROOT = path.resolve(__dirname, "..");
 const ROOT_PACKAGE_FILES = [
   "LICENSE",
   "README.md",
+  "THIRD_PARTY_NOTICES.md",
   "Translations.md",
   "VENDOR.md",
   "docs/ADMIN.md",

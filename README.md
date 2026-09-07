@@ -107,6 +107,7 @@ the Thunderbird `webext-linter` repository.
 - [Development guide](docs/DEVELOPMENT.md)
 - [Translations](Translations.md)
 - [Vendored source record](VENDOR.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 ## Technical baseline
 
@@ -126,4 +127,5 @@ licenses, and file hashes.
 ## License
 
 This project is licensed under the Mozilla Public License 2.0. See
-[LICENSE](LICENSE).
+[LICENSE](LICENSE). Notices for packaged third-party source are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
