@@ -65,6 +65,10 @@ function createNamespace(overrides = {}, namespaceOptions = {}) {
       calls.push({ method: "createFileMetadata", metadata, options });
       throw new Error("Unexpected createFileMetadata call");
     },
+    async copyFile(fileId, metadata, options) {
+      calls.push({ method: "copyFile", fileId, metadata, options });
+      throw new Error("Unexpected copyFile call");
+    },
     async updateFileMetadata(fileId, metadata, options) {
       calls.push({ method: "updateFileMetadata", fileId, metadata, options });
       throw new Error("Unexpected updateFileMetadata call");
@@ -1847,6 +1851,644 @@ test("validates move options before changing Drive metadata", async () => {
     /onPartialChanges/u
   );
   assert.equal(updates, 0);
+});
+
+test("copies a file in Drive without downloading its content", async () => {
+  const signal = new AbortController().signal;
+  const copies = [];
+  const progress = [];
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    resourceKey: "source-folder-key",
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const targetFolder = file({
+    id: "target-folder",
+    name: "Target",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    resourceKey: "target-folder-key",
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const report = file({
+    id: "report-file",
+    name: "Report.pdf",
+    parents: ["source-folder"],
+    resourceKey: "report-key",
+    capabilities: { canDownload: true, canCopy: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return {
+          files: [sourceFolder, targetFolder],
+          incompleteSearch: false
+        };
+      }
+      if (options.q.includes("'source-folder'")) {
+        return { files: [report], incompleteSearch: false };
+      }
+      return { files: [], incompleteSearch: false };
+    },
+    async copyFile(fileId, metadata, options) {
+      copies.push({ fileId, metadata, options });
+      return file({
+        id: "report-copy",
+        name: metadata.name,
+        parents: metadata.parents
+      });
+    }
+  });
+
+  await namespace.copyFile(
+    "/My Drive/Source/Report.pdf",
+    "/My Drive/Target/Renamed.pdf",
+    {
+      signal,
+      onProgress: (percent) => progress.push(percent)
+    }
+  );
+
+  assert.deepEqual(copies, [{
+    fileId: "report-file",
+    metadata: {
+      name: "Renamed.pdf",
+      parents: ["target-folder"]
+    },
+    options: {
+      supportsAllDrives: true,
+      resourceKeys: [
+        { fileId: "report-file", resourceKey: "report-key" },
+        { fileId: "target-folder", resourceKey: "target-folder-key" }
+      ],
+      signal
+    }
+  }]);
+  assert.deepEqual(progress, [0, 100]);
+});
+
+test("requires overwrite and replaces a copied file target in order", async () => {
+  const operations = [];
+  const progress = [];
+  const source = file({
+    id: "source-file",
+    name: "Source.txt",
+    resourceKey: "source-key",
+    capabilities: { canDownload: true, canCopy: true }
+  });
+  const target = file({
+    id: "target-file",
+    name: "Target.txt",
+    resourceKey: "target-key",
+    capabilities: { canDownload: true, canTrash: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [source, target], incompleteSearch: false };
+    },
+    async getFile(fileId) {
+      assert.equal(fileId, "root");
+      return file({
+        id: "root",
+        name: "My Drive",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    },
+    async updateFileMetadata(fileId, metadata, options) {
+      operations.push({ method: "update", fileId, metadata, options });
+    },
+    async copyFile(fileId, metadata, options) {
+      operations.push({ method: "copy", fileId, metadata, options });
+      return file({ id: "copy", name: metadata.name });
+    }
+  });
+
+  await assert.rejects(
+    namespace.copyFile(
+      "/My Drive/Source.txt",
+      "/My Drive/Target.txt"
+    ),
+    (error) => error.code === "E:EXIST"
+  );
+  await assert.rejects(
+    namespace.copyFile(
+      "/My Drive/Source.txt",
+      "/My Drive/Source.txt",
+      { overwrite: true }
+    ),
+    (error) => error.code === "E:EXIST"
+  );
+
+  await namespace.copyFile(
+    "/My Drive/Source.txt",
+    "/My Drive/Target.txt",
+    {
+      overwrite: true,
+      onProgress: (percent) => progress.push(percent)
+    }
+  );
+
+  assert.deepEqual(
+    operations.map(({ method, fileId, metadata }) => ({
+      method,
+      fileId,
+      metadata
+    })),
+    [
+      {
+        method: "update",
+        fileId: "target-file",
+        metadata: { trashed: true }
+      },
+      {
+        method: "copy",
+        fileId: "source-file",
+        metadata: { name: "Target.txt", parents: ["root"] }
+      }
+    ]
+  );
+  assert.deepEqual(operations[0].options.resourceKeys, [{
+    fileId: "target-file",
+    resourceKey: "target-key"
+  }]);
+  assert.deepEqual(operations[1].options.resourceKeys, [{
+    fileId: "source-file",
+    resourceKey: "source-key"
+  }]);
+  assert.deepEqual(progress, [0, 50, 100]);
+});
+
+test("reports a removed target when the following file copy fails", async () => {
+  const partialChanges = [];
+  const source = file({
+    id: "source-file",
+    name: "Source.txt",
+    capabilities: { canDownload: true, canCopy: true }
+  });
+  const target = file({
+    id: "target-file",
+    name: "Target.txt",
+    capabilities: { canDownload: true, canTrash: true }
+  });
+  const failure = new Error("copy failed");
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [source, target], incompleteSearch: false };
+    },
+    async getFile() {
+      return file({
+        id: "root",
+        name: "My Drive",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    },
+    async updateFileMetadata() {},
+    async copyFile() {
+      throw failure;
+    }
+  });
+
+  await assert.rejects(
+    namespace.copyFile(
+      "/My Drive/Source.txt",
+      "/My Drive/Target.txt",
+      {
+        overwrite: true,
+        onPartialChanges: (entries) => partialChanges.push(entries)
+      }
+    ),
+    (error) => error === failure
+  );
+
+  assert.deepEqual(partialChanges, [[{
+    kind: "file",
+    action: "deleted",
+    target: { path: "/My Drive/Target.txt" }
+  }]]);
+});
+
+test("copies a folder tree with Drive folder and file operations", async () => {
+  const signal = new AbortController().signal;
+  const operations = [];
+  const progress = [];
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true }
+  });
+  const nestedFolder = file({
+    id: "nested-folder",
+    name: "Nested",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true }
+  });
+  const nestedFile = file({
+    id: "nested-file",
+    name: "Notes.txt",
+    resourceKey: "notes-key",
+    capabilities: { canDownload: true, canCopy: true }
+  });
+  const sheet = file({
+    id: "sheet",
+    name: "Budget",
+    mimeType: GOOGLE_WORKSPACE_MIME_TYPES.spreadsheet,
+    resourceKey: "sheet-key",
+    size: undefined,
+    capabilities: { canCopy: true }
+  });
+  const items = new Map([
+    [nestedFile.id, nestedFile],
+    [sheet.id, sheet]
+  ]);
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return { files: [sourceFolder], incompleteSearch: false };
+      }
+      if (options.q.includes("'source-folder'")) {
+        return {
+          files: [sheet, nestedFolder],
+          incompleteSearch: false
+        };
+      }
+      if (options.q.includes("'nested-folder'")) {
+        return { files: [nestedFile], incompleteSearch: false };
+      }
+      return { files: [], incompleteSearch: false };
+    },
+    async getFile(fileId) {
+      assert.equal(fileId, "root");
+      return file({
+        id: "root",
+        name: "My Drive",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    },
+    async createFileMetadata(metadata, options) {
+      const id = metadata.name === "Copy" ? "copy-root" : "copy-nested";
+      operations.push({ method: "create", metadata, options });
+      return file({
+        id,
+        name: metadata.name,
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        parents: metadata.parents,
+        resourceKey: `${id}-key`,
+        capabilities: { canListChildren: true, canAddChildren: true }
+      });
+    },
+    async copyFile(fileId, metadata, options) {
+      operations.push({ method: "copy", fileId, metadata, options });
+      const source = items.get(fileId);
+      return file({
+        id: `copy-${fileId}`,
+        name: metadata.name,
+        mimeType: source.mimeType,
+        parents: metadata.parents
+      });
+    }
+  });
+
+  await namespace.copyFolder(
+    "/My Drive/Source",
+    "/My Drive/Copy",
+    {
+      signal,
+      onProgress: (percent) => progress.push(percent)
+    }
+  );
+
+  assert.deepEqual(
+    operations.map(({ method, fileId, metadata }) => ({
+      method,
+      fileId,
+      metadata
+    })),
+    [
+      {
+        method: "create",
+        fileId: undefined,
+        metadata: {
+          name: "Copy",
+          mimeType: GOOGLE_FOLDER_MIME_TYPE,
+          parents: ["root"]
+        }
+      },
+      {
+        method: "create",
+        fileId: undefined,
+        metadata: {
+          name: "Nested",
+          mimeType: GOOGLE_FOLDER_MIME_TYPE,
+          parents: ["copy-root"]
+        }
+      },
+      {
+        method: "copy",
+        fileId: "nested-file",
+        metadata: { name: "Notes.txt", parents: ["copy-nested"] }
+      },
+      {
+        method: "copy",
+        fileId: "sheet",
+        metadata: { name: "Budget", parents: ["copy-root"] }
+      }
+    ]
+  );
+  assert.equal(operations[0].options.resourceKeys, undefined);
+  assert.deepEqual(operations[1].options.resourceKeys, [{
+    fileId: "copy-root",
+    resourceKey: "copy-root-key"
+  }]);
+  assert.deepEqual(operations[2].options.resourceKeys, [
+    { fileId: "nested-file", resourceKey: "notes-key" },
+    { fileId: "copy-nested", resourceKey: "copy-nested-key" }
+  ]);
+  assert.deepEqual(operations[3].options.resourceKeys, [
+    { fileId: "sheet", resourceKey: "sheet-key" },
+    { fileId: "copy-root", resourceKey: "copy-root-key" }
+  ]);
+  assert.equal(
+    operations.every(({ options }) =>
+      options.supportsAllDrives === true && options.signal === signal),
+    true
+  );
+  assert.deepEqual(progress, [0, 25, 50, 75, 100]);
+});
+
+test("merges copied folders and replaces matching files", async () => {
+  const operations = [];
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true }
+  });
+  const targetFolder = file({
+    id: "target-folder",
+    name: "Target",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const sourceNested = file({
+    id: "source-nested",
+    name: "Nested",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true }
+  });
+  const targetNested = file({
+    id: "target-nested",
+    name: "Nested",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const sourceFile = file({
+    id: "source-report",
+    name: "Report.pdf",
+    capabilities: { canDownload: true, canCopy: true }
+  });
+  const targetFile = file({
+    id: "target-report",
+    name: "Report.pdf",
+    capabilities: { canDownload: true, canTrash: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return {
+          files: [sourceFolder, targetFolder],
+          incompleteSearch: false
+        };
+      }
+      if (options.q.includes("'source-folder'")) {
+        return { files: [sourceNested], incompleteSearch: false };
+      }
+      if (options.q.includes("'target-folder'")) {
+        return { files: [targetNested], incompleteSearch: false };
+      }
+      if (options.q.includes("'source-nested'")) {
+        return { files: [sourceFile], incompleteSearch: false };
+      }
+      if (options.q.includes("'target-nested'")) {
+        return { files: [targetFile], incompleteSearch: false };
+      }
+      return { files: [], incompleteSearch: false };
+    },
+    async updateFileMetadata(fileId, metadata) {
+      operations.push({ method: "update", fileId, metadata });
+    },
+    async copyFile(fileId, metadata) {
+      operations.push({ method: "copy", fileId, metadata });
+      return file({ id: "copied-report", name: metadata.name });
+    }
+  });
+
+  await assert.rejects(
+    namespace.copyFolder(
+      "/My Drive/Source",
+      "/My Drive/Target"
+    ),
+    (error) => error.code === "E:EXIST"
+  );
+  await namespace.copyFolder(
+    "/My Drive/Source",
+    "/My Drive/Target",
+    { merge: true }
+  );
+
+  assert.deepEqual(operations, [
+    {
+      method: "update",
+      fileId: "target-report",
+      metadata: { trashed: true }
+    },
+    {
+      method: "copy",
+      fileId: "source-report",
+      metadata: { name: "Report.pdf", parents: ["target-nested"] }
+    }
+  ]);
+});
+
+test("reports a created copy folder and stops after an abort", async () => {
+  const partialChanges = [];
+  const progress = [];
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true }
+  });
+  const sourceFile = file({
+    id: "source-file",
+    name: "Report.pdf",
+    capabilities: { canDownload: true, canCopy: true }
+  });
+  const abort = new DOMException("stopped", "AbortError");
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return { files: [sourceFolder], incompleteSearch: false };
+      }
+      return { files: [sourceFile], incompleteSearch: false };
+    },
+    async getFile() {
+      return file({
+        id: "root",
+        name: "My Drive",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    },
+    async createFileMetadata(metadata) {
+      return file({
+        id: "copy-folder",
+        name: metadata.name,
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canListChildren: true, canAddChildren: true }
+      });
+    },
+    async copyFile() {
+      throw abort;
+    }
+  });
+
+  await namespace.copyFolder(
+    "/My Drive/Source",
+    "/My Drive/Copy",
+    {
+      onProgress: (percent) => progress.push(percent),
+      onPartialChanges: (entries) => partialChanges.push(entries)
+    }
+  );
+
+  assert.deepEqual(progress, [0, 50]);
+  assert.deepEqual(partialChanges, [[{
+    kind: "directory",
+    action: "created",
+    target: { path: "/My Drive/Copy" }
+  }]]);
+});
+
+test("rejects forbidden copies and folder copy cycles", async () => {
+  const lockedFile = file({
+    id: "locked-file",
+    name: "Locked.txt",
+    capabilities: { canDownload: true, canCopy: false }
+  });
+  const { namespace: lockedNamespace } = createNamespace({
+    async listFiles() {
+      return { files: [lockedFile], incompleteSearch: false };
+    }
+  });
+
+  await assert.rejects(
+    lockedNamespace.copyFile(
+      "/My Drive/Locked.txt",
+      "/My Drive/Copy.txt"
+    ),
+    (error) => error.code === "drive_copy_forbidden"
+  );
+  await assert.rejects(
+    lockedNamespace.copyFile(
+      "/My Drive/Locked.txt",
+      "/Shared with me/Copy.txt"
+    ),
+    (error) => error.code === "drive_copy_forbidden"
+  );
+
+  const { namespace: descendantNamespace, calls: descendantCalls } =
+    createNamespace();
+  await assert.rejects(
+    descendantNamespace.copyFolder(
+      "/My Drive/Source",
+      "/My Drive/Source/Child/Copy"
+    ),
+    (error) => error.code === "drive_copy_forbidden"
+  );
+  assert.equal(descendantCalls.length, 0);
+
+  const mutations = [];
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true }
+  });
+  const loop = file({
+    id: "loop-shortcut",
+    name: "Loop",
+    mimeType: GOOGLE_SHORTCUT_MIME_TYPE,
+    shortcutDetails: {
+      targetId: "source-folder",
+      targetMimeType: GOOGLE_FOLDER_MIME_TYPE
+    }
+  });
+  const { namespace: cycleNamespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return { files: [sourceFolder], incompleteSearch: false };
+      }
+      return { files: [loop], incompleteSearch: false };
+    },
+    async getFile(fileId) {
+      if (fileId === "root") {
+        return file({
+          id: "root",
+          name: "My Drive",
+          mimeType: GOOGLE_FOLDER_MIME_TYPE,
+          capabilities: { canAddChildren: true }
+        });
+      }
+      assert.equal(fileId, "source-folder");
+      return sourceFolder;
+    },
+    async createFileMetadata() {
+      mutations.push("create");
+    },
+    async copyFile() {
+      mutations.push("copy");
+    }
+  });
+
+  await assert.rejects(
+    cycleNamespace.copyFolder(
+      "/My Drive/Source",
+      "/My Drive/Copy"
+    ),
+    (error) => error.code === "drive_copy_unsupported"
+  );
+  assert.deepEqual(mutations, []);
+});
+
+test("validates copy options before contacting Drive", async () => {
+  const { namespace, calls } = createNamespace();
+
+  await assert.rejects(
+    namespace.copyFile("/My Drive/a", "/My Drive/b", {
+      overwrite: "yes"
+    }),
+    /overwrite/u
+  );
+  await assert.rejects(
+    namespace.copyFolder("/My Drive/a", "/My Drive/b", { merge: "yes" }),
+    /merge/u
+  );
+  await assert.rejects(
+    namespace.copyFile("/My Drive/a", "/My Drive/b", { onProgress: true }),
+    /onProgress/u
+  );
+  await assert.rejects(
+    namespace.copyFolder("/My Drive/a", "/My Drive/b", {
+      onPartialChanges: true
+    }),
+    /onPartialChanges/u
+  );
+  assert.equal(calls.length, 0);
 });
 
 test("moves files and folders to the Drive trash", async () => {

@@ -36,6 +36,7 @@ function requireApiClient(value) {
     "listFiles",
     "downloadBlob",
     "exportFile",
+    "copyFile",
     "updateFileMetadata"
   ];
   if (!value || methods.some((method) => typeof value[method] !== "function")) {
@@ -470,6 +471,41 @@ export class GoogleDriveNamespace {
     });
   }
 
+  async copyFile(oldPath, newPath, {
+    overwrite = false,
+    signal,
+    onProgress = () => {},
+    onPartialChanges = () => {}
+  } = {}) {
+    if (typeof overwrite !== "boolean") {
+      throw new TypeError("overwrite");
+    }
+    return this.#copyEntry(oldPath, newPath, "file", overwrite, {
+      signal,
+      onProgress,
+      onPartialChanges
+    });
+  }
+
+  async copyFolder(oldPath, newPath, {
+    merge = false,
+    signal,
+    onProgress = () => {},
+    onPartialChanges = () => {}
+  } = {}) {
+    if (typeof merge !== "boolean") {
+      throw new TypeError("merge");
+    }
+    if (isSameOrChildPath(newPath, oldPath)) {
+      throw new GoogleDriveNamespaceError("drive_copy_forbidden");
+    }
+    return this.#copyEntry(oldPath, newPath, "directory", merge, {
+      signal,
+      onProgress,
+      onPartialChanges
+    });
+  }
+
   async deleteFile(path, { signal, onProgress = () => {} } = {}) {
     return this.#trash(path, "file", signal, onProgress);
   }
@@ -502,6 +538,101 @@ export class GoogleDriveNamespace {
       signal,
       onProgress,
       () => {}
+    );
+  }
+
+  async #copyEntry(oldPath, newPath, expectedKind, replace, {
+    signal,
+    onProgress,
+    onPartialChanges
+  }) {
+    if (typeof onProgress !== "function") {
+      throw new TypeError("onProgress");
+    }
+    if (typeof onPartialChanges !== "function") {
+      throw new TypeError("onPartialChanges");
+    }
+    const oldSegments = splitVfsPath(oldPath);
+    if (oldSegments.length < 2) {
+      throw new GoogleDriveNamespaceError("drive_path_not_found");
+    }
+    const source = await this.#resolve(oldPath, signal);
+    if (source.type !== "item" || source.presented.kind !== expectedKind) {
+      const code = expectedKind === "file"
+        ? "drive_file_not_found"
+        : "drive_path_not_found";
+      throw new GoogleDriveNamespaceError(code);
+    }
+    const sourceParentPath = joinVfsPath(...oldSegments.slice(0, -1));
+    const target = await this.#resolveExistingMutationTarget(
+      newPath,
+      signal,
+      sourceParentPath,
+      "drive_copy_forbidden"
+    );
+    if (target.existing?.item.id === source.presented.item.id) {
+      throw targetExistsError();
+    }
+
+    const plan = [];
+    if (expectedKind === "file") {
+      if (target.existing) {
+        if (target.existing.kind !== "file" || !replace) {
+          throw targetExistsError();
+        }
+        plan.push(this.#trashAction(
+          target.existing,
+          newPath,
+          "file",
+          "drive_copy_forbidden"
+        ));
+      }
+      plan.push(await this.#copyAction({
+        presented: source.presented,
+        targetContext: target.context,
+        destinationName: this.#moveDestinationName(source.presented, target),
+        oldPath,
+        newPath,
+        signal
+      }));
+    } else {
+      if (target.existing &&
+          (target.existing.kind !== "directory" || !replace)) {
+        throw targetExistsError();
+      }
+      const sourceContext = await this.#folderContext(
+        source.presented,
+        signal
+      );
+      let targetContext = target.existing
+        ? await this.#folderContext(target.existing, signal)
+        : null;
+      if (!targetContext) {
+        const createRoot = await this.#createFolderAction({
+          targetContext: target.context,
+          name: this.#moveDestinationName(source.presented, target),
+          targetPath: newPath,
+          signal
+        });
+        plan.push(createRoot);
+        targetContext = createRoot;
+      }
+      await this.#buildFolderCopyPlan({
+        sourceContext,
+        sourcePath: oldPath,
+        targetContext,
+        targetPath: newPath,
+        signal,
+        plan,
+        ancestorSourceIds: new Set([sourceContext.parentId])
+      });
+    }
+
+    await this.#executeMutationPlan(
+      plan,
+      signal,
+      onProgress,
+      onPartialChanges
     );
   }
 
@@ -736,6 +867,148 @@ export class GoogleDriveNamespace {
     };
   }
 
+  async #copyAction({
+    presented,
+    targetContext,
+    destinationName,
+    oldPath,
+    newPath,
+    signal
+  }) {
+    if (presented.kind !== "file" ||
+        presented.item.capabilities?.canCopy !== true) {
+      throw new GoogleDriveNamespaceError("drive_copy_forbidden");
+    }
+    if (targetContext.type !== "create-folder") {
+      await this.#requireWritableParent(targetContext, signal);
+    }
+    return {
+      type: "copy",
+      source: presented.item,
+      targetContext,
+      destinationName,
+      change: {
+        kind: "file",
+        action: "copied",
+        target: { path: newPath },
+        source: { path: oldPath }
+      }
+    };
+  }
+
+  async #createFolderAction({
+    targetContext,
+    name,
+    targetPath,
+    signal
+  }) {
+    if (targetContext.type !== "create-folder") {
+      await this.#requireWritableParent(targetContext, signal);
+    }
+    return {
+      type: "create-folder",
+      targetContext,
+      name,
+      createdContext: null,
+      change: {
+        kind: "directory",
+        action: "created",
+        target: { path: targetPath }
+      }
+    };
+  }
+
+  async #buildFolderCopyPlan({
+    sourceContext,
+    sourcePath,
+    targetContext,
+    targetPath,
+    signal,
+    plan,
+    ancestorSourceIds
+  }) {
+    const sourceEntries = await this.#presentContext(
+      sourceContext,
+      sourcePath,
+      signal
+    );
+    const targetEntries = targetContext.type === "create-folder"
+      ? []
+      : await this.#presentContext(targetContext, targetPath, signal);
+    const targetsBySegment = new Map(
+      targetEntries.map((entry) => [entry.segment, entry])
+    );
+
+    for (const source of sourceEntries) {
+      const oldPath = source.entry.path;
+      const newPath = joinVfsPath(
+        ...splitVfsPath(targetPath),
+        source.segment
+      );
+      const target = targetsBySegment.get(source.segment);
+      if (source.kind === "file") {
+        if (target?.item.id === source.item.id) {
+          continue;
+        }
+        if (target && target.kind !== "file") {
+          throw targetExistsError();
+        }
+        if (target) {
+          plan.push(this.#trashAction(
+            target,
+            newPath,
+            "file",
+            "drive_copy_forbidden"
+          ));
+        }
+        plan.push(await this.#copyAction({
+          presented: source,
+          targetContext,
+          destinationName: target?.displayName || source.item.name,
+          oldPath,
+          newPath,
+          signal
+        }));
+        continue;
+      }
+
+      if (target && target.kind !== "directory") {
+        throw targetExistsError();
+      }
+      const nestedSourceContext = await this.#folderContext(source, signal);
+      if (ancestorSourceIds.has(nestedSourceContext.parentId)) {
+        throw new GoogleDriveNamespaceError("drive_copy_unsupported");
+      }
+      const nestedAncestors = new Set(ancestorSourceIds);
+      nestedAncestors.add(nestedSourceContext.parentId);
+      let nestedTargetContext;
+      if (target) {
+        nestedTargetContext = await this.#folderContext(target, signal);
+        if (nestedTargetContext.parentId === nestedSourceContext.parentId) {
+          throw new GoogleDriveNamespaceError("drive_copy_forbidden");
+        }
+      } else {
+        const createFolder = await this.#createFolderAction({
+          targetContext,
+          name: source.item.name,
+          targetPath: newPath,
+          signal
+        });
+        plan.push(createFolder);
+        nestedTargetContext = createFolder;
+      }
+      await this.#buildFolderCopyPlan({
+        sourceContext: nestedSourceContext,
+        sourcePath: oldPath,
+        targetContext: nestedTargetContext,
+        targetPath: newPath,
+        signal,
+        plan,
+        ancestorSourceIds: nestedAncestors
+      });
+    }
+  }
+
   async #buildFolderMergePlan({
     sourceContext,
     sourcePath,
@@ -839,11 +1112,7 @@ export class GoogleDriveNamespace {
     onProgress(0);
     try {
       for (const [index, action] of plan.entries()) {
-        await this.#apiClient.updateFileMetadata(
-          action.fileId,
-          action.metadata,
-          { ...action.options, signal }
-        );
+        await this.#executeMutationAction(action, signal);
         completed.push(action.change);
         onProgress(Math.round(((index + 1) / Math.max(1, plan.length)) * 100));
       }
@@ -859,6 +1128,62 @@ export class GoogleDriveNamespace {
       }
       throw error;
     }
+  }
+
+  async #executeMutationAction(action, signal) {
+    if (action.type === "create-folder") {
+      const targetContext = this.#mutationContext(action.targetContext);
+      action.createdContext = await this.#createFolder(
+        targetContext,
+        action.name,
+        signal
+      );
+      return;
+    }
+    if (action.type === "copy") {
+      const targetContext = this.#mutationContext(action.targetContext);
+      await this.#requireWritableParent(targetContext, signal);
+      const copied = requireDriveItem(await this.#apiClient.copyFile(
+        action.source.id,
+        {
+          name: action.destinationName,
+          parents: [targetContext.parentId]
+        },
+        {
+          supportsAllDrives: true,
+          resourceKeys: collectResourceKeys([
+            {
+              fileId: action.source.id,
+              resourceKey: action.source.resourceKey
+            },
+            {
+              fileId: targetContext.parentId,
+              resourceKey: targetContext.resourceKey
+            }
+          ]),
+          signal
+        }
+      ));
+      if (isFolder(copied)) {
+        throw new GoogleDriveNamespaceError("drive_response_invalid");
+      }
+      return;
+    }
+    await this.#apiClient.updateFileMetadata(
+      action.fileId,
+      action.metadata,
+      { ...action.options, signal }
+    );
+  }
+
+  #mutationContext(context) {
+    if (context.type !== "create-folder") {
+      return context;
+    }
+    if (!context.createdContext) {
+      throw new GoogleDriveNamespaceError("drive_response_invalid");
+    }
+    return context.createdContext;
   }
 
   async #resolve(path, signal) {
@@ -938,7 +1263,12 @@ export class GoogleDriveNamespace {
     return { context, ...target };
   }
 
-  async #resolveExistingMutationTarget(path, signal, sourceParentPath) {
+  async #resolveExistingMutationTarget(
+    path,
+    signal,
+    sourceParentPath,
+    forbiddenCode = "drive_move_forbidden"
+  ) {
     const segments = splitVfsPath(path);
     if (segments.length < 2) {
       throw new GoogleDriveNamespaceError("drive_path_not_found");
@@ -952,11 +1282,11 @@ export class GoogleDriveNamespace {
     } else if (resolved.type === "item") {
       context = await this.#folderContext(resolved.presented, signal);
     } else {
-      throw new GoogleDriveNamespaceError("drive_move_forbidden");
+      throw new GoogleDriveNamespaceError(forbiddenCode);
     }
     if (context.type === "shared-with-me" &&
         parentPath !== sourceParentPath) {
-      throw new GoogleDriveNamespaceError("drive_move_forbidden");
+      throw new GoogleDriveNamespaceError(forbiddenCode);
     }
     const target = await this.#lookupMutationEntry(
       context,
