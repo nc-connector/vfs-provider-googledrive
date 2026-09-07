@@ -775,6 +775,7 @@ test("rejects folders, shortcuts, native files, and read-only binaries as overwr
 
 test("creates nested folders and rejects occupied folder targets", async () => {
   const created = [];
+  const progress = [];
   const { namespace } = createNamespace({
     async listFiles(options) {
       if (options.q.includes("'root'")) {
@@ -801,12 +802,15 @@ test("creates nested folders and rejects occupied folder targets", async () => {
     }
   });
 
-  await namespace.addFolder("/My Drive/Parent/Child");
+  await namespace.addFolder("/My Drive/Parent/Child", {
+    onProgress: (percent) => progress.push(percent)
+  });
 
   assert.deepEqual(created.map(({ metadata }) => metadata.parents), [
     ["root"],
     ["new-folder-1"]
   ]);
+  assert.deepEqual(progress, [50, 100]);
 
   for (const occupied of [
     file({
@@ -1072,6 +1076,10 @@ test("validates write arguments before contacting Drive", async () => {
   );
   await assert.rejects(
     namespace.writeFile("/My Drive/file", new Blob(), { onProgress: true }),
+    /onProgress/u
+  );
+  await assert.rejects(
+    namespace.addFolder("/My Drive/folder", { onProgress: true }),
     /onProgress/u
   );
   assert.equal(requests, 0);

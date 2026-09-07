@@ -374,12 +374,26 @@ export class GoogleDriveNamespace {
     });
   }
 
-  async addFolder(path, { signal } = {}) {
-    const target = await this.#resolveMutationTarget(path, signal);
+  async addFolder(path, { signal, onProgress = () => {} } = {}) {
+    if (typeof onProgress !== "function") {
+      throw new TypeError("onProgress");
+    }
+    const segments = splitVfsPath(path);
+    const rootSegments = segments[0] === this.#roots.sharedDrives ? 2 : 1;
+    const targetDepth = segments.length - rootSegments;
+    const reportCreatedFolder = (depth) => onProgress(
+      Math.round((depth / Math.max(1, targetDepth)) * 100)
+    );
+    const target = await this.#resolveMutationTarget(
+      path,
+      signal,
+      reportCreatedFolder
+    );
     if (target.existing) {
       throw targetExistsError();
     }
     await this.#createFolder(target.context, target.name, signal);
+    reportCreatedFolder(targetDepth);
   }
 
   async #resolve(path, signal) {
@@ -441,14 +455,14 @@ export class GoogleDriveNamespace {
     throw new GoogleDriveNamespaceError("drive_path_not_found");
   }
 
-  async #resolveMutationTarget(path, signal) {
+  async #resolveMutationTarget(path, signal, onFolderCreated) {
     const segments = splitVfsPath(path);
     if (segments.length < 2) {
       throw new GoogleDriveNamespaceError("drive_path_not_found");
     }
     const targetSegment = segments.pop();
     const { context, path: parentPath } =
-      await this.#resolveMutationParent(segments, signal);
+      await this.#resolveMutationParent(segments, signal, onFolderCreated);
     const target = await this.#lookupMutationEntry(
       context,
       parentPath,
@@ -458,7 +472,7 @@ export class GoogleDriveNamespace {
     return { context, ...target };
   }
 
-  async #resolveMutationParent(segments, signal) {
+  async #resolveMutationParent(segments, signal, onFolderCreated) {
     const [rootSegment, ...remainingSegments] = segments;
     let context;
     let currentPath = joinVfsPath(rootSegment);
@@ -493,7 +507,8 @@ export class GoogleDriveNamespace {
       throw new GoogleDriveNamespaceError("drive_path_not_found");
     }
 
-    for (const segment of remainingSegments) {
+    for (let index = 0; index < remainingSegments.length; index += 1) {
+      const segment = remainingSegments[index];
       const resolved = await this.#lookupMutationEntry(
         context,
         currentPath,
@@ -508,6 +523,7 @@ export class GoogleDriveNamespace {
           resolved.name,
           signal
         );
+        onFolderCreated?.(index + 1);
       }
       currentPath = joinVfsPath(
         ...splitVfsPath(currentPath),
