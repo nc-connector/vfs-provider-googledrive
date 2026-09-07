@@ -9,6 +9,7 @@ import test from "node:test";
 
 import {
   PROVIDER_STATE_KEY,
+  PROVIDER_STATE_VERSION,
   ProviderStateRepository
 } from "../src/state/provider-state.mjs";
 import { FakeStorageArea } from "./helpers/fake-storage.mjs";
@@ -33,9 +34,31 @@ test("initializes versioned state without accounts or bindings", async () => {
   const state = await repository.initialize();
 
   assert.deepEqual(state, {
-    version: 1,
+    version: PROVIDER_STATE_VERSION,
     accounts: [],
-    connectionBindings: []
+    connectionBindings: [],
+    changeCursors: []
+  });
+  assert.deepEqual(storageArea.snapshot()[PROVIDER_STATE_KEY], state);
+});
+
+test("migrates version one state before returning it", async () => {
+  const storageArea = new FakeStorageArea({
+    [PROVIDER_STATE_KEY]: {
+      version: 1,
+      accounts: [],
+      connectionBindings: []
+    }
+  });
+  const repository = new ProviderStateRepository({ storageArea });
+
+  const state = await repository.initialize();
+
+  assert.deepEqual(state, {
+    version: PROVIDER_STATE_VERSION,
+    accounts: [],
+    connectionBindings: [],
+    changeCursors: []
   });
   assert.deepEqual(storageArea.snapshot()[PROVIDER_STATE_KEY], state);
 });
@@ -124,12 +147,103 @@ test("removing an account returns and removes all dependent bindings", async () 
   });
   await repository.bindConnection({ storageId: "storage-1", accountId: account.id });
   await repository.bindConnection({ storageId: "storage-2", accountId: account.id });
+  await repository.replaceChangeCursors(account.id, [
+    { driveId: null, pageToken: "user-token" },
+    { driveId: "shared-drive-1", pageToken: "drive-token" }
+  ]);
 
   const result = await repository.removeAccount(account.id);
 
   assert.deepEqual(result.removedStorageIds, ["storage-1", "storage-2"]);
   assert.deepEqual(await repository.listAccounts(), []);
   assert.deepEqual(await repository.listConnectionBindings(), []);
+  assert.deepEqual(await repository.listChangeCursors(account.id), []);
+});
+
+test("replaces one account's user and Shared Drive change cursors", async () => {
+  const { repository, storageArea } = createRepository();
+  const first = await repository.upsertAccount({
+    googleUserId: "google-user-1",
+    oauthClientId: CLIENT_ID,
+    refreshToken: "refresh-one"
+  });
+  const second = await repository.upsertAccount({
+    googleUserId: "google-user-2",
+    oauthClientId: CLIENT_ID,
+    refreshToken: "refresh-two"
+  });
+  await repository.replaceChangeCursors(second.id, [
+    { driveId: null, pageToken: "second-user-token" }
+  ]);
+
+  assert.deepEqual(await repository.replaceChangeCursors(first.id, [
+    { driveId: null, pageToken: "first-user-token" },
+    { driveId: "shared-drive-1", pageToken: "first-drive-token" }
+  ]), [
+    {
+      accountId: first.id,
+      driveId: null,
+      pageToken: "first-user-token",
+      updatedAt: 1003
+    },
+    {
+      accountId: first.id,
+      driveId: "shared-drive-1",
+      pageToken: "first-drive-token",
+      updatedAt: 1003
+    }
+  ]);
+
+  const restarted = new ProviderStateRepository({ storageArea });
+  assert.deepEqual(await restarted.listChangeCursors(first.id), [
+    {
+      accountId: first.id,
+      driveId: null,
+      pageToken: "first-user-token",
+      updatedAt: 1003
+    },
+    {
+      accountId: first.id,
+      driveId: "shared-drive-1",
+      pageToken: "first-drive-token",
+      updatedAt: 1003
+    }
+  ]);
+  assert.deepEqual(await restarted.listChangeCursors(second.id), [{
+    accountId: second.id,
+    driveId: null,
+    pageToken: "second-user-token",
+    updatedAt: 1002
+  }]);
+});
+
+test("validates change cursor replacement before writing state", async () => {
+  const { repository, storageArea } = createRepository();
+  const account = await repository.upsertAccount({
+    googleUserId: "google-user-1",
+    oauthClientId: CLIENT_ID,
+    refreshToken: "refresh-one"
+  });
+  const before = storageArea.snapshot();
+
+  await assert.rejects(
+    repository.replaceChangeCursors(account.id, [
+      { driveId: null, pageToken: "first" },
+      { pageToken: "duplicate-user" }
+    ]),
+    /driveId must be unique/
+  );
+  await assert.rejects(
+    repository.replaceChangeCursors(account.id, [
+      { driveId: "shared-drive-1", pageToken: "" }
+    ]),
+    /pageToken/
+  );
+  await assert.rejects(
+    repository.replaceChangeCursors("missing-account", []),
+    /Unknown account/
+  );
+  assert.deepEqual(storageArea.snapshot(), before);
 });
 
 test("removes stale bindings without changing valid ones", async () => {

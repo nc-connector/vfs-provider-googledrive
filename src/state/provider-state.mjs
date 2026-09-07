@@ -1,11 +1,13 @@
 /**
- * Persistent Google account and VFS connection state.
+ * Persistent Google account, VFS connection, and change cursor state.
  */
 
 "use strict";
 
 export const PROVIDER_STATE_KEY = "google-drive-provider-state";
-export const PROVIDER_STATE_VERSION = 1;
+export const PROVIDER_STATE_VERSION = 2;
+
+const LEGACY_PROVIDER_STATE_VERSION = 1;
 
 const ACCOUNT_STATUSES = new Set([
   "connected",
@@ -20,7 +22,8 @@ function createEmptyState() {
   return {
     version: PROVIDER_STATE_VERSION,
     accounts: [],
-    connectionBindings: []
+    connectionBindings: [],
+    changeCursors: []
   };
 }
 
@@ -35,6 +38,41 @@ function normalizeOptionalString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeDriveId(value) {
+  return value === undefined || value === null
+    ? null
+    : requireNonEmptyString(value, "driveId");
+}
+
+function requirePageToken(value) {
+  if (typeof value !== "string" || !value) {
+    throw new TypeError("pageToken must be a non-empty string");
+  }
+  return value;
+}
+
+function normalizeCursorInput(cursors) {
+  if (!Array.isArray(cursors)) {
+    throw new TypeError("cursors must be an array");
+  }
+  const seenDriveIds = new Set();
+  return cursors.map((cursor) => {
+    if (!cursor || typeof cursor !== "object" || Array.isArray(cursor)) {
+      throw new TypeError("cursor must be an object");
+    }
+    const driveId = normalizeDriveId(cursor.driveId);
+    const key = driveId ?? "";
+    if (seenDriveIds.has(key)) {
+      throw new TypeError("cursor driveId must be unique");
+    }
+    seenDriveIds.add(key);
+    return {
+      driveId,
+      pageToken: requirePageToken(cursor.pageToken)
+    };
+  });
+}
+
 function publicAccount(account) {
   const {
     refreshToken: _refreshToken,
@@ -47,10 +85,21 @@ function validateStoredState(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Stored provider state is invalid");
   }
-  if (value.version !== PROVIDER_STATE_VERSION) {
+  if (value.version !== PROVIDER_STATE_VERSION &&
+      value.version !== LEGACY_PROVIDER_STATE_VERSION) {
     throw new Error(`Unsupported provider state version: ${value.version}`);
   }
   if (!Array.isArray(value.accounts) || !Array.isArray(value.connectionBindings)) {
+    throw new Error("Stored provider state collections are invalid");
+  }
+  if (value.version === LEGACY_PROVIDER_STATE_VERSION) {
+    return {
+      ...clone(value),
+      version: PROVIDER_STATE_VERSION,
+      changeCursors: []
+    };
+  }
+  if (!Array.isArray(value.changeCursors)) {
     throw new Error("Stored provider state collections are invalid");
   }
   return clone(value);
@@ -76,13 +125,7 @@ export class ProviderStateRepository {
   }
 
   async initialize() {
-    const stored = await this.#storageArea.get(PROVIDER_STATE_KEY);
-    if (!Object.hasOwn(stored, PROVIDER_STATE_KEY)) {
-      const state = createEmptyState();
-      await this.#storageArea.set({ [PROVIDER_STATE_KEY]: state });
-      return clone(state);
-    }
-    return validateStoredState(stored[PROVIDER_STATE_KEY]);
+    return this.#read();
   }
 
   async listAccounts() {
@@ -194,6 +237,8 @@ export class ProviderStateRepository {
         .map((binding) => binding.storageId);
       state.connectionBindings = state.connectionBindings
         .filter((binding) => binding.accountId !== normalizedId);
+      state.changeCursors = state.changeCursors
+        .filter((cursor) => cursor.accountId !== normalizedId);
       return {
         account: publicAccount(account),
         removedStorageIds
@@ -268,12 +313,49 @@ export class ProviderStateRepository {
     });
   }
 
+  async listChangeCursors(accountId) {
+    const normalizedAccountId = requireNonEmptyString(accountId, "accountId");
+    const state = await this.#read();
+    return clone(state.changeCursors.filter((cursor) =>
+      cursor.accountId === normalizedAccountId));
+  }
+
+  async replaceChangeCursors(accountId, cursors) {
+    const normalizedAccountId = requireNonEmptyString(accountId, "accountId");
+    const normalizedCursors = normalizeCursorInput(cursors);
+    return this.#mutate((state) => {
+      if (!state.accounts.some((account) =>
+        account.id === normalizedAccountId)) {
+        throw new Error(`Unknown account: ${normalizedAccountId}`);
+      }
+      const timestamp = this.#now();
+      const replacements = normalizedCursors.map((cursor) => ({
+        accountId: normalizedAccountId,
+        driveId: cursor.driveId,
+        pageToken: cursor.pageToken,
+        updatedAt: timestamp
+      }));
+      state.changeCursors = [
+        ...state.changeCursors.filter((cursor) =>
+          cursor.accountId !== normalizedAccountId),
+        ...replacements
+      ];
+      return replacements;
+    });
+  }
+
   async #read() {
     const stored = await this.#storageArea.get(PROVIDER_STATE_KEY);
     if (!Object.hasOwn(stored, PROVIDER_STATE_KEY)) {
-      return this.initialize();
+      const state = createEmptyState();
+      await this.#storageArea.set({ [PROVIDER_STATE_KEY]: state });
+      return clone(state);
     }
-    return validateStoredState(stored[PROVIDER_STATE_KEY]);
+    const state = validateStoredState(stored[PROVIDER_STATE_KEY]);
+    if (stored[PROVIDER_STATE_KEY].version !== PROVIDER_STATE_VERSION) {
+      await this.#storageArea.set({ [PROVIDER_STATE_KEY]: state });
+    }
+    return state;
   }
 
   async #mutate(mutator) {
