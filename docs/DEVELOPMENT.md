@@ -86,9 +86,31 @@ Drive, and this project does not include its WebDAV protocol code.
 - The `runtime.onMessage` listener must return a promise only for messages
   it handles; it must return `undefined` for unrelated messages.
 
-The manifest currently has a minimum Thunderbird version of 140.0. It requests
-`storage` for Toolkit, account, preference, and session state, `identity` for
-the interactive OAuth window, and `alarms` for periodic Drive change checks.
+The supported range starts at Thunderbird 140.0 and has no upper bound in the
+manifest. The add-on uses only documented WebExtension APIs and no Experiment
+API, so it does not set `strict_max_version`. Release testing covers the latest
+maintenance release of the 140 ESR line and the current ESR at candidate time.
+
+The compatibility floor was checked against the Mozilla and Thunderbird API
+documentation. Manifest V3 event pages are supported from Thunderbird 128,
+`storage.session` from Thunderbird 115, and the runtime, window, identity, i18n,
+and alarm calls used here predate Thunderbird 140. `AbortSignal.any()`, which
+combines VFS cancellation with request deadlines, is available from Gecko 124.
+The project does not claim support for Thunderbird 128 because its release and
+manual test baseline starts at 140.
+
+Version references: Thunderbird's [Manifest V3 migration guide](https://webextension-api.thunderbird.net/en/mv3/guides/manifestV3.html),
+[storage](https://webextension-api.thunderbird.net/en/esr-mv3/storage.html),
+[runtime](https://webextension-api.thunderbird.net/en/esr-mv3/runtime.html),
+[windows](https://webextension-api.thunderbird.net/en/esr-mv3/windows.html),
+[identity](https://webextension-api.thunderbird.net/en/esr-mv3/identity.html),
+[alarms](https://webextension-api.thunderbird.net/en/esr-mv3/alarms.html), and
+[i18n](https://webextension-api.thunderbird.net/en/esr-mv3/i18n.html) API pages,
+plus Mozilla's [`AbortSignal.any()` reference](https://developer.mozilla.org/docs/Web/API/AbortSignal/any_static).
+
+The manifest requests `storage` for Toolkit, account, preference, and session
+state, `identity` for the interactive OAuth window, and `alarms` for periodic
+Drive change checks.
 Host access is limited to
 `oauth2.googleapis.com` for token exchange/revocation and `www.googleapis.com`
 for Drive API calls. The authorization page at `accounts.google.com` is opened

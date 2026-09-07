@@ -10,8 +10,9 @@ XPI.
 Use disposable Google data and fresh Thunderbird profiles. The release matrix
 needs:
 
-- the oldest Thunderbird version declared in the manifest;
-- the current supported Thunderbird ESR;
+- the latest maintenance release in the Thunderbird 140 ESR line, which is the
+  oldest supported major version;
+- the current Thunderbird ESR at candidate time;
 - a Google Cloud development project configured as described in
   [ADMIN.md](ADMIN.md);
 - one regular Google account with My Drive content;

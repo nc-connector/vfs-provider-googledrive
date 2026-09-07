@@ -24,8 +24,9 @@ kept in sync with the repository.
 - [ ] Replace the neutral development icon with an approved product icon that
   follows Google branding rules without implying that Google publishes the
   add-on.
-- [ ] Confirm the initial Thunderbird support range. The scaffold starts at
-  Thunderbird 140 and has no Experiment API.
+- [x] Confirm the initial Thunderbird support range. Releases support
+  Thunderbird 140.0 and newer without an upper bound; candidate testing covers
+  the latest 140 ESR maintenance release and the current ESR.
 
 ## Foundation
 
