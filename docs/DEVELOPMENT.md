@@ -2,8 +2,8 @@
 
 > **Development status:** Version 0.1.0 includes the MV3 foundation, Google
 > OAuth account services, localized account and connection settings, and a
-> working read-only VFS provider. Write operations and release validation are
-> still in progress.
+> working VFS provider for browsing, reading, and creating files and folders.
+> The remaining write operations and release validation are still in progress.
 
 ## 1. Product goal
 
@@ -196,8 +196,8 @@ Upload state, source bytes, session URLs, and abort controllers remain bound to
 the active VFS request and are not presented as surviving an MV3 background
 restart. File and account identifiers, query text, paths, session URLs, and
 request URLs are excluded from diagnostic records. The provider creates the
-Drive namespace only after the Toolkit connection, requested read capability,
-local account binding, and current account status have been checked.
+Drive namespace only after the Toolkit connection, requested capability, local
+account binding, and current account status have been checked.
 
 ## 6. Provider boundary
 
@@ -215,6 +215,11 @@ The vendored Toolkit remains the owner of consumer add-on IDs, picker names,
 capabilities, and discovery records in `vfs-toolkit-connections`. This avoids a
 second copy of Toolkit connection data. Repository account queries omit refresh
 tokens unless an internal authorization lookup is explicitly requested.
+
+At startup, the connection service re-reports an outdated capability set for
+each uniquely matched local binding through the Toolkit helper. It does not
+write Toolkit connection records directly. A failed update leaves the binding
+in place and can be tried again after the next background start.
 
 The repository serializes writes performed by its background instance and uses
 a versioned storage record. UI pages must request state changes through the
@@ -256,18 +261,20 @@ The provider API exposes callbacks for:
 - deleting files or folders; and
 - canceling a request.
 
-The current provider advertises folder read and file read. It implements root
-and folder listing, storage quota, binary download, Workspace export, localized
-VFS errors, and request-scoped cancellation. The account binding and capability
-are checked for every operation.
+The current provider advertises `file.read`, `file.add`, `folder.read`, and
+`folder.add`. It implements root and folder listing, storage quota, binary
+download, Workspace export, new file upload, recursive folder creation,
+localized VFS errors, progress, and request-scoped cancellation. The account
+binding and requested capability are checked for every operation.
 
-Capabilities for writes remain disabled until their complete callback paths
-exist. The upload service and namespace file/folder writes are present but are
-not connected to VFS write callbacks yet. Uploads and other long write
-operations need request-scoped progress and cancellation. Partial folder operations need storage-change
-reports for items already changed before an abort or error, as described by the
-upstream provider guide. Upload strategy and change tracking remain
-product-owned work and must not be inferred from the vendored Toolkit.
+`writeFile` requests `file.add` for a new target. An overwrite request requires
+`file.modify`, which is not advertised and is rejected before the namespace is
+called. Move, copy, and delete callbacks remain unavailable for the same reason.
+File and folder creation report progress through the Toolkit request ID and use
+the same abort registry as read operations. A later multi-step mutation still
+needs storage-change reports for items changed before an abort or error, as
+described by the upstream provider guide. Upload strategy and change tracking
+remain product-owned work and are not part of the vendored Toolkit.
 
 ### Diagnostic logging
 

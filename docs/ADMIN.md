@@ -1,9 +1,9 @@
 # Administration Guide — VFS Provider for Google Drive
 
-> **Development status:** The current package provides read-only Google Drive
-> storage through VFS, including account-bound setup and configuration. It is
-> not ready for production deployment because write operations and release
-> validation remain incomplete.
+> **Development status:** The current package provides Google Drive storage
+> through VFS, including account-bound setup, browsing, reading, new file
+> uploads, and folder creation. It is not ready for production deployment
+> because the remaining write operations and release validation are incomplete.
 
 This guide records the administrative boundary of the project while the
 provider is under development. Runtime setup, managed deployment, OAuth
@@ -21,10 +21,11 @@ The current build provides a localized settings page where a tester can enter a
 Desktop OAuth client ID, add or reauthorize Google accounts, remove an unused
 account, choose Workspace export formats, and enable diagnostic logging. A
 compatible VFS consumer can create a connection for one account, rename that
-connection, switch its account, browse Drive content, and read files. It does
-not yet:
+connection, switch its account, browse and read Drive content, upload new files,
+and create folders. Previously granted connections receive these add
+capabilities when the provider starts. It does not yet:
 
-- create, replace, move, copy, or delete Drive content;
+- replace, move, copy, or delete Drive content;
 - report remote Drive changes to connected consumers; or
 - list and revoke individual consumer connections in the provider settings.
 
