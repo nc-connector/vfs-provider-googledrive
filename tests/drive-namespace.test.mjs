@@ -1175,7 +1175,7 @@ test("moves files and folders to the Drive trash", async () => {
       metadata: { trashed: true },
       options: {
         supportsAllDrives: true,
-        resourceKey: "file-key",
+        resourceKeys: [{ fileId: "file-id", resourceKey: "file-key" }],
         signal
       }
     },
@@ -1184,7 +1184,7 @@ test("moves files and folders to the Drive trash", async () => {
       metadata: { trashed: true },
       options: {
         supportsAllDrives: true,
-        resourceKey: "folder-key",
+        resourceKeys: [{ fileId: "folder-id", resourceKey: "folder-key" }],
         signal
       }
     }
@@ -1224,7 +1224,10 @@ test("trashes the selected shortcut instead of its target", async () => {
 
   assert.equal(targetRequests, 0);
   assert.equal(updates[0].fileId, "shortcut-id");
-  assert.equal(updates[0].options.resourceKey, "shortcut-key");
+  assert.deepEqual(updates[0].options.resourceKeys, [{
+    fileId: "shortcut-id",
+    resourceKey: "shortcut-key"
+  }]);
 });
 
 test("trashes the selected Workspace item and duplicate Drive item by ID", async () => {

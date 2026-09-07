@@ -429,7 +429,9 @@ export class GoogleDriveNamespace {
     onProgress(0);
     await this.#apiClient.updateFileMetadata(item.id, { trashed: true }, {
       supportsAllDrives: true,
-      resourceKey: item.resourceKey,
+      resourceKeys: item.resourceKey
+        ? [{ fileId: item.id, resourceKey: item.resourceKey }]
+        : undefined,
       signal
     });
     onProgress(100);

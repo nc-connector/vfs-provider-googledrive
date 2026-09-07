@@ -226,7 +226,11 @@ test("updates metadata for an encoded shared-drive item", async () => {
   assert.deepEqual(await client.updateFileMetadata("file:id", metadata, {
     addParents: "new-parent",
     removeParents: "old-parent",
-    resourceKey: "resource-key",
+    resourceKeys: [
+      { fileId: "file:id", resourceKey: "file-key" },
+      { fileId: "old-parent", resourceKey: "old-parent-key" },
+      { fileId: "new-parent", resourceKey: "new-parent-key" }
+    ],
     signal
   }), {
     id: "file:id",
@@ -242,7 +246,11 @@ test("updates metadata for an encoded shared-drive item", async () => {
   });
   assert.equal(calls[0].options.method, "PATCH");
   assert.deepEqual(calls[0].options.headers, {
-    "X-Goog-Drive-Resource-Keys": "file:id/resource-key",
+    "X-Goog-Drive-Resource-Keys": [
+      "file:id/file-key",
+      "old-parent/old-parent-key",
+      "new-parent/new-parent-key"
+    ].join(","),
     "Content-Type": "application/json; charset=UTF-8"
   });
   assert.equal(calls[0].options.body, JSON.stringify(metadata));

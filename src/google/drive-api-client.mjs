@@ -403,7 +403,7 @@ export class GoogleDriveApiClient {
     addParents,
     removeParents,
     supportsAllDrives = true,
-    resourceKey,
+    resourceKeys,
     signal
   } = {}) {
     const normalizedFileId = requireText(fileId, "fileId");
@@ -417,7 +417,7 @@ export class GoogleDriveApiClient {
       },
       method: "PATCH",
       headers: {
-        ...singleResourceKeyHeaders(normalizedFileId, resourceKey),
+        ...resourceKeyHeaders(resourceKeys),
         "Content-Type": "application/json; charset=UTF-8"
       },
       body: serializeMetadata(metadata),
