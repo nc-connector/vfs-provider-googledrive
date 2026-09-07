@@ -201,6 +201,7 @@ export class GoogleDriveNamespace {
   #apiClient;
   #exportFormats;
   #fileFactory;
+  #logger;
   #roots;
   #uploader;
 
@@ -209,6 +210,7 @@ export class GoogleDriveNamespace {
     exportFormats,
     rootLabels,
     fileFactory = defaultFileFactory,
+    logger,
     uploader = null
   }) {
     this.#apiClient = requireApiClient(apiClient);
@@ -220,6 +222,7 @@ export class GoogleDriveNamespace {
     }
     this.#exportFormats = structuredClone(exportFormats);
     this.#fileFactory = fileFactory;
+    this.#logger = logger;
     this.#roots = normalizeRootLabels(rootLabels);
     this.#uploader = uploader === null ? null : requireUploader(uploader);
   }
@@ -362,7 +365,8 @@ export class GoogleDriveNamespace {
     }
 
     const uploader = this.#uploader || new GoogleDriveUploader({
-      apiClient: this.#apiClient
+      apiClient: this.#apiClient,
+      logger: this.#logger
     });
     return uploader.upload({
       file,

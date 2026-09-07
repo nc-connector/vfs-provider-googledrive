@@ -12,16 +12,16 @@ import {
   VfsProviderImplementation
 } from "../vendor/vfs-toolkit/vfs-provider.mjs";
 
-export const READ_ONLY_CAPABILITIES = Object.freeze({
+export const GOOGLE_DRIVE_CAPABILITIES = Object.freeze({
   file: Object.freeze({
     read: true,
-    add: false,
+    add: true,
     modify: false,
     delete: false
   }),
   folder: Object.freeze({
     read: true,
-    add: false,
+    add: true,
     modify: false,
     delete: false
   })
@@ -90,7 +90,8 @@ function providerError(getMessage, id, titleKey, descriptionKey, cause) {
 
 export function mapVfsProviderError(error, getMessage) {
   if (error?.name === "AbortError" ||
-      error?.code === "E:AUTH" || error?.code === "E:PROVIDER") {
+      error?.code === "E:AUTH" || error?.code === "E:EXIST" ||
+      error?.code === "E:PROVIDER") {
     return error;
   }
   if (error instanceof GoogleOAuthError ||
@@ -122,7 +123,8 @@ export function mapVfsProviderError(error, getMessage) {
       error
     );
   }
-  if (error?.status === 403 || error?.code === "drive_download_forbidden") {
+  if (error?.status === 403 || error?.code === "drive_download_forbidden" ||
+      error?.code === "drive_write_forbidden") {
     return providerError(
       getMessage,
       "google-drive-access",
@@ -226,6 +228,26 @@ export class GoogleDriveVfsProvider extends VfsProviderImplementation {
         namespace.readFile(path, { signal })));
   }
 
+  async onWriteFile(requestId, storageId, path, file, overwrite) {
+    const capability = overwrite ? "file.modify" : "file.add";
+    return this.#abortRegistry.run(requestId, (signal) =>
+      this.#run("write_file", storageId, capability, (namespace) =>
+        namespace.writeFile(path, file, {
+          overwrite,
+          signal,
+          onProgress: (percent) => this.reportProgress(requestId, percent)
+        })));
+  }
+
+  async onAddFolder(requestId, storageId, path) {
+    return this.#abortRegistry.run(requestId, (signal) =>
+      this.#run("add_folder", storageId, "folder.add", (namespace) =>
+        namespace.addFolder(path, {
+          signal,
+          onProgress: (percent) => this.reportProgress(requestId, percent)
+        })));
+  }
+
   async #run(operation, storageId, capability, callback) {
     this.#logger?.debug?.("vfs.operation.start", { operation });
     try {
@@ -264,7 +286,8 @@ export class GoogleDriveVfsProvider extends VfsProviderImplementation {
     return this.#namespaceFactory({
       apiClient,
       exportFormats: preferences.exportFormats,
-      rootLabels: this.#rootLabels
+      rootLabels: this.#rootLabels,
+      logger: this.#logger
     });
   }
 }

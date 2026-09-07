@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { READ_ONLY_CAPABILITIES } from "../src/provider/google-drive-vfs-provider.mjs";
+import { GOOGLE_DRIVE_CAPABILITIES } from "../src/provider/google-drive-vfs-provider.mjs";
 import {
   VFS_TOOLKIT_CONNECTIONS_KEY,
   VfsConnectionService
@@ -22,7 +22,7 @@ function toolkitConnection({
   addonName = "Example consumer",
   storageId = "storage-1",
   name = "Drive account",
-  capabilities = READ_ONLY_CAPABILITIES
+  capabilities = GOOGLE_DRIVE_CAPABILITIES
 } = {}) {
   return { addonId, addonName, storageId, name, capabilities };
 }
@@ -98,8 +98,16 @@ test("authorizes only one current connection with the requested capability", asy
     (await service.getAuthorizedBinding("storage-1", "folder.read")).accountId,
     "account-1"
   );
+  assert.equal(
+    (await service.getAuthorizedBinding("storage-1", "file.add")).accountId,
+    "account-1"
+  );
+  assert.equal(
+    (await service.getAuthorizedBinding("storage-1", "folder.add")).accountId,
+    "account-1"
+  );
   await assert.rejects(
-    service.getAuthorizedBinding("storage-1", "file.add"),
+    service.getAuthorizedBinding("storage-1", "file.modify"),
     (error) => error.code === "E:AUTH"
   );
   await assert.rejects(
@@ -153,7 +161,7 @@ test("creates the product binding before completing Toolkit setup", async () => 
     "storage-new",
     "Work Drive"
   ]);
-  assert.deepEqual(reported[4], READ_ONLY_CAPABILITIES);
+  assert.deepEqual(reported[4], GOOGLE_DRIVE_CAPABILITIES);
   assert.equal(reported[5], "setup-token");
 });
 
@@ -249,6 +257,7 @@ test("updates a connection name and account through the Toolkit helper", async (
     existing.storageId,
     "Personal Drive"
   ]);
+  assert.deepEqual(reports[0][4], GOOGLE_DRIVE_CAPABILITIES);
   assert.equal(reports[0][5], undefined);
 });
 

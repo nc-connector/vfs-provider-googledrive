@@ -4,7 +4,7 @@
 
 "use strict";
 
-import { READ_ONLY_CAPABILITIES } from "./google-drive-vfs-provider.mjs";
+import { GOOGLE_DRIVE_CAPABILITIES } from "./google-drive-vfs-provider.mjs";
 import {
   reportNewConnection
 } from "../vendor/vfs-toolkit/vfs-provider.mjs";
@@ -204,7 +204,7 @@ export class VfsConnectionService {
           optionalLabel(addonName, requestedAddonId),
           storageId,
           requestedName,
-          clone(READ_ONLY_CAPABILITIES),
+          clone(GOOGLE_DRIVE_CAPABILITIES),
           requestedSetupToken
         );
       } catch (error) {
@@ -252,7 +252,7 @@ export class VfsConnectionService {
           optionalLabel(matches[0].addonName, matches[0].addonId),
           requestedStorageId,
           requestedName,
-          clone(READ_ONLY_CAPABILITIES)
+          clone(GOOGLE_DRIVE_CAPABILITIES)
         );
       } catch (error) {
         await this.#accountRepository.bindConnection(previousBinding);

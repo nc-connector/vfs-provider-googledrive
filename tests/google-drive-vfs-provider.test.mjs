@@ -11,8 +11,8 @@ import { GoogleDriveNamespaceError } from "../src/google/drive-namespace.mjs";
 import { GoogleDriveRequestError } from "../src/google/drive-transport.mjs";
 import { GoogleOAuthError } from "../src/google/oauth-client.mjs";
 import {
+  GOOGLE_DRIVE_CAPABILITIES,
   GoogleDriveVfsProvider,
-  READ_ONLY_CAPABILITIES,
   mapVfsProviderError
 } from "../src/provider/google-drive-vfs-provider.mjs";
 
@@ -38,7 +38,13 @@ function createProvider({
   account = { id: "account-1", status: "connected" },
   namespace,
   readiness = Promise.resolve(),
-  logger
+  logger,
+  supportedCapabilities = new Set([
+    "file.add",
+    "file.read",
+    "folder.add",
+    "folder.read"
+  ])
 } = {}) {
   const namespaceCalls = [];
   const apiCalls = [];
@@ -55,6 +61,12 @@ function createProvider({
     async readFile(path, options) {
       namespaceCalls.push({ method: "readFile", path, options });
       return { name: "file.txt" };
+    },
+    async writeFile(path, file, options) {
+      namespaceCalls.push({ method: "writeFile", path, file, options });
+    },
+    async addFolder(path, options) {
+      namespaceCalls.push({ method: "addFolder", path, options });
     }
   };
   const provider = new GoogleDriveVfsProvider({
@@ -64,7 +76,8 @@ function createProvider({
       async getAuthorizedBinding(storageId, capability) {
         authorizationCalls.push({ storageId, capability });
         if (typeof storageId !== "string" ||
-            storageId !== binding?.storageId) {
+            storageId !== binding?.storageId ||
+            (capability && !supportedCapabilities.has(capability))) {
           throw Object.assign(new Error("Unauthorized storage connection"), {
             code: "E:AUTH"
           });
@@ -102,13 +115,13 @@ function createProvider({
   return { apiCalls, authorizationCalls, namespaceCalls, provider };
 }
 
-test("advertises only implemented read operations", () => {
-  assert.deepEqual(READ_ONLY_CAPABILITIES, {
-    file: { read: true, add: false, modify: false, delete: false },
-    folder: { read: true, add: false, modify: false, delete: false }
+test("advertises only implemented VFS operations", () => {
+  assert.deepEqual(GOOGLE_DRIVE_CAPABILITIES, {
+    file: { read: true, add: true, modify: false, delete: false },
+    folder: { read: true, add: true, modify: false, delete: false }
   });
-  assert.equal(Object.isFrozen(READ_ONLY_CAPABILITIES.file), true);
-  assert.equal(Object.isFrozen(READ_ONLY_CAPABILITIES.folder), true);
+  assert.equal(Object.isFrozen(GOOGLE_DRIVE_CAPABILITIES.file), true);
+  assert.equal(Object.isFrozen(GOOGLE_DRIVE_CAPABILITIES.folder), true);
 });
 
 test("binds list, read, and quota requests to the selected Google account", async () => {
@@ -144,6 +157,89 @@ test("binds list, read, and quota requests to the selected Google account", asyn
   const readCall = namespaceCalls.find((call) => call.method === "readFile");
   assert.equal(listCall.options.signal instanceof AbortSignal, true);
   assert.equal(readCall.options.signal instanceof AbortSignal, true);
+});
+
+test("creates files through file.add and forwards upload progress", async () => {
+  let writeCall;
+  const progressCalls = [];
+  const file = new Blob(["content"], { type: "text/plain" });
+  const namespace = {
+    async writeFile(path, writtenFile, options) {
+      writeCall = { path, file: writtenFile, options };
+      options.onProgress(45);
+    }
+  };
+  const { authorizationCalls, provider } = createProvider({ namespace });
+  provider.reportProgress = (...args) => progressCalls.push(args);
+
+  await provider.onWriteFile(
+    "request-write",
+    "storage-1",
+    "/My Drive/file.txt",
+    file,
+    false
+  );
+
+  assert.deepEqual(authorizationCalls, [
+    { storageId: "storage-1", capability: "file.add" }
+  ]);
+  assert.equal(writeCall.path, "/My Drive/file.txt");
+  assert.equal(writeCall.file, file);
+  assert.equal(writeCall.options.overwrite, false);
+  assert.equal(writeCall.options.signal instanceof AbortSignal, true);
+  assert.deepEqual(progressCalls, [["request-write", 45]]);
+});
+
+test("does not expose file replacement through writeFile", async () => {
+  let namespaceCalled = false;
+  const namespace = {
+    async writeFile() {
+      namespaceCalled = true;
+    }
+  };
+  const { authorizationCalls, provider } = createProvider({ namespace });
+
+  await assert.rejects(
+    provider.onWriteFile(
+      "request-overwrite",
+      "storage-1",
+      "/My Drive/file.txt",
+      new Blob(["replacement"]),
+      true
+    ),
+    (error) => error.code === "E:AUTH" && !error.details
+  );
+
+  assert.deepEqual(authorizationCalls, [
+    { storageId: "storage-1", capability: "file.modify" }
+  ]);
+  assert.equal(namespaceCalled, false);
+});
+
+test("creates folders through folder.add and forwards progress", async () => {
+  let addFolderCall;
+  const progressCalls = [];
+  const namespace = {
+    async addFolder(path, options) {
+      addFolderCall = { path, options };
+      options.onProgress(100);
+    }
+  };
+  const { authorizationCalls, provider } = createProvider({ namespace });
+  provider.reportProgress = (...args) => progressCalls.push(args);
+
+  await provider.onAddFolder(
+    "request-folder",
+    "storage-1",
+    "/My Drive/Folder"
+  );
+
+  assert.deepEqual(authorizationCalls, [
+    { storageId: "storage-1", capability: "folder.add" }
+  ]);
+  assert.equal(addFolderCall.path, "/My Drive/Folder");
+  assert.equal(addFolderCall.options.signal instanceof AbortSignal, true);
+  assert.deepEqual(progressCalls, [["request-folder", 100]]);
 });
 
 test("rejects storage IDs that have no account binding", async () => {
@@ -202,6 +298,49 @@ test("cancels the active Drive request by its Toolkit request ID", async () => {
   assert.equal(operationSignal.aborted, true);
 });
 
+test("cancels active file and folder creation requests", async () => {
+  const cases = [
+    {
+      handler: "onWriteFile",
+      namespaceMethod: "writeFile",
+      args: ["/My Drive/file.txt", new Blob(["content"]), false]
+    },
+    {
+      handler: "onAddFolder",
+      namespaceMethod: "addFolder",
+      args: ["/My Drive/Folder"]
+    }
+  ];
+
+  for (const { handler, namespaceMethod, args } of cases) {
+    let operationSignal;
+    const namespace = {
+      async [namespaceMethod](...methodArgs) {
+        const options = methodArgs.at(-1);
+        operationSignal = options.signal;
+        return new Promise((resolve, reject) => {
+          operationSignal.addEventListener(
+            "abort",
+            () => reject(operationSignal.reason),
+            { once: true }
+          );
+        });
+      }
+    };
+    const { provider } = createProvider({ namespace });
+    const operation = provider[handler](
+      `request-${namespaceMethod}`,
+      "storage-1",
+      ...args
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await provider.onCancel(`request-${namespaceMethod}`);
+
+    await assert.rejects(operation, (error) => error.name === "AbortError");
+    assert.equal(operationSignal.aborted, true);
+  }
+});
+
 test("maps user-actionable Drive failures to localized provider details", () => {
   const cases = [
     [
@@ -228,6 +367,11 @@ test("maps user-actionable Drive failures to localized provider details", () => 
       "vfsErrorAccessTitle"
     ],
     [
+      new GoogleDriveNamespaceError("drive_write_forbidden"),
+      "google-drive-access",
+      "vfsErrorAccessTitle"
+    ],
+    [
       new GoogleDriveNamespaceError("drive_path_not_found"),
       "google-drive-unavailable",
       "vfsErrorUnavailableTitle"
@@ -243,6 +387,14 @@ test("maps user-actionable Drive failures to localized provider details", () => 
   }
 });
 
+test("preserves VFS conflict errors", () => {
+  const source = Object.assign(new Error("Target already exists"), {
+    code: "E:EXIST"
+  });
+
+  assert.equal(mapVfsProviderError(source, getMessage), source);
+});
+
 test("logs operation phases without storage IDs or paths", async () => {
   const events = [];
   const logger = {
@@ -253,7 +405,7 @@ test("logs operation phases without storage IDs or paths", async () => {
       events.push({ level: "warn", event, details });
     }
   };
-  const { provider } = createProvider({ logger });
+  const { namespaceCalls, provider } = createProvider({ logger });
 
   await provider.onList("request-1", "storage-1", "/private/path");
 
@@ -269,4 +421,6 @@ test("logs operation phases without storage IDs or paths", async () => {
       details: { operation: "list" }
     }
   ]);
+  const creation = namespaceCalls.find((call) => call.method === "create");
+  assert.equal(creation.options.logger, logger);
 });
