@@ -186,6 +186,9 @@ multiple of Drive's required 256 KiB unit. Progress advances only to the byte
 offset confirmed by Drive. After an unknown chunk result, the uploader queries
 the session before sending more data; it never blindly repeats that chunk. A
 session rejected by Drive can be restarted once during the active request.
+Resource keys for link-shared files and parent folders are included in
+multipart requests and resumable-session creation, including a restarted
+session.
 
 Upload state, source bytes, session URLs, and abort controllers remain bound to
 the active VFS request and are not presented as surviving an MV3 background
@@ -232,6 +235,14 @@ a visible name as a globally unique key. It resolves shortcuts, distinguishes
 duplicate siblings, exports supported Google-native documents, and separates
 My Drive, shared items, and Shared drives into virtual roots.
 
+The mutation namespace resolves existing targets through those same visible
+paths. New path segments received from a VFS client remain literal so valid
+filenames containing percent or tilde characters are not decoded as provider
+metadata. File creates and folder creates check the target parent's Drive
+capabilities, create missing parents in order, retain resource keys, and reject
+writes at virtual roots. Binary overwrite updates the selected Drive item by ID;
+Google-native files and shortcuts are not replaced with binary media.
+
 ## 7. VFS operations
 
 The provider API exposes callbacks for:
@@ -249,9 +260,9 @@ VFS errors, and request-scoped cancellation. The account binding and capability
 are checked for every operation.
 
 Capabilities for writes remain disabled until their complete callback paths
-exist. The upload service is present but is not connected to a VFS write
-callback yet. Uploads and other long write operations need request-scoped
-progress and cancellation. Partial folder operations need storage-change
+exist. The upload service and namespace file/folder writes are present but are
+not connected to VFS write callbacks yet. Uploads and other long write
+operations need request-scoped progress and cancellation. Partial folder operations need storage-change
 reports for items already changed before an abort or error, as described by the
 upstream provider guide. Upload strategy and change tracking remain
 product-owned work and must not be inferred from the vendored Toolkit.

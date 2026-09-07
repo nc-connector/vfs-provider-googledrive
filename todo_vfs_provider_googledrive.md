@@ -25,7 +25,6 @@ kept in sync with the repository.
 
 ## Foundation
 
-- [x] Create a separate work copy and register the project paths in `SKILL.md`.
 - [x] Add an MV3 manifest with a modular event background and minimum permissions.
 - [x] Vendor the VFS provider and i18n modules without changes from fixed upstream
   commits; record source URLs, licenses, and hashes.
@@ -84,6 +83,11 @@ kept in sync with the repository.
   restart after Drive rejects a session.
 - [x] Add tested path, duplicate-name, Workspace-export, and request-abort
   modules and use them from the read-only provider adapter.
+- [x] Add the Drive namespace operations for binary file create/replace and
+  recursive folder creation. They preserve literal client filenames, stable
+  duplicate IDs, Shared Drive boundaries, link-shared resource keys, and Drive
+  write capabilities; the VFS callbacks remain disabled until adapter tests
+  and connection-capability migration are complete.
 
 ## VFS operations
 

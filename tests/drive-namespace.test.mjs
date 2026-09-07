@@ -34,7 +34,7 @@ function fakeFileFactory(parts, name, options) {
   return { parts, name, ...options };
 }
 
-function createNamespace(overrides = {}) {
+function createNamespace(overrides = {}, namespaceOptions = {}) {
   const calls = [];
   const apiClient = {
     async getStorageQuota(options) {
@@ -61,6 +61,10 @@ function createNamespace(overrides = {}) {
       calls.push({ method: "exportFile", fileId, mimeType, options });
       return new Blob(["export"], { type: mimeType });
     },
+    async createFileMetadata(metadata, options) {
+      calls.push({ method: "createFileMetadata", metadata, options });
+      throw new Error("Unexpected createFileMetadata call");
+    },
     ...overrides
   };
   return {
@@ -69,7 +73,8 @@ function createNamespace(overrides = {}) {
       apiClient,
       exportFormats: EXPORT_FORMATS,
       rootLabels: ROOT_LABELS,
-      fileFactory: fakeFileFactory
+      fileFactory: fakeFileFactory,
+      ...namespaceOptions
     })
   };
 }
@@ -432,4 +437,682 @@ test("rejects missing paths, files used as folders, and incomplete searches", as
     namespace.list("/My Drive"),
     (error) => error.code === "drive_search_incomplete"
   );
+});
+
+test("writes a new file under the path name and forwards request state", async () => {
+  const uploadCalls = [];
+  const signal = new AbortController().signal;
+  const onProgress = () => {};
+  const source = new Blob(["content"], { type: "text/plain" });
+  Object.defineProperty(source, "name", { value: "source-name.txt" });
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [], incompleteSearch: false };
+    },
+    async getFile(fileId, options) {
+      assert.equal(fileId, "root");
+      assert.equal(options.signal, signal);
+      return file({
+        id: "root",
+        name: "My Drive",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    }
+  }, {
+    uploader: {
+      async upload(options) {
+        uploadCalls.push(options);
+        return { id: "created-file" };
+      }
+    }
+  });
+
+  assert.deepEqual(await namespace.writeFile(
+    "/My Drive/target-name.txt",
+    source,
+    { signal, onProgress }
+  ), { id: "created-file" });
+  assert.equal(uploadCalls.length, 1);
+  assert.equal(uploadCalls[0].file, source);
+  assert.equal(uploadCalls[0].signal, signal);
+  assert.equal(uploadCalls[0].onProgress, onProgress);
+  assert.equal(uploadCalls[0].existingFileId, null);
+  assert.equal(uploadCalls[0].resourceKeys, undefined);
+  assert.deepEqual(uploadCalls[0].metadata, {
+    name: "target-name.txt",
+    mimeType: "text/plain",
+    parents: ["root"]
+  });
+});
+
+test("creates missing parent folders before uploading a file", async () => {
+  const folders = [];
+  const uploads = [];
+  const signal = new AbortController().signal;
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [], incompleteSearch: false };
+    },
+    async getFile(fileId) {
+      assert.equal(fileId, "root");
+      return file({
+        id: "root",
+        name: "My Drive",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    },
+    async createFileMetadata(metadata, options) {
+      folders.push({ metadata, options });
+      const id = `folder-${folders.length}`;
+      return file({
+        id,
+        name: metadata.name,
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    }
+  }, {
+    uploader: {
+      async upload(options) {
+        uploads.push(options);
+        return { id: "uploaded-file" };
+      }
+    }
+  });
+
+  await namespace.writeFile(
+    "/My Drive/First/Second/report.bin",
+    new Blob(["data"]),
+    { signal }
+  );
+
+  assert.deepEqual(folders.map(({ metadata }) => metadata), [
+    {
+      name: "First",
+      mimeType: GOOGLE_FOLDER_MIME_TYPE,
+      parents: ["root"]
+    },
+    {
+      name: "Second",
+      mimeType: GOOGLE_FOLDER_MIME_TYPE,
+      parents: ["folder-1"]
+    }
+  ]);
+  assert.equal(folders.every(({ options }) => options.signal === signal), true);
+  assert.deepEqual(uploads[0].metadata, {
+    name: "report.bin",
+    mimeType: "application/octet-stream",
+    parents: ["folder-2"]
+  });
+});
+
+test("replaces an existing binary by ID only when overwrite is allowed", async () => {
+  const uploads = [];
+  const existing = file({
+    id: "existing-id",
+    name: "report.bin",
+    mimeType: "application/octet-stream",
+    resourceKey: "file-key",
+    capabilities: { canDownload: true, canModifyContent: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [existing], incompleteSearch: false };
+    }
+  }, {
+    uploader: {
+      async upload(options) {
+        uploads.push(options);
+        return { id: existing.id };
+      }
+    }
+  });
+  const replacement = new Blob(["new"], { type: "text/plain" });
+
+  await assert.rejects(
+    namespace.writeFile("/My Drive/report.bin", replacement),
+    (error) => error.code === "E:EXIST"
+  );
+  await namespace.writeFile("/My Drive/report.bin", replacement, {
+    overwrite: true
+  });
+
+  assert.equal(uploads.length, 1);
+  assert.equal(uploads[0].existingFileId, "existing-id");
+  assert.deepEqual(uploads[0].resourceKeys, [{
+    fileId: "existing-id",
+    resourceKey: "file-key"
+  }]);
+  assert.deepEqual(uploads[0].metadata, {
+    name: "report.bin",
+    mimeType: "text/plain"
+  });
+  assert.equal(Object.hasOwn(uploads[0].metadata, "parents"), false);
+});
+
+test("uses ID-suffixed paths to replace the selected duplicate", async () => {
+  const uploads = [];
+  const duplicates = ["one", "two"].map((id) => file({
+    id,
+    name: "same.txt",
+    mimeType: "text/plain",
+    capabilities: { canDownload: true, canModifyContent: true }
+  }));
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: duplicates, incompleteSearch: false };
+    }
+  }, {
+    uploader: {
+      async upload(options) {
+        uploads.push(options);
+      }
+    }
+  });
+  const content = new Blob(["new"]);
+
+  await assert.rejects(
+    namespace.writeFile("/My Drive/same.txt", content, { overwrite: true }),
+    (error) => error.code === "E:EXIST"
+  );
+  await namespace.writeFile("/My Drive/same.txt~two", content, {
+    overwrite: true
+  });
+
+  assert.equal(uploads.length, 1);
+  assert.equal(uploads[0].existingFileId, "two");
+});
+
+test("keeps visible paths stable when hidden Drive items share their name", async () => {
+  const uploads = [];
+  const visible = file({
+    id: "visible",
+    name: "same.txt",
+    mimeType: "text/plain",
+    capabilities: { canDownload: true, canModifyContent: true }
+  });
+  const hidden = file({
+    id: "hidden",
+    name: "same.txt",
+    mimeType: "application/vnd.google-apps.form",
+    capabilities: { canDownload: false, canModifyContent: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [visible, hidden], incompleteSearch: false };
+    }
+  }, {
+    uploader: {
+      async upload(options) {
+        uploads.push(options);
+      }
+    }
+  });
+
+  assert.deepEqual((await namespace.list("/My Drive")).map(({ name }) => name), [
+    "same.txt"
+  ]);
+  await namespace.writeFile(
+    "/My Drive/same.txt",
+    new Blob(["new"]),
+    { overwrite: true }
+  );
+
+  assert.equal(uploads[0].existingFileId, "visible");
+});
+
+test("does not treat a Workspace raw name as its exported VFS name", async () => {
+  const uploads = [];
+  const document = file({
+    id: "document",
+    name: "Budget",
+    mimeType: GOOGLE_WORKSPACE_MIME_TYPES.document,
+    capabilities: { canDownload: true, canModifyContent: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [document], incompleteSearch: false };
+    },
+    async getFile() {
+      return file({
+        id: "root",
+        name: "My Drive",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    }
+  }, {
+    uploader: {
+      async upload(options) {
+        uploads.push(options);
+      }
+    }
+  });
+
+  await namespace.writeFile("/My Drive/Budget", new Blob(["binary"]));
+  await assert.rejects(
+    namespace.writeFile(
+      "/My Drive/Budget.docx",
+      new Blob(["binary"]),
+      { overwrite: true }
+    ),
+    (error) => error.code === "drive_overwrite_unsupported"
+  );
+
+  assert.equal(uploads.length, 1);
+  assert.equal(uploads[0].metadata.name, "Budget");
+});
+
+test("rejects folders, shortcuts, native files, and read-only binaries as overwrite targets", async () => {
+  const cases = [
+    {
+      item: file({
+        id: "folder",
+        name: "Folder",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canListChildren: true, canAddChildren: true }
+      }),
+      path: "/My Drive/Folder",
+      code: "E:EXIST"
+    },
+    {
+      item: file({
+        id: "shortcut",
+        name: "Link.bin",
+        mimeType: GOOGLE_SHORTCUT_MIME_TYPE,
+        shortcutDetails: {
+          targetId: "target",
+          targetMimeType: "application/octet-stream"
+        }
+      }),
+      path: "/My Drive/Link.bin",
+      code: "drive_overwrite_unsupported"
+    },
+    {
+      item: file({
+        id: "workspace",
+        name: "Notes",
+        mimeType: GOOGLE_WORKSPACE_MIME_TYPES.document
+      }),
+      path: "/My Drive/Notes.docx",
+      code: "drive_overwrite_unsupported"
+    },
+    {
+      item: file({
+        id: "read-only",
+        name: "locked.bin",
+        capabilities: { canDownload: true, canModifyContent: false }
+      }),
+      path: "/My Drive/locked.bin",
+      code: "drive_write_forbidden"
+    }
+  ];
+
+  for (const entry of cases) {
+    let uploaded = false;
+    const { namespace } = createNamespace({
+      async listFiles() {
+        return { files: [entry.item], incompleteSearch: false };
+      }
+    }, {
+      uploader: {
+        async upload() {
+          uploaded = true;
+        }
+      }
+    });
+    await assert.rejects(
+      namespace.writeFile(entry.path, new Blob(["new"]), {
+        overwrite: true
+      }),
+      (error) => error.code === entry.code
+    );
+    assert.equal(uploaded, false);
+  }
+});
+
+test("creates nested folders and rejects occupied folder targets", async () => {
+  const created = [];
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return { files: [], incompleteSearch: false };
+      }
+      return { files: [], incompleteSearch: false };
+    },
+    async getFile() {
+      return file({
+        id: "root",
+        name: "My Drive",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    },
+    async createFileMetadata(metadata, options) {
+      created.push({ metadata, options });
+      return file({
+        id: `new-folder-${created.length}`,
+        name: metadata.name,
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    }
+  });
+
+  await namespace.addFolder("/My Drive/Parent/Child");
+
+  assert.deepEqual(created.map(({ metadata }) => metadata.parents), [
+    ["root"],
+    ["new-folder-1"]
+  ]);
+
+  for (const occupied of [
+    file({
+      id: "occupied-folder",
+      name: "Taken",
+      mimeType: GOOGLE_FOLDER_MIME_TYPE,
+      capabilities: { canListChildren: true }
+    }),
+    file({ id: "occupied-file", name: "Taken" })
+  ]) {
+    const blocked = createNamespace({
+      async listFiles() {
+        return { files: [occupied], incompleteSearch: false };
+      }
+    }).namespace;
+    await assert.rejects(
+      blocked.addFolder("/My Drive/Taken"),
+      (error) => error.code === "E:EXIST"
+    );
+  }
+});
+
+test("rejects a file used as an intermediate folder", async () => {
+  const binary = file({ id: "binary", name: "file.bin" });
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [binary], incompleteSearch: false };
+    }
+  });
+
+  await assert.rejects(
+    namespace.addFolder("/My Drive/file.bin/child"),
+    (error) => error.code === "drive_not_a_folder"
+  );
+});
+
+test("accepts literal percent and tilde characters from VFS clients", async () => {
+  const uploadedNames = [];
+  const createdNames = [];
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [], incompleteSearch: false };
+    },
+    async getFile() {
+      return file({
+        id: "root",
+        name: "My Drive",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    },
+    async createFileMetadata(metadata) {
+      createdNames.push(metadata.name);
+      return file({
+        id: `folder-${createdNames.length}`,
+        name: metadata.name,
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    }
+  }, {
+    uploader: {
+      async upload({ metadata }) {
+        uploadedNames.push(metadata.name);
+      }
+    }
+  });
+  const names = ["100% ready.txt", "literal%2F.txt", "notes~draft.txt"];
+
+  for (const name of names) {
+    await namespace.writeFile(`/My Drive/${name}`, new Blob(["data"]));
+  }
+  for (const name of names) {
+    await namespace.addFolder(`/My Drive/${name}`);
+  }
+
+  assert.deepEqual(uploadedNames, names);
+  assert.deepEqual(createdNames, names);
+});
+
+test("writes into link-shared folders with their resource keys", async () => {
+  const uploads = [];
+  const folders = [];
+  const shortcut = file({
+    id: "shortcut",
+    name: "Linked folder",
+    mimeType: GOOGLE_SHORTCUT_MIME_TYPE,
+    shortcutDetails: {
+      targetId: "target-folder",
+      targetMimeType: GOOGLE_FOLDER_MIME_TYPE,
+      targetResourceKey: "target-key"
+    }
+  });
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      return options.q.includes("'root'")
+        ? { files: [shortcut], incompleteSearch: false }
+        : { files: [], incompleteSearch: false };
+    },
+    async getFile(fileId, options) {
+      assert.equal(fileId, "target-folder");
+      assert.equal(options.resourceKey, "target-key");
+      return file({
+        id: "target-folder",
+        name: "Target",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        resourceKey: "target-key",
+        capabilities: { canAddChildren: true }
+      });
+    },
+    async createFileMetadata(metadata, options) {
+      folders.push({ metadata, options });
+      return file({
+        id: "new-folder",
+        name: metadata.name,
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: true }
+      });
+    }
+  }, {
+    uploader: {
+      async upload(options) {
+        uploads.push(options);
+      }
+    }
+  });
+
+  await namespace.writeFile(
+    "/My Drive/Linked folder/new.bin",
+    new Blob(["data"])
+  );
+  await namespace.addFolder("/My Drive/Linked folder/New folder");
+
+  assert.deepEqual(uploads[0].metadata.parents, ["target-folder"]);
+  assert.deepEqual(uploads[0].resourceKeys, [{
+    fileId: "target-folder",
+    resourceKey: "target-key"
+  }]);
+  assert.deepEqual(folders[0].options.resourceKeys, [{
+    fileId: "target-folder",
+    resourceKey: "target-key"
+  }]);
+});
+
+test("writes below a concrete writable folder shared with the account", async () => {
+  const uploads = [];
+  const sharedFolder = file({
+    id: "shared-folder",
+    name: "Incoming",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    resourceKey: "shared-key",
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      return options.q.startsWith("sharedWithMe")
+        ? { files: [sharedFolder], incompleteSearch: false }
+        : { files: [], incompleteSearch: false };
+    }
+  }, {
+    uploader: {
+      async upload(options) {
+        uploads.push(options);
+      }
+    }
+  });
+
+  await namespace.writeFile(
+    "/Shared with me/Incoming/new.bin",
+    new Blob(["data"])
+  );
+
+  assert.deepEqual(uploads[0].metadata.parents, ["shared-folder"]);
+  assert.deepEqual(uploads[0].resourceKeys, [{
+    fileId: "shared-folder",
+    resourceKey: "shared-key"
+  }]);
+});
+
+test("enforces Shared Drive and shared-with-me write boundaries", async () => {
+  const created = [];
+  const { namespace } = createNamespace({
+    async listDrives() {
+      return {
+        drives: [{
+          id: "team-drive",
+          name: "Team",
+          capabilities: { canAddChildren: true }
+        }]
+      };
+    },
+    async listFiles() {
+      return { files: [], incompleteSearch: false };
+    },
+    async createFileMetadata(metadata, options) {
+      created.push({ metadata, options });
+      return file({
+        id: "folder-id",
+        name: metadata.name,
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        driveId: "team-drive",
+        capabilities: { canAddChildren: true }
+      });
+    }
+  });
+
+  await assert.rejects(
+    namespace.addFolder("/Shared drives/New"),
+    (error) => error.code === "drive_write_forbidden"
+  );
+  await assert.rejects(
+    namespace.addFolder("/Shared with me/New"),
+    (error) => error.code === "drive_write_forbidden"
+  );
+  await namespace.addFolder("/Shared drives/Team/New");
+
+  assert.deepEqual(created[0].metadata.parents, ["team-drive"]);
+  assert.equal(created[0].options.supportsAllDrives, true);
+});
+
+test("checks parent write capability before creating content", async () => {
+  let uploaded = false;
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [], incompleteSearch: false };
+    },
+    async getFile() {
+      return file({
+        id: "root",
+        name: "My Drive",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canAddChildren: false }
+      });
+    }
+  }, {
+    uploader: {
+      async upload() {
+        uploaded = true;
+      }
+    }
+  });
+
+  await assert.rejects(
+    namespace.writeFile("/My Drive/new.bin", new Blob(["data"])),
+    (error) => error.code === "drive_write_forbidden"
+  );
+  assert.equal(uploaded, false);
+});
+
+test("validates write arguments before contacting Drive", async () => {
+  let requests = 0;
+  const { namespace } = createNamespace({
+    async listFiles() {
+      requests++;
+      return { files: [] };
+    }
+  });
+
+  await assert.rejects(namespace.writeFile("/My Drive/file", {}), /file/u);
+  await assert.rejects(
+    namespace.writeFile("/My Drive/file", new Blob(), { overwrite: "yes" }),
+    /overwrite/u
+  );
+  await assert.rejects(
+    namespace.writeFile("/My Drive/file", new Blob(), { onProgress: true }),
+    /onProgress/u
+  );
+  assert.equal(requests, 0);
+});
+
+test("does not inherit a Shared Drive ID through a folder shortcut", async () => {
+  const listCalls = [];
+  const shortcut = file({
+    id: "shortcut",
+    name: "My Drive target",
+    mimeType: GOOGLE_SHORTCUT_MIME_TYPE,
+    driveId: "team-drive",
+    shortcutDetails: {
+      targetId: "target-folder",
+      targetMimeType: GOOGLE_FOLDER_MIME_TYPE
+    }
+  });
+  const { namespace } = createNamespace({
+    async listDrives() {
+      return { drives: [{ id: "team-drive", name: "Team" }] };
+    },
+    async listFiles(options) {
+      listCalls.push(options);
+      return options.q.includes("'team-drive'")
+        ? { files: [shortcut], incompleteSearch: false }
+        : { files: [], incompleteSearch: false };
+    },
+    async getFile() {
+      return file({
+        id: "target-folder",
+        name: "Target",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        capabilities: { canListChildren: true, canAddChildren: true }
+      });
+    }
+  });
+
+  await namespace.list(
+    "/Shared drives/Team/My Drive target"
+  );
+
+  assert.equal(listCalls.at(-1).corpora, "user");
+  assert.equal(listCalls.at(-1).driveId, undefined);
 });

@@ -9,6 +9,7 @@ import {
   joinVfsPath,
   splitVfsPath
 } from "../core/vfs-paths.mjs";
+import { GoogleDriveUploader } from "./drive-uploader.mjs";
 import {
   getWorkspaceExport,
   isGoogleWorkspaceFile
@@ -20,6 +21,7 @@ export const GOOGLE_SHORTCUT_MIME_TYPE =
   "application/vnd.google-apps.shortcut";
 
 const GOOGLE_MIME_PREFIX = "application/vnd.google-apps.";
+const DEFAULT_MEDIA_TYPE = "application/octet-stream";
 const ROOT_KEYS = Object.freeze({
   myDrive: "myDrive",
   sharedWithMe: "sharedWithMe",
@@ -39,6 +41,19 @@ function requireApiClient(value) {
     throw new TypeError("apiClient");
   }
   return value;
+}
+
+function requireUploader(value) {
+  if (!value || typeof value.upload !== "function") {
+    throw new TypeError("uploader");
+  }
+  return value;
+}
+
+function targetExistsError() {
+  return Object.assign(new Error("Target already exists"), {
+    code: "E:EXIST"
+  });
 }
 
 function normalizeRootLabels(labels) {
@@ -187,12 +202,14 @@ export class GoogleDriveNamespace {
   #exportFormats;
   #fileFactory;
   #roots;
+  #uploader;
 
   constructor({
     apiClient,
     exportFormats,
     rootLabels,
-    fileFactory = defaultFileFactory
+    fileFactory = defaultFileFactory,
+    uploader = null
   }) {
     this.#apiClient = requireApiClient(apiClient);
     if (!exportFormats || typeof exportFormats !== "object") {
@@ -204,6 +221,7 @@ export class GoogleDriveNamespace {
     this.#exportFormats = structuredClone(exportFormats);
     this.#fileFactory = fileFactory;
     this.#roots = normalizeRootLabels(rootLabels);
+    this.#uploader = uploader === null ? null : requireUploader(uploader);
   }
 
   async getStorageUsage({ signal } = {}) {
@@ -290,6 +308,80 @@ export class GoogleDriveNamespace {
     );
   }
 
+  async writeFile(path, file, {
+    overwrite = false,
+    signal,
+    onProgress = () => {}
+  } = {}) {
+    if (!(file instanceof Blob)) {
+      throw new TypeError("file");
+    }
+    if (typeof overwrite !== "boolean") {
+      throw new TypeError("overwrite");
+    }
+    if (typeof onProgress !== "function") {
+      throw new TypeError("onProgress");
+    }
+
+    const target = await this.#resolveMutationTarget(path, signal);
+    let existingFileId = null;
+    let resourceKeys;
+    let metadata;
+    if (target.existing) {
+      if (target.existing.kind !== "file" || !overwrite) {
+        throw targetExistsError();
+      }
+      const item = target.existing.item;
+      if (item.mimeType.startsWith(GOOGLE_MIME_PREFIX)) {
+        throw new GoogleDriveNamespaceError("drive_overwrite_unsupported");
+      }
+      if (item.capabilities?.canModifyContent !== true) {
+        throw new GoogleDriveNamespaceError("drive_write_forbidden");
+      }
+      existingFileId = item.id;
+      resourceKeys = item.resourceKey
+        ? [{ fileId: item.id, resourceKey: item.resourceKey }]
+        : undefined;
+      metadata = {
+        name: item.name,
+        mimeType: file.type || item.mimeType || DEFAULT_MEDIA_TYPE
+      };
+    } else {
+      await this.#requireWritableParent(target.context, signal);
+      metadata = {
+        name: target.name,
+        mimeType: file.type || DEFAULT_MEDIA_TYPE,
+        parents: [target.context.parentId]
+      };
+      resourceKeys = target.context.resourceKey
+        ? [{
+            fileId: target.context.parentId,
+            resourceKey: target.context.resourceKey
+          }]
+        : undefined;
+    }
+
+    const uploader = this.#uploader || new GoogleDriveUploader({
+      apiClient: this.#apiClient
+    });
+    return uploader.upload({
+      file,
+      metadata,
+      existingFileId,
+      resourceKeys,
+      signal,
+      onProgress
+    });
+  }
+
+  async addFolder(path, { signal } = {}) {
+    const target = await this.#resolveMutationTarget(path, signal);
+    if (target.existing) {
+      throw targetExistsError();
+    }
+    await this.#createFolder(target.context, target.name, signal);
+  }
+
   async #resolve(path, signal) {
     const segments = splitVfsPath(path);
     if (segments.length === 0) {
@@ -349,6 +441,151 @@ export class GoogleDriveNamespace {
     throw new GoogleDriveNamespaceError("drive_path_not_found");
   }
 
+  async #resolveMutationTarget(path, signal) {
+    const segments = splitVfsPath(path);
+    if (segments.length < 2) {
+      throw new GoogleDriveNamespaceError("drive_path_not_found");
+    }
+    const targetSegment = segments.pop();
+    const { context, path: parentPath } =
+      await this.#resolveMutationParent(segments, signal);
+    const target = await this.#lookupMutationEntry(
+      context,
+      parentPath,
+      targetSegment,
+      signal
+    );
+    return { context, ...target };
+  }
+
+  async #resolveMutationParent(segments, signal) {
+    const [rootSegment, ...remainingSegments] = segments;
+    let context;
+    let currentPath = joinVfsPath(rootSegment);
+    if (rootSegment === this.#roots.myDrive) {
+      context = {
+        type: "folder",
+        parentId: "root",
+        driveId: null,
+        canAddChildren: undefined
+      };
+    } else if (rootSegment === this.#roots.sharedWithMe) {
+      context = { type: "shared-with-me" };
+    } else if (rootSegment === this.#roots.sharedDrives) {
+      if (remainingSegments.length === 0) {
+        throw new GoogleDriveNamespaceError("drive_write_forbidden");
+      }
+      const drives = await this.#presentSharedDrives(currentPath, signal);
+      const drive = drives.find((entry) =>
+        entry.segment === remainingSegments[0]);
+      if (!drive) {
+        throw new GoogleDriveNamespaceError("drive_path_not_found");
+      }
+      context = {
+        type: "folder",
+        parentId: drive.drive.id,
+        driveId: drive.drive.id,
+        canAddChildren: drive.drive.capabilities?.canAddChildren
+      };
+      remainingSegments.shift();
+      currentPath = joinVfsPath(rootSegment, drive.segment);
+    } else {
+      throw new GoogleDriveNamespaceError("drive_path_not_found");
+    }
+
+    for (const segment of remainingSegments) {
+      const resolved = await this.#lookupMutationEntry(
+        context,
+        currentPath,
+        segment,
+        signal
+      );
+      if (resolved.existing) {
+        context = await this.#folderContext(resolved.existing, signal);
+      } else {
+        context = await this.#createFolder(
+          context,
+          resolved.name,
+          signal
+        );
+      }
+      currentPath = joinVfsPath(
+        ...splitVfsPath(currentPath),
+        segment
+      );
+    }
+    return { context, path: currentPath };
+  }
+
+  async #lookupMutationEntry(context, path, segment, signal) {
+    const files = await this.#contextFiles(context, signal);
+    const entries = this.#presentFiles(
+      files,
+      path,
+      context.driveId || null
+    );
+    const existing = entries.find((entry) => entry.segment === segment);
+    if (existing) {
+      return { existing, name: null };
+    }
+
+    const collides = files
+      .map(requireDriveItem)
+      .filter((item) => item.trashed !== true)
+      .some((item) =>
+        displayName(item, this.#exportFormats) === segment);
+    if (collides) {
+      throw targetExistsError();
+    }
+    return { existing: null, name: segment };
+  }
+
+  async #createFolder(context, name, signal) {
+    await this.#requireWritableParent(context, signal);
+    if (typeof this.#apiClient.createFileMetadata !== "function") {
+      throw new TypeError("apiClient");
+    }
+    const item = requireDriveItem(await this.#apiClient.createFileMetadata({
+      name,
+      mimeType: GOOGLE_FOLDER_MIME_TYPE,
+      parents: [context.parentId]
+    }, {
+      supportsAllDrives: true,
+      resourceKeys: context.resourceKey
+        ? [{ fileId: context.parentId, resourceKey: context.resourceKey }]
+        : undefined,
+      signal
+    }));
+    if (item.mimeType !== GOOGLE_FOLDER_MIME_TYPE) {
+      throw new GoogleDriveNamespaceError("drive_response_invalid");
+    }
+    return {
+      type: "folder",
+      parentId: item.id,
+      resourceKey: item.resourceKey,
+      driveId: item.driveId || context.driveId || null,
+      canAddChildren: item.capabilities?.canAddChildren
+    };
+  }
+
+  async #requireWritableParent(context, signal) {
+    if (context.type !== "folder" || context.canAddChildren === false) {
+      throw new GoogleDriveNamespaceError("drive_write_forbidden");
+    }
+    if (context.canAddChildren === true) {
+      return;
+    }
+    const parent = requireDriveItem(await this.#apiClient.getFile(
+      context.parentId,
+      { resourceKey: context.resourceKey, signal }
+    ));
+    if (parent.mimeType !== GOOGLE_FOLDER_MIME_TYPE ||
+        parent.capabilities?.canAddChildren !== true) {
+      throw new GoogleDriveNamespaceError("drive_write_forbidden");
+    }
+    context.canAddChildren = true;
+  }
+
   async #folderContext(presented, signal) {
     if (presented.kind !== "directory") {
       throw new GoogleDriveNamespaceError("drive_not_a_folder");
@@ -359,7 +596,8 @@ export class GoogleDriveNamespace {
         type: "folder",
         parentId: effective.id,
         resourceKey: effective.resourceKey,
-        driveId: presented.item.driveId || presented.contextDriveId || null
+        driveId: presented.item.driveId || presented.contextDriveId || null,
+        canAddChildren: presented.item.capabilities?.canAddChildren
       };
     }
 
@@ -374,7 +612,8 @@ export class GoogleDriveNamespace {
       type: "folder",
       parentId: target.id,
       resourceKey: effective.resourceKey || target.resourceKey,
-      driveId: target.driveId || null
+      driveId: target.driveId || null,
+      canAddChildren: target.capabilities?.canAddChildren
     };
   }
 
@@ -384,6 +623,11 @@ export class GoogleDriveNamespace {
   }
 
   async #presentContext(context, path, signal) {
+    const files = await this.#contextFiles(context, signal);
+    return this.#presentFiles(files, path, context.driveId || null);
+  }
+
+  async #contextFiles(context, signal) {
     const sharedWithMe = context.type === "shared-with-me";
     const query = sharedWithMe
       ? "sharedWithMe and trashed = false"
@@ -404,7 +648,7 @@ export class GoogleDriveNamespace {
     if (incompleteSearch) {
       throw new GoogleDriveNamespaceError("drive_search_incomplete");
     }
-    return this.#presentFiles(files, path, context.driveId || null);
+    return files;
   }
 
   #presentFiles(files, path, contextDriveId) {

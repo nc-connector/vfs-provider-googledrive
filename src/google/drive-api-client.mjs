@@ -370,6 +370,29 @@ export class GoogleDriveApiClient {
     });
   }
 
+  async createFileMetadata(metadata, {
+    supportsAllDrives = true,
+    resourceKeys,
+    signal
+  } = {}) {
+    return this.#transport.request(this.#accountId, {
+      resourcePath: "files",
+      query: {
+        supportsAllDrives,
+        fields: DRIVE_FILE_FIELDS
+      },
+      method: "POST",
+      headers: {
+        ...resourceKeyHeaders(resourceKeys),
+        "Content-Type": "application/json; charset=UTF-8"
+      },
+      body: serializeMetadata(metadata),
+      signal,
+      operation: "files.create.metadata",
+      retryMode: "never"
+    });
+  }
+
   async uploadMultipart({
     fileId,
     metadata,

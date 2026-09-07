@@ -188,6 +188,33 @@ test("exports a link-shared Workspace file with its resource key", async () => {
   assert.equal(calls[0].options.operation, "files.export");
 });
 
+test("creates metadata in My Drive and Shared Drive folders", async () => {
+  const metadata = {
+    name: "New folder",
+    mimeType: "application/vnd.google-apps.folder",
+    parents: ["parent-1"]
+  };
+  const { calls, client } = createClient(() => ({ id: "folder-1" }));
+
+  assert.deepEqual(await client.createFileMetadata(metadata, {
+    resourceKeys: [{ fileId: "parent-1", resourceKey: "resource-key" }]
+  }), { id: "folder-1" });
+
+  assert.equal(calls[0].options.resourcePath, "files");
+  assert.deepEqual(calls[0].options.query, {
+    supportsAllDrives: true,
+    fields: DRIVE_FILE_FIELDS
+  });
+  assert.equal(calls[0].options.method, "POST");
+  assert.deepEqual(calls[0].options.headers, {
+    "X-Goog-Drive-Resource-Keys": "parent-1/resource-key",
+    "Content-Type": "application/json; charset=UTF-8"
+  });
+  assert.equal(calls[0].options.body, JSON.stringify(metadata));
+  assert.equal(calls[0].options.operation, "files.create.metadata");
+  assert.equal(calls[0].options.retryMode, "never");
+});
+
 test("creates a small file with metadata-first multipart upload", async () => {
   const media = new Blob(["file data"], { type: "text/plain" });
   const { calls, client } = createClient(() => ({ id: "created-file" }));
