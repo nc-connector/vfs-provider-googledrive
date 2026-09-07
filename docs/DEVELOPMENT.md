@@ -2,9 +2,9 @@
 
 > **Development status:** Version 0.1.0 includes the MV3 foundation, Google
 > OAuth account services, localized account and connection settings, and a
-> working VFS provider for browsing, reading, creating files and folders, and
-> moving items to the Google Drive trash. The remaining write operations and
-> release validation are still in progress.
+> working VFS provider for browsing, reading, creating and replacing files,
+> creating folders, moving and merging items, and moving items to the Google
+> Drive trash. Copy operations and release validation are still in progress.
 
 ## 1. Product goal
 
@@ -249,10 +249,25 @@ filenames containing percent or tilde characters are not decoded as provider
 metadata. File creates and folder creates check the target parent's Drive
 capabilities, create missing parents in order, retain resource keys, and reject
 writes at virtual roots. Binary overwrite updates the selected Drive item by ID;
-Google-native files and shortcuts are not replaced with binary media. Delete
-resolves the same visible paths, checks the selected item's `canTrash`
-capability, and updates its `trashed` metadata. A selected shortcut is trashed
-by its own ID rather than modifying its target.
+Google-native files and shortcuts are not replaced with binary media. A normal
+move uses one Drive metadata update to change the item's name and parent without
+transferring file content. The request includes resource keys for the item, old
+parent, and new parent when present. Item move/rename capabilities and the
+destination parent's add-child capability are checked before that update.
+
+File overwrite moves the existing target to the Drive trash before moving the
+source. Folder merge first builds a complete action list. Unique children move
+to the target, conflicting target files move to the trash before their source
+files replace them, matching child folders merge recursively, and emptied source
+folders move to the trash. A type conflict stops the request before the first
+metadata update. Google Drive does not permit every cross-drive folder move, so
+the namespace rejects combinations the API cannot perform. A move that stops
+after one or more metadata updates reports the completed entry changes through
+the provider adapter.
+
+Delete resolves the same visible paths, checks the selected item's `canTrash`
+capability, and updates its `trashed` metadata. A selected shortcut is trashed by
+its own ID rather than modifying its target.
 
 ## 7. VFS operations
 
@@ -265,21 +280,22 @@ The provider API exposes callbacks for:
 - deleting files or folders; and
 - canceling a request.
 
-The current provider advertises `file.read`, `file.add`, `file.delete`,
-`folder.read`, `folder.add`, and `folder.delete`. It implements root and folder
-listing, storage quota, binary download, Workspace export, new file upload,
-recursive folder creation, removal to the Google Drive trash, localized VFS
-errors, progress, and request-scoped cancellation. The account binding and
-requested capability are checked for every operation.
+The current provider advertises `file.read`, `file.add`, `file.modify`,
+`file.delete`, `folder.read`, `folder.add`, `folder.modify`, and
+`folder.delete`. It implements root and folder listing, storage quota, binary
+download, Workspace export, new and replacement file upload, recursive folder
+creation, file and folder moves, folder merge, removal to the Google Drive trash,
+localized VFS errors, progress, and request-scoped cancellation. The account
+binding and requested capability are checked for every operation.
 
-`writeFile` requests `file.add` for a new target. An overwrite request requires
-`file.modify`, which is not advertised and is rejected before the namespace is
-called. Move and copy callbacks remain unavailable. Delete requests set the
-selected Drive item's `trashed` field and do not call Drive's permanent-delete
-endpoint. File creation, folder creation, and delete report progress through the
-Toolkit request ID and use the same abort registry as read operations. A later
-multi-step mutation still needs storage-change reports for items changed before
-an abort or error, as described by the upstream provider guide. Upload strategy
+`writeFile` requests `file.add` for a new target and `file.modify` for an
+overwrite. Move requests use `file.modify` or `folder.modify`. Copy callbacks
+remain unavailable. Delete requests set the selected Drive item's `trashed`
+field and do not call Drive's permanent-delete endpoint. File creation,
+replacement, folder creation, move, merge, and delete report progress through
+the Toolkit request ID and use the same abort registry as read operations.
+Multi-step move failures and cancellations report entries changed before the
+operation stopped, as described by the upstream provider guide. Upload strategy
 and change tracking remain product-owned work and are not part of the vendored
 Toolkit.
 

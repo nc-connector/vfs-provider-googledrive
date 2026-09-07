@@ -84,10 +84,10 @@ kept in sync with the repository.
 - [x] Add tested path, duplicate-name, Workspace-export, and request-abort
   modules and use them from the provider adapter.
 - [x] Add the Drive namespace operations for binary file create/replace and
-  recursive folder creation. They preserve literal client filenames, stable
-  duplicate IDs, Shared Drive boundaries, link-shared resource keys, and Drive
-  write capabilities. VFS exposes file and folder create and trash callbacks;
-  replacement remains internal until `file.modify` is ready.
+  recursive folder creation, move, and merge. They preserve literal client
+  filenames, stable duplicate IDs, Shared Drive boundaries, link-shared resource
+  keys, and Drive write capabilities. VFS exposes create, replace, move, merge,
+  and trash callbacks.
 
 ## VFS operations
 
@@ -100,20 +100,22 @@ kept in sync with the repository.
   Sheets to XLSX/PDF, Slides to PPTX/PDF, and Drawings to PDF.
 - [x] `writeFile`: create new files, create missing parents required by the VFS
   interface, use resumable upload for large files, and report progress.
-- [ ] `writeFile` replacement: expose the existing binary replacement path only
-  after the complete `file.modify` operation family is ready.
+- [x] `writeFile` replacement: expose binary replacement through `file.modify`
+  with the same multipart/resumable uploader and request cancellation.
 - [x] `addFolder`: create every missing parent while preserving collision rules
   and report progress for each created path segment.
-- [ ] File/folder move: update parents and names with explicit overwrite/merge
-  behavior.
+- [x] File/folder move: update parents and names without transferring content,
+  apply explicit overwrite/merge behavior, honor Drive move permissions and
+  cross-drive restrictions, and include every available resource key.
 - [ ] File/folder copy: use Drive server-side copy where supported and report
   partial folder results on cancel or error.
 - [x] File/folder delete: move the selected Drive item to the recoverable trash.
   Never expose permanent deletion through the VFS delete callbacks.
-- [x] Cancellation for list, file read, new file upload, folder creation, and
-  trash operations by Toolkit request ID.
-- [ ] Partial mutation reporting: report work that completed before a future
-  multi-item operation stopped.
+- [x] Cancellation for list, file read, file upload/replacement, folder creation,
+  move/merge, and trash operations by Toolkit request ID.
+- [x] Partial mutation reporting for move/merge: report work completed before a
+  multi-step operation stopped. Copy operations must add the same behavior when
+  implemented.
 - [ ] Change notifications: persist a Drive Changes page token and schedule checks
   with an MV3-compatible event rather than relying on `setInterval()`.
 - [x] Advertise every current VFS capability only after its callback and error
@@ -139,7 +141,7 @@ kept in sync with the repository.
 - [x] Cover every advertised VFS capability, including missing parents,
   duplicate names, pagination, empty folders, conflict errors, progress, and
   cancellation.
-- [ ] Cover overwrite/merge and partial multi-item results before advertising
+- [x] Cover overwrite/merge and partial multi-item results before advertising
   the related capabilities.
 - [ ] Cover background restart during idle state, token refresh, change polling,
   setup, and active transfer boundaries.

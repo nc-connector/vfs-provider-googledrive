@@ -2,9 +2,9 @@
 
 > **Development status:** The current package provides Google Drive storage
 > through VFS, including account-bound setup, browsing, reading, new file
-> uploads, folder creation, and removal to the Google Drive trash. It is not
-> ready for production deployment because the remaining write operations and
-> release validation are incomplete.
+> uploads and replacement, folder creation, file and folder moves, folder
+> merges, and removal to the Google Drive trash. It is not ready for production
+> deployment because copy operations and release validation are incomplete.
 
 This guide records the administrative boundary of the project while the
 provider is under development. Runtime setup, managed deployment, OAuth
@@ -23,13 +23,15 @@ Desktop OAuth client ID, add or reauthorize Google accounts, remove an unused
 account, choose Workspace export formats, and enable diagnostic logging. A
 compatible VFS consumer can create a connection for one account, rename that
 connection, switch its account, browse and read Drive content, upload new files,
-create folders, and move files or folders to the Google Drive trash. A VFS
-delete is recoverable through Google Drive until Google removes the trashed
-item; the provider does not permanently delete it. Previously granted
-connections receive the current add and delete capabilities when the provider
-starts. It does not yet:
+replace binary files, create folders, move files and folders, merge folders, and
+move files or folders to the Google Drive trash. Move and merge requests follow
+the permissions and cross-drive restrictions reported by Google Drive. Replaced
+move targets and source folders emptied by a merge are placed in the recoverable
+Drive trash. The provider does not permanently delete content. Previously
+granted connections receive the current add, modify, and delete capabilities
+when the provider starts. It does not yet:
 
-- replace, move, or copy Drive content;
+- copy Drive content;
 - report remote Drive changes to connected consumers; or
 - list and revoke individual consumer connections in the provider settings.
 
@@ -104,7 +106,6 @@ The following items must be settled and documented before deployment:
 - requested Google scopes and their review status;
 - production account recovery and administrative revocation procedures;
 - provider-side display and revocation of individual consumer connections;
-- support for My Drive, shared items, and shared drives;
 - organization policy and managed deployment options;
 - logging controls, diagnostics, and retention guidance; and
 - upgrade, rollback, and account-data migration procedures.
