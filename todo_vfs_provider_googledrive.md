@@ -162,11 +162,13 @@ kept in sync with the repository.
   cancellation.
 - [x] Cover overwrite/merge and partial multi-item results before advertising
   the related capabilities.
-- [ ] Cover the remaining background restart boundaries.
+- [x] Cover the remaining background restart boundaries.
   - [x] Persist idle authentication state and change cursors, and recreate a
     missing polling alarm without resetting an existing schedule.
-  - [ ] Exercise token refresh, setup, and active transfer boundaries against
-    the full background lifecycle.
+  - [x] Reconstruct the account, session, connection, and active-request
+    services to exercise token refresh, interrupted/completed setup, and active
+    transfer boundaries; retain real Thunderbird restart cases in the manual
+    release matrix.
 - [ ] Run the upstream VFS example-client tests and benchmark against the provider.
 - [ ] Test interoperability with an unmodified API 1.3 VFS client.
 - [ ] Follow up upstream on serializing Toolkit connection record mutations.

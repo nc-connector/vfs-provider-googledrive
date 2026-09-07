@@ -231,6 +231,15 @@ request URLs are excluded from diagnostic records. The provider creates the
 Drive namespace only after the Toolkit connection, requested capability, local
 account binding, and current account status have been checked.
 
+After a background reconstruction, a valid session token is reused or a new
+access token is obtained from the refresh grant stored with the account.
+Connection reconciliation removes a product binding if setup stopped before
+the Toolkit stored its matching connection, while a completed Toolkit record
+keeps its account binding. Active request controllers and resumable session URLs
+are deliberately not restored. A client whose active transfer was interrupted
+must start a new VFS request; the provider does not claim that an unknown
+in-flight mutation completed.
+
 ## 6. Provider boundary
 
 Account records and VFS connection records must remain distinct:

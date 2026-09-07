@@ -38,6 +38,12 @@ Run the unit suite after each functional change:
 npm run test:unit
 ```
 
+The automated suite reconstructs account, session, and connection services
+against the same extension storage and replaces the active-request registry
+with a fresh instance. It checks token refresh, interrupted and completed setup
+bindings, and the rule that an active transfer is not resumed from process
+memory.
+
 Run source review, vendor hash checks, a reproducible review build, and the XPI
 file-list comparison:
 
@@ -126,6 +132,8 @@ Run these cases with disposable files and retain the provider's redacted log:
   published;
 - restart Thunderbird with idle accounts and connections, then browse without
   repeating setup;
+- restart Thunderbird during account setup and during an active upload, confirm
+  no orphaned connection becomes usable, and retry the interrupted user action;
 - restart after change cursors exist and confirm old changes are not replayed;
   and
 - stop Thunderbird during an active transfer, then confirm the old request is
