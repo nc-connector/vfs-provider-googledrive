@@ -238,6 +238,29 @@ are migrated by retaining their accounts and connection bindings and starting
 with an empty cursor collection. Removing an account also removes all of its
 change cursors in the same state write.
 
+Provider-state upgrades follow these rules:
+
+- each stored schema version has an explicit migration to the next supported
+  version;
+- a migration retains account identifiers, refresh material, and account-to-
+  storage bindings unless a release note explicitly documents a removal;
+- a newly added collection starts from an empty value when older state has no
+  equivalent data;
+- an unknown newer schema stops provider initialization and is left untouched;
+  the provider never attempts an automatic downgrade; and
+- product migrations do not rewrite `vfs-toolkit-connections`. That record is
+  owned by the vendored Toolkit and is reconciled with product bindings through
+  its public connection lifecycle.
+
+The current version 1 to version 2 migration therefore keeps authorized
+accounts and consumer bindings, then lets the first change poll establish fresh
+baseline tokens without replaying an old change history. A release that changes
+the schema must add migration fixtures containing real account and binding data,
+test that an unsupported newer version is not overwritten, and document any
+rollback limit. Rolling back to a build that does not understand the current
+schema requires a compatible Thunderbird-profile backup; runtime code does not
+downgrade stored provider data.
+
 `GoogleDriveChangeMonitor` polls one user change log and one log for every
 visible Shared Drive per connected account, then fans the result out to all
 current, uniquely matched VFS storage bindings for that account. The first poll
@@ -428,5 +451,4 @@ The implementation still needs these inputs or later release decisions:
 - the final product icon and Google brand review;
 - the oldest Thunderbird version verified by smoke testing;
 - write timeout behavior;
-- account and connection migration rules;
 - release signing, update channel, and managed deployment.

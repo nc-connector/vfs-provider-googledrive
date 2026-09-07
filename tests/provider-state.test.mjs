@@ -42,12 +42,29 @@ test("initializes versioned state without accounts or bindings", async () => {
   assert.deepEqual(storageArea.snapshot()[PROVIDER_STATE_KEY], state);
 });
 
-test("migrates version one state before returning it", async () => {
+test("migrates version one state without losing accounts or bindings", async () => {
+  const legacyAccount = {
+    id: "account-1",
+    googleUserId: "google-user-1",
+    displayName: "Ada Example",
+    emailAddress: "ada@example.invalid",
+    oauthClientId: CLIENT_ID,
+    refreshToken: "refresh-secret",
+    status: "connected",
+    createdAt: 1000,
+    updatedAt: 1001
+  };
+  const legacyBinding = {
+    storageId: "storage-1",
+    accountId: "account-1",
+    createdAt: 1002,
+    updatedAt: 1002
+  };
   const storageArea = new FakeStorageArea({
     [PROVIDER_STATE_KEY]: {
       version: 1,
-      accounts: [],
-      connectionBindings: []
+      accounts: [legacyAccount],
+      connectionBindings: [legacyBinding]
     }
   });
   const repository = new ProviderStateRepository({ storageArea });
@@ -56,11 +73,34 @@ test("migrates version one state before returning it", async () => {
 
   assert.deepEqual(state, {
     version: PROVIDER_STATE_VERSION,
-    accounts: [],
-    connectionBindings: [],
+    accounts: [legacyAccount],
+    connectionBindings: [legacyBinding],
     changeCursors: []
   });
   assert.deepEqual(storageArea.snapshot()[PROVIDER_STATE_KEY], state);
+  assert.equal(
+    (await repository.getAccountAuthorization("account-1")).refreshToken,
+    "refresh-secret"
+  );
+});
+
+test("rejects a newer provider state without replacing it", async () => {
+  const newerState = {
+    version: PROVIDER_STATE_VERSION + 1,
+    accounts: [{ id: "future-account" }],
+    connectionBindings: [],
+    changeCursors: []
+  };
+  const storageArea = new FakeStorageArea({
+    [PROVIDER_STATE_KEY]: newerState
+  });
+  const repository = new ProviderStateRepository({ storageArea });
+
+  await assert.rejects(
+    repository.initialize(),
+    new RegExp(`Unsupported provider state version: ${PROVIDER_STATE_VERSION + 1}`)
+  );
+  assert.deepEqual(storageArea.snapshot()[PROVIDER_STATE_KEY], newerState);
 });
 
 test("keeps refresh material out of normal account results", async () => {

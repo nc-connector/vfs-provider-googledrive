@@ -55,6 +55,10 @@ kept in sync with the repository.
   storage; keep access tokens short-lived and replaceable. Document that
   Thunderbird does not expose a documented OS credential store to ordinary
   WebExtensions and do not claim encrypted-at-rest storage.
+- [x] Define forward-only provider-state upgrades and rollback behavior. Preserve
+  accounts and bindings in the current migration, leave unknown newer state
+  untouched, and keep Toolkit-owned connection records outside product
+  migrations.
 - [x] Register VFS and lifecycle listeners at module evaluation so an MV3
   background restart can receive work before asynchronous account loading.
 - [x] Block account removal while a Toolkit-owned consumer connection still

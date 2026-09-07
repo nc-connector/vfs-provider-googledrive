@@ -185,6 +185,21 @@ the local account is still removed and the settings page reports that remote
 revocation could not be confirmed. A user can also revoke access from their
 Google Account; the provider will then require authorization again.
 
+### Upgrades and rollback
+
+Provider-owned account data and account-to-storage bindings use a versioned
+record in Thunderbird's extension storage. An upgrade migrates only versions
+known to that release. The current migration retains accounts, refresh grants,
+and consumer bindings while adding empty change-poll cursor state. Toolkit-owned
+consumer connection records are not rewritten by the product migration.
+
+Do not use an older add-on build after a newer release has changed the stored
+schema unless that older build explicitly supports it. Unknown newer state is
+left untouched instead of being downgraded. For a managed deployment, retain a
+Thunderbird-profile backup that matches the installed add-on version before an
+upgrade. Restoring that matching profile backup is the supported rollback path
+for provider state.
+
 ## 6. Planned administrative decisions
 
 The following items must be settled and documented before deployment:
@@ -196,7 +211,7 @@ The following items must be settled and documented before deployment:
 - provider-side display and revocation of individual consumer connections;
 - organization policy and managed deployment options;
 - logging controls, diagnostics, and retention guidance; and
-- upgrade, rollback, and account-data migration procedures.
+- organization-specific profile backup and rollback procedures.
 
 No administrator should create production OAuth credentials from assumptions in
 this scaffold.
