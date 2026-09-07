@@ -1,4 +1,13 @@
-# VFS Provider for Google Drive
+# VFS Provider for Google Drive™
+
+<p align="center">
+  <img src="src/assets/icon-128.png" width="128" height="128" alt="VFS Provider for Google Drive app icon">
+</p>
+
+<p align="center">
+  <img src="docs/assets/google-drive-logo.png" width="32" height="32" alt="Google Drive logo"><br>
+  Integrates with Google Drive™
+</p>
 
 > **Development status:** This repository contains a working VFS provider for
 > Google Drive. Consumer add-ons can create an account-bound connection, browse
@@ -133,3 +142,7 @@ licenses, and file hashes.
 This project is licensed under the Mozilla Public License 2.0. See
 [LICENSE](LICENSE). Notices for packaged third-party source are listed in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+This independent project is not affiliated with, endorsed by, or sponsored by
+Google. Google Drive is a trademark of Google Inc. Use of this trademark is
+subject to Google Permissions.

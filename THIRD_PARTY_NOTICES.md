@@ -51,3 +51,14 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Google Drive product logo
+
+- Documentation file: `docs/assets/google-drive-logo.png`
+- Source: [official Google Drive product logo](https://www.gstatic.com/images/branding/productlogos/drive_2026/v2/web-64dp/logo_drive_2026_color_2x_web_64dp.png)
+- SHA-256: `39e2c15449e7fa75ebe3a29f3f99e2e9ee11b5ef36aebf4dda3d30e484635495`
+- Usage: stored unchanged and rendered at a smaller size in `README.md`
+
+The logo is a Google trademark asset, is not covered by this project's
+Mozilla Public License 2.0, and is used according to the
+[Google Drive branding guidelines](https://developers.google.com/workspace/drive/api/guides/branding).

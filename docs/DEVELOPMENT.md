@@ -62,6 +62,7 @@ Drive, and this project does not include its WebDAV protocol code.
 | `tools/review-check.js` | source, manifest, locale, vendor, and format checks |
 | `tools/package-check.js` | packaged-file allowlist check |
 | `tools/webext-linter-*.js` | Thunderbird linter and dependency checks |
+| `docs/assets/` | documentation-only product branding assets |
 | `docs/ADMIN.md` | deployment and operational status |
 | `docs/TESTING.md` | automated and live release test matrix |
 | `docs/RELEASE.md` | candidate and ATN submission checklist |
@@ -503,6 +504,6 @@ Before committing a functional provider change:
 The implementation still needs these inputs or later release decisions:
 
 - a project-owned production Google OAuth Desktop client ID;
-- the final product icon and Google brand review;
+- final Google trademark presentation for the ATN listing;
 - the oldest Thunderbird version verified by smoke testing;
 - release signing, update channel, and managed deployment.

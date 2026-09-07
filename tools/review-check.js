@@ -27,6 +27,9 @@ const EXPECTED_VENDOR_HASHES = new Map([
   ["vendor/i18n/i18n.mjs", "efc9e290349356d47283414d35951df829bcc4135e472be239faab2e9a7582ea"],
   ["vendor/vfs-toolkit/vfs-provider.mjs", "cdf9bed9683af96505c2aae8f3798cc3bd0d835388a8c9f908b17bf67596329d"]
 ]);
+const EXPECTED_DOCUMENTATION_ASSET_HASHES = new Map([
+  ["docs/assets/google-drive-logo.png", "39e2c15449e7fa75ebe3a29f3f99e2e9ee11b5ef36aebf4dda3d30e484635495"]
+]);
 const SKIP_FOLDERS = new Set([
   ".git",
   ".lib-cdn-lookup-cache",
@@ -35,6 +38,16 @@ const SKIP_FOLDERS = new Set([
   ".tmp",
   "dist",
   "node_modules"
+]);
+const TEXT_FILE_EXTENSIONS = new Set([
+  ".css",
+  ".html",
+  ".js",
+  ".json",
+  ".md",
+  ".mjs",
+  ".svg",
+  ".txt"
 ]);
 
 function assert(condition, message) {
@@ -45,6 +58,16 @@ function assert(condition, message) {
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function readPngSize(filePath) {
+  const buffer = fs.readFileSync(filePath);
+  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  assert(buffer.length >= 24 && buffer.subarray(0, 8).equals(signature), `Invalid PNG file: ${path.relative(ROOT, filePath)}`);
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20)
+  };
 }
 
 function listProjectFiles(directory = ROOT) {
@@ -72,10 +95,10 @@ function checkManifest() {
   assert(manifest.browser_specific_settings?.gecko?.strict_min_version === "140.0", "Unexpected minimum Thunderbird version");
   assert(manifest.background?.type === "module", "The background must be an ES module");
   assert(JSON.stringify(manifest.background?.scripts) === JSON.stringify(["background.js"]), "Unexpected background entry point");
-  assert(manifest.icons?.["16"] === "assets/icon.svg", "The extension icon is missing");
-  assert(manifest.icons?.["32"] === "assets/icon.svg", "The extension icon is missing");
-  assert(manifest.icons?.["64"] === "assets/icon.svg", "The extension icon is missing");
-  assert(manifest.icons?.["128"] === "assets/icon.svg", "The extension icon is missing");
+  assert(manifest.icons?.["16"] === "assets/icon-16.png", "The 16 px extension icon is missing");
+  assert(manifest.icons?.["32"] === "assets/icon-32.png", "The 32 px extension icon is missing");
+  assert(manifest.icons?.["64"] === "assets/icon-64.png", "The 64 px extension icon is missing");
+  assert(manifest.icons?.["128"] === "assets/icon-128.png", "The 128 px extension icon is missing");
   assert(manifest.default_locale === "de", "German must remain the default locale");
   assert(manifest.version === packageJson.version, "Package and manifest versions differ");
   assert(!manifest.experiment_apis, "The provider must not include an Experiment API");
@@ -129,6 +152,25 @@ function checkVendor() {
   assert(thirdPartyNotes.includes("3476faa0870bb6dbe63c7c72fc3dab2b67731f4e"), "THIRD_PARTY_NOTICES.md is missing the i18n revision");
 }
 
+function checkAssets() {
+  const thirdPartyNotes = fs.readFileSync(
+    path.join(ROOT, "THIRD_PARTY_NOTICES.md"),
+    "utf8"
+  ).toLowerCase();
+  for (const [relativePath, expectedHash] of EXPECTED_DOCUMENTATION_ASSET_HASHES) {
+    const filePath = path.join(ROOT, relativePath);
+    const hash = crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+    assert(hash === expectedHash, `Documentation asset changed: ${relativePath}`);
+    assert(thirdPartyNotes.includes(expectedHash), `THIRD_PARTY_NOTICES.md is missing the hash for ${relativePath}`);
+  }
+
+  for (const size of [16, 32, 64, 128]) {
+    const relativePath = `src/assets/icon-${size}.png`;
+    const dimensions = readPngSize(path.join(ROOT, relativePath));
+    assert(dimensions.width === size && dimensions.height === size, `Unexpected icon dimensions: ${relativePath}`);
+  }
+}
+
 function checkFiles() {
   const required = [
     "PRIVACY.md",
@@ -140,7 +182,11 @@ function checkFiles() {
     "docs/DEVELOPMENT.md",
     "docs/RELEASE.md",
     "docs/TESTING.md",
-    "src/assets/icon.svg",
+    "docs/assets/google-drive-logo.png",
+    "src/assets/icon-16.png",
+    "src/assets/icon-32.png",
+    "src/assets/icon-64.png",
+    "src/assets/icon-128.png",
     "src/background.js",
     "src/connection/config.html",
     "src/connection/connection-controller.mjs",
@@ -156,11 +202,13 @@ function checkFiles() {
 
   for (const filePath of listProjectFiles()) {
     const buffer = fs.readFileSync(filePath);
-    assert(!(buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf), `UTF-8 BOM found: ${path.relative(ROOT, filePath)}`);
-    const text = buffer.toString("utf8");
-    assert(!text.includes("\r"), `CRLF found: ${path.relative(ROOT, filePath)}`);
-    if (/\.(?:css|html|js|mjs)$/.test(filePath)) {
-      assert(!text.includes("\t"), `Tab indentation found: ${path.relative(ROOT, filePath)}`);
+    if (TEXT_FILE_EXTENSIONS.has(path.extname(filePath).toLowerCase())) {
+      assert(!(buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf), `UTF-8 BOM found: ${path.relative(ROOT, filePath)}`);
+      const text = buffer.toString("utf8");
+      assert(!text.includes("\r"), `CRLF found: ${path.relative(ROOT, filePath)}`);
+      if (/\.(?:css|html|js|mjs)$/.test(filePath)) {
+        assert(!text.includes("\t"), `Tab indentation found: ${path.relative(ROOT, filePath)}`);
+      }
     }
   }
 
@@ -190,6 +238,7 @@ function run() {
   checkManifest();
   checkLocales();
   checkVendor();
+  checkAssets();
   checkFiles();
   console.log("[OK] review-check passed");
 }

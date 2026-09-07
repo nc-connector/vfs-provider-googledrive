@@ -69,16 +69,12 @@ main {
 }
 
 .product-mark {
-  display: grid;
+  display: block;
   width: 42px;
   height: 42px;
   flex: 0 0 auto;
-  place-items: center;
   border-radius: 10px;
-  background: var(--accent);
-  color: #ffffff;
-  font-weight: 700;
-  letter-spacing: -0.04em;
+  object-fit: contain;
 }
 
 h1,

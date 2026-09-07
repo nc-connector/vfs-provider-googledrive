@@ -21,7 +21,7 @@ kept in sync with the repository.
 - [x] Define the selectable export format per Google Workspace file type:
   Docs to DOCX or PDF, Sheets to XLSX or PDF, Slides to PPTX or PDF, and
   Drawings to PDF.
-- [ ] Replace the neutral development icon with an approved product icon that
+- [x] Replace the neutral development icon with an approved product icon that
   follows Google branding rules without implying that Google publishes the
   add-on.
 - [x] Confirm the initial Thunderbird support range. Releases support
@@ -63,8 +63,8 @@ kept in sync with the repository.
 - [x] Register VFS and lifecycle listeners at module evaluation so an MV3
   background restart can receive work before asynchronous account loading.
 - [x] Block account removal while a Toolkit-owned consumer connection still
-  uses it. Reconcile the product binding after the consumer removes its
-  connection; do not modify Toolkit records behind the lifecycle API.
+  uses it. Reconcile the product binding after the consumer or provider
+  settings remove a connection.
 - [x] Maintain request-scoped AbortControllers only for active operations; no
   completed or recoverable operation may depend solely on module globals.
 - [x] Use stable Drive item IDs internally. Treat VFS paths as a presentation and
@@ -152,8 +152,8 @@ kept in sync with the repository.
   associated account without exposing tokens.
 - [x] Options page: add/re-authorize/remove unused accounts, configure export
   formats and debug logging, and show actionable authentication state.
-- [ ] Options page: list consuming add-ons and revoke individual VFS connections
-  once the Toolkit exposes a provider-side removal method.
+- [x] Options page: list consuming add-ons and revoke individual VFS
+  connections without removing their Google account or Drive files.
 - [x] Use the Thunderbird-family visual language and support light/dark themes.
 
 ## Tests and release readiness
