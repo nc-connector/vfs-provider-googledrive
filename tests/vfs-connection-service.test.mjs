@@ -255,6 +255,45 @@ test("authorizes only one current connection with the requested capability", asy
   );
 });
 
+test("lists only current unambiguous account bindings", async () => {
+  const duplicate = toolkitConnection({
+    addonId: "duplicate-one@example.invalid",
+    storageId: "storage-2"
+  });
+  const { accountRepository, service } = await createFixture({
+    connections: [
+      toolkitConnection({ storageId: "storage-1" }),
+      duplicate,
+      { ...duplicate, addonId: "duplicate-two@example.invalid" }
+    ]
+  });
+  await addAccount(accountRepository, "account-1");
+  await addAccount(accountRepository, "account-2");
+  await accountRepository.bindConnection({
+    storageId: "storage-1",
+    accountId: "account-1"
+  });
+  await accountRepository.bindConnection({
+    storageId: "storage-2",
+    accountId: "account-2"
+  });
+  await accountRepository.bindConnection({
+    storageId: "storage-stale",
+    accountId: "account-2"
+  });
+
+  const bindings = await service.listAuthorizedBindings();
+  assert.equal(bindings.length, 1);
+  assert.equal(bindings[0].storageId, "storage-1");
+  assert.equal(bindings[0].accountId, "account-1");
+  assert.equal(typeof bindings[0].createdAt, "number");
+  assert.equal(typeof bindings[0].updatedAt, "number");
+  assert.equal(
+    await accountRepository.getConnectionBinding("storage-stale"),
+    null
+  );
+});
+
 test("creates the product binding before completing Toolkit setup", async () => {
   let fixture;
   let reported;

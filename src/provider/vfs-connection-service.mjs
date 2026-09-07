@@ -162,6 +162,23 @@ export class VfsConnectionService {
     });
   }
 
+  async listAuthorizedBindings() {
+    return this.#enqueue(async () => {
+      const connections = await this.#readConnections();
+      await this.#reconcile(connections);
+      const counts = new Map();
+      for (const connection of connections) {
+        counts.set(
+          connection.storageId,
+          (counts.get(connection.storageId) || 0) + 1
+        );
+      }
+      const bindings = await this.#accountRepository.listConnectionBindings();
+      return clone(bindings.filter((binding) =>
+        counts.get(binding.storageId) === 1));
+    });
+  }
+
   async getConnection({ addonId, storageId }) {
     const requestedAddonId = requiredString(addonId);
     const requestedStorageId = requiredString(storageId);
