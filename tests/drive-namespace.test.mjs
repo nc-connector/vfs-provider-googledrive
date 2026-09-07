@@ -88,6 +88,7 @@ function file({
   name,
   mimeType = "application/octet-stream",
   driveId,
+  parents,
   resourceKey,
   size = "10",
   modifiedTime = "2026-09-06T08:00:00.000Z",
@@ -99,6 +100,7 @@ function file({
     name,
     mimeType,
     driveId,
+    parents,
     resourceKey,
     size,
     modifiedTime,
@@ -1127,6 +1129,724 @@ test("does not inherit a Shared Drive ID through a folder shortcut", async () =>
 
   assert.equal(listCalls.at(-1).corpora, "user");
   assert.equal(listCalls.at(-1).driveId, undefined);
+});
+
+test("moves and renames a file with source and parent resource keys", async () => {
+  const signal = new AbortController().signal;
+  const updates = [];
+  const progress = [];
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    resourceKey: "source-folder-key",
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const targetFolder = file({
+    id: "target-folder",
+    name: "Target",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    resourceKey: "target-folder-key",
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const report = file({
+    id: "report-file",
+    name: "Report.pdf",
+    parents: ["source-folder"],
+    resourceKey: "report-key",
+    capabilities: {
+      canDownload: true,
+      canMoveItemWithinDrive: true,
+      canRename: true
+    }
+  });
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return {
+          files: [sourceFolder, targetFolder],
+          incompleteSearch: false
+        };
+      }
+      if (options.q.includes("'source-folder'")) {
+        return { files: [report], incompleteSearch: false };
+      }
+      return { files: [], incompleteSearch: false };
+    },
+    async updateFileMetadata(fileId, metadata, options) {
+      updates.push({ fileId, metadata, options });
+    }
+  });
+
+  await namespace.moveFile(
+    "/My Drive/Source/Report.pdf",
+    "/My Drive/Target/Renamed.pdf",
+    {
+      signal,
+      onProgress: (percent) => progress.push(percent)
+    }
+  );
+
+  assert.deepEqual(updates, [{
+    fileId: "report-file",
+    metadata: { name: "Renamed.pdf" },
+    options: {
+      addParents: "target-folder",
+      removeParents: "source-folder",
+      supportsAllDrives: true,
+      resourceKeys: [
+        { fileId: "report-file", resourceKey: "report-key" },
+        { fileId: "source-folder", resourceKey: "source-folder-key" },
+        { fileId: "target-folder", resourceKey: "target-folder-key" }
+      ],
+      signal
+    }
+  }]);
+  assert.deepEqual(progress, [0, 100]);
+});
+
+test("moves and renames a folder without walking its descendants", async () => {
+  const updates = [];
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    parents: ["root"],
+    capabilities: {
+      canListChildren: true,
+      canMoveItemWithinDrive: true,
+      canRename: true
+    }
+  });
+  const targetFolder = file({
+    id: "target-folder",
+    name: "Target",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return {
+          files: [sourceFolder, targetFolder],
+          incompleteSearch: false
+        };
+      }
+      return { files: [], incompleteSearch: false };
+    },
+    async updateFileMetadata(fileId, metadata, options) {
+      updates.push({ fileId, metadata, options });
+    }
+  });
+
+  await namespace.moveFolder(
+    "/My Drive/Source",
+    "/My Drive/Target/Renamed"
+  );
+
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].fileId, "source-folder");
+  assert.deepEqual(updates[0].metadata, { name: "Renamed" });
+  assert.equal(updates[0].options.addParents, "target-folder");
+  assert.equal(updates[0].options.removeParents, "root");
+});
+
+test("moves files into Shared Drives and rejects unsupported folder moves", async () => {
+  const updates = [];
+  const sourceFile = file({
+    id: "source-file",
+    name: "Report.pdf",
+    parents: ["root"],
+    capabilities: {
+      canDownload: true,
+      canMoveItemOutOfDrive: true
+    }
+  });
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Archive",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    parents: ["root"],
+    capabilities: {
+      canListChildren: true,
+      canMoveItemOutOfDrive: true
+    }
+  });
+  const { namespace } = createNamespace({
+    async listDrives() {
+      return {
+        drives: [{
+          id: "team-drive",
+          name: "Team",
+          capabilities: { canAddChildren: true }
+        }]
+      };
+    },
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return {
+          files: [sourceFile, sourceFolder],
+          incompleteSearch: false
+        };
+      }
+      return { files: [], incompleteSearch: false };
+    },
+    async updateFileMetadata(fileId, metadata, options) {
+      updates.push({ fileId, metadata, options });
+    }
+  });
+
+  await namespace.moveFile(
+    "/My Drive/Report.pdf",
+    "/Shared drives/Team/Report.pdf"
+  );
+  await assert.rejects(
+    namespace.moveFolder(
+      "/My Drive/Archive",
+      "/Shared drives/Team/Archive"
+    ),
+    (error) => error.code === "drive_move_forbidden"
+  );
+
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].fileId, "source-file");
+  assert.equal(updates[0].options.addParents, "team-drive");
+  assert.equal(updates[0].options.removeParents, "root");
+  assert.equal(updates[0].options.supportsAllDrives, true);
+});
+
+test("moves an overwritten file target to trash before renaming the source", async () => {
+  const updates = [];
+  const progress = [];
+  const source = file({
+    id: "source-file",
+    name: "Source.txt",
+    resourceKey: "source-key",
+    capabilities: { canDownload: true, canRename: true }
+  });
+  const target = file({
+    id: "target-file",
+    name: "Target.txt",
+    resourceKey: "target-key",
+    capabilities: { canDownload: true, canTrash: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [source, target], incompleteSearch: false };
+    },
+    async updateFileMetadata(fileId, metadata, options) {
+      updates.push({ fileId, metadata, options });
+    }
+  });
+
+  await namespace.moveFile(
+    "/My Drive/Source.txt",
+    "/My Drive/Target.txt",
+    {
+      overwrite: true,
+      onProgress: (percent) => progress.push(percent)
+    }
+  );
+
+  assert.deepEqual(updates.map(({ fileId, metadata }) => ({
+    fileId,
+    metadata
+  })), [
+    { fileId: "target-file", metadata: { trashed: true } },
+    { fileId: "source-file", metadata: { name: "Target.txt" } }
+  ]);
+  assert.deepEqual(updates[0].options.resourceKeys, [{
+    fileId: "target-file",
+    resourceKey: "target-key"
+  }]);
+  assert.deepEqual(updates[1].options.resourceKeys, [{
+    fileId: "source-file",
+    resourceKey: "source-key"
+  }]);
+  assert.deepEqual(progress, [0, 50, 100]);
+});
+
+test("requires explicit overwrite and merge choices for occupied targets", async () => {
+  let updates = 0;
+  const sourceFile = file({
+    id: "source-file",
+    name: "Source.txt",
+    capabilities: { canDownload: true, canRename: true }
+  });
+  const targetFile = file({
+    id: "target-file",
+    name: "Target.txt",
+    capabilities: { canDownload: true, canTrash: true }
+  });
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source folder",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canTrash: true }
+  });
+  const targetFolder = file({
+    id: "target-folder",
+    name: "Target folder",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return {
+        files: [sourceFile, targetFile, sourceFolder, targetFolder],
+        incompleteSearch: false
+      };
+    },
+    async updateFileMetadata() {
+      updates++;
+    }
+  });
+
+  await assert.rejects(
+    namespace.moveFile(
+      "/My Drive/Source.txt",
+      "/My Drive/Target.txt"
+    ),
+    (error) => error.code === "E:EXIST"
+  );
+  await assert.rejects(
+    namespace.moveFolder(
+      "/My Drive/Source folder",
+      "/My Drive/Target folder"
+    ),
+    (error) => error.code === "E:EXIST"
+  );
+  assert.equal(updates, 0);
+});
+
+test("checks rename, move, and replacement rights before a move", async () => {
+  const source = file({
+    id: "source-file",
+    name: "Source.txt",
+    capabilities: {
+      canDownload: true,
+      canMoveItemWithinDrive: false,
+      canRename: false
+    }
+  });
+  const target = file({
+    id: "target-file",
+    name: "Target.txt",
+    capabilities: { canDownload: true, canTrash: false }
+  });
+  const folder = file({
+    id: "target-folder",
+    name: "Folder",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  let updates = 0;
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      return options.q.includes("'root'")
+        ? {
+            files: [source, target, folder],
+            incompleteSearch: false
+          }
+        : { files: [], incompleteSearch: false };
+    },
+    async updateFileMetadata() {
+      updates++;
+    }
+  });
+
+  await assert.rejects(
+    namespace.moveFile(
+      "/My Drive/Source.txt",
+      "/My Drive/Renamed.txt"
+    ),
+    (error) => error.code === "drive_move_forbidden"
+  );
+  await assert.rejects(
+    namespace.moveFile(
+      "/My Drive/Source.txt",
+      "/My Drive/Folder/Source.txt"
+    ),
+    (error) => error.code === "drive_move_forbidden"
+  );
+  await assert.rejects(
+    namespace.moveFile(
+      "/My Drive/Source.txt",
+      "/My Drive/Target.txt",
+      { overwrite: true }
+    ),
+    (error) => error.code === "drive_move_forbidden"
+  );
+  assert.equal(updates, 0);
+});
+
+test("reports a trashed overwrite target when the following move fails", async () => {
+  const partialChanges = [];
+  let updates = 0;
+  const source = file({
+    id: "source-file",
+    name: "Source.txt",
+    capabilities: { canDownload: true, canRename: true }
+  });
+  const target = file({
+    id: "target-file",
+    name: "Target.txt",
+    capabilities: { canDownload: true, canTrash: true }
+  });
+  const failure = new Error("move failed");
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [source, target], incompleteSearch: false };
+    },
+    async updateFileMetadata() {
+      updates++;
+      if (updates === 2) {
+        throw failure;
+      }
+    }
+  });
+
+  await assert.rejects(
+    namespace.moveFile(
+      "/My Drive/Source.txt",
+      "/My Drive/Target.txt",
+      {
+        overwrite: true,
+        onPartialChanges: (entries) => partialChanges.push(entries)
+      }
+    ),
+    (error) => error === failure
+  );
+
+  assert.deepEqual(partialChanges, [[{
+    kind: "file",
+    action: "deleted",
+    target: { path: "/My Drive/Target.txt" }
+  }]]);
+});
+
+test("reports partial overwrite work and stops after an abort", async () => {
+  const partialChanges = [];
+  const progress = [];
+  let updates = 0;
+  const source = file({
+    id: "source-file",
+    name: "Source.txt",
+    capabilities: { canDownload: true, canRename: true }
+  });
+  const target = file({
+    id: "target-file",
+    name: "Target.txt",
+    capabilities: { canDownload: true, canTrash: true }
+  });
+  const abort = new DOMException("stopped", "AbortError");
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [source, target], incompleteSearch: false };
+    },
+    async updateFileMetadata() {
+      updates++;
+      if (updates === 2) {
+        throw abort;
+      }
+    }
+  });
+
+  await namespace.moveFile(
+    "/My Drive/Source.txt",
+    "/My Drive/Target.txt",
+    {
+      overwrite: true,
+      onProgress: (percent) => progress.push(percent),
+      onPartialChanges: (entries) => partialChanges.push(entries)
+    }
+  );
+
+  assert.deepEqual(progress, [0, 50]);
+  assert.deepEqual(partialChanges, [[{
+    kind: "file",
+    action: "deleted",
+    target: { path: "/My Drive/Target.txt" }
+  }]]);
+});
+
+test("merges folders with server-side child moves and recoverable replacement", async () => {
+  const updates = [];
+  const progress = [];
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    parents: ["root"],
+    capabilities: { canListChildren: true, canTrash: true }
+  });
+  const targetFolder = file({
+    id: "target-folder",
+    name: "Target",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    parents: ["root"],
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const sourceFile = file({
+    id: "source-report",
+    name: "Report.pdf",
+    parents: ["source-folder"],
+    capabilities: { canDownload: true, canMoveItemWithinDrive: true }
+  });
+  const targetFile = file({
+    id: "target-report",
+    name: "Report.pdf",
+    parents: ["target-folder"],
+    capabilities: { canDownload: true, canTrash: true }
+  });
+  const uniqueFolder = file({
+    id: "unique-folder",
+    name: "Unique",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    parents: ["source-folder"],
+    capabilities: {
+      canListChildren: true,
+      canMoveItemWithinDrive: true
+    }
+  });
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return {
+          files: [sourceFolder, targetFolder],
+          incompleteSearch: false
+        };
+      }
+      if (options.q.includes("'source-folder'")) {
+        return {
+          files: [sourceFile, uniqueFolder],
+          incompleteSearch: false
+        };
+      }
+      if (options.q.includes("'target-folder'")) {
+        return { files: [targetFile], incompleteSearch: false };
+      }
+      return { files: [], incompleteSearch: false };
+    },
+    async updateFileMetadata(fileId, metadata, options) {
+      updates.push({ fileId, metadata, options });
+    }
+  });
+
+  await namespace.moveFolder(
+    "/My Drive/Source",
+    "/My Drive/Target",
+    {
+      merge: true,
+      onProgress: (percent) => progress.push(percent)
+    }
+  );
+
+  assert.deepEqual(updates.map(({ fileId, metadata }) => ({
+    fileId,
+    metadata
+  })), [
+    { fileId: "unique-folder", metadata: {} },
+    { fileId: "target-report", metadata: { trashed: true } },
+    { fileId: "source-report", metadata: {} },
+    { fileId: "source-folder", metadata: { trashed: true } }
+  ]);
+  assert.deepEqual(
+    [updates[0], updates[2]].map(({ options }) => ({
+      addParents: options.addParents,
+      removeParents: options.removeParents
+    })),
+    [
+      { addParents: "target-folder", removeParents: "source-folder" },
+      { addParents: "target-folder", removeParents: "source-folder" }
+    ]
+  );
+  assert.deepEqual(progress, [0, 25, 50, 75, 100]);
+});
+
+test("reports completed folder-merge steps after a later failure", async () => {
+  const partialChanges = [];
+  let updates = 0;
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canTrash: true }
+  });
+  const targetFolder = file({
+    id: "target-folder",
+    name: "Target",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const sourceFile = file({
+    id: "source-report",
+    name: "Report.pdf",
+    parents: ["source-folder"],
+    capabilities: { canDownload: true, canMoveItemWithinDrive: true }
+  });
+  const targetFile = file({
+    id: "target-report",
+    name: "Report.pdf",
+    capabilities: { canDownload: true, canTrash: true }
+  });
+  const failure = new Error("merge failed");
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return {
+          files: [sourceFolder, targetFolder],
+          incompleteSearch: false
+        };
+      }
+      if (options.q.includes("'source-folder'")) {
+        return { files: [sourceFile], incompleteSearch: false };
+      }
+      return { files: [targetFile], incompleteSearch: false };
+    },
+    async updateFileMetadata() {
+      updates++;
+      if (updates === 3) {
+        throw failure;
+      }
+    }
+  });
+
+  await assert.rejects(
+    namespace.moveFolder(
+      "/My Drive/Source",
+      "/My Drive/Target",
+      {
+        merge: true,
+        onPartialChanges: (entries) => partialChanges.push(entries)
+      }
+    ),
+    (error) => error === failure
+  );
+
+  assert.deepEqual(partialChanges, [[
+    {
+      kind: "file",
+      action: "deleted",
+      target: { path: "/My Drive/Target/Report.pdf" }
+    },
+    {
+      kind: "file",
+      action: "moved",
+      target: { path: "/My Drive/Target/Report.pdf" },
+      source: { path: "/My Drive/Source/Report.pdf" }
+    }
+  ]]);
+});
+
+test("rejects missing move parents, folder cycles, and shortcut merges", async () => {
+  let updates = 0;
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: {
+      canListChildren: true,
+      canMoveItemWithinDrive: true,
+      canTrash: true
+    }
+  });
+  const targetFolder = file({
+    id: "target-folder",
+    name: "Target",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const shortcut = file({
+    id: "source-shortcut",
+    name: "Linked source",
+    mimeType: GOOGLE_SHORTCUT_MIME_TYPE,
+    capabilities: { canTrash: true },
+    shortcutDetails: {
+      targetId: "linked-folder",
+      targetMimeType: GOOGLE_FOLDER_MIME_TYPE
+    }
+  });
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      if (options.q.includes("'root'")) {
+        return {
+          files: [sourceFolder, targetFolder, shortcut],
+          incompleteSearch: false
+        };
+      }
+      return { files: [], incompleteSearch: false };
+    },
+    async getFile(fileId) {
+      if (fileId === "linked-folder") {
+        return file({
+          id: "linked-folder",
+          name: "Linked folder",
+          mimeType: GOOGLE_FOLDER_MIME_TYPE,
+          capabilities: { canListChildren: true }
+        });
+      }
+      throw new Error("Unexpected getFile call");
+    },
+    async updateFileMetadata() {
+      updates++;
+    }
+  });
+
+  await assert.rejects(
+    namespace.moveFolder(
+      "/My Drive/Source",
+      "/My Drive/Source/Child/Moved"
+    ),
+    (error) => error.code === "drive_move_forbidden"
+  );
+  await assert.rejects(
+    namespace.moveFolder(
+      "/My Drive/Source",
+      "/My Drive/Missing/Moved"
+    ),
+    (error) => error.code === "drive_path_not_found"
+  );
+  await assert.rejects(
+    namespace.moveFolder(
+      "/My Drive/Linked source",
+      "/My Drive/Target",
+      { merge: true }
+    ),
+    (error) => error.code === "drive_move_unsupported"
+  );
+  assert.equal(updates, 0);
+});
+
+test("validates move options before changing Drive metadata", async () => {
+  let updates = 0;
+  const { namespace } = createNamespace({
+    async updateFileMetadata() {
+      updates++;
+    }
+  });
+
+  await assert.rejects(
+    namespace.moveFile("/My Drive/a", "/My Drive/b", {
+      overwrite: "yes"
+    }),
+    /overwrite/u
+  );
+  await assert.rejects(
+    namespace.moveFolder("/My Drive/a", "/My Drive/b", { merge: "yes" }),
+    /merge/u
+  );
+  await assert.rejects(
+    namespace.moveFile("/My Drive/a", "/My Drive/b", { onProgress: true }),
+    /onProgress/u
+  );
+  await assert.rejects(
+    namespace.moveFolder("/My Drive/a", "/My Drive/b", {
+      onPartialChanges: true
+    }),
+    /onPartialChanges/u
+  );
+  assert.equal(updates, 0);
 });
 
 test("moves files and folders to the Drive trash", async () => {
