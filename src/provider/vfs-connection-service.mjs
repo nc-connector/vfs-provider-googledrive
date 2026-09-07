@@ -65,6 +65,13 @@ function supportsCapability(connection, capability) {
     connection.capabilities?.[kind]?.[action] === true;
 }
 
+function hasCurrentCapabilities(connection) {
+  return ["file", "folder"].every((kind) =>
+    ["read", "add", "modify", "delete"].every((action) =>
+      connection.capabilities?.[kind]?.[action] ===
+        GOOGLE_DRIVE_CAPABILITIES[kind][action]));
+}
+
 export class VfsConnectionError extends Error {
   constructor(code) {
     super(code);
@@ -122,9 +129,12 @@ export class VfsConnectionService {
     return this.#enqueue(async () => {
       const current = await this.#readConnections();
       const removed = await this.#reconcile(current);
+      const updated = await this.#updateCapabilities(current);
       this.#logger?.debug?.("vfs.connection.reconciled", {
         connections: current.length,
-        status: removed.length ? "stale_removed" : "current"
+        status: removed.length
+          ? "stale_removed"
+          : updated ? "capabilities_updated" : "current"
       });
       return removed;
     });
@@ -307,6 +317,42 @@ export class VfsConnectionService {
     return this.#accountRepository.reconcileConnectionBindings(
       [...new Set(connections.map((entry) => entry.storageId))]
     );
+  }
+
+  async #updateCapabilities(connections) {
+    const counts = new Map();
+    for (const connection of connections) {
+      counts.set(
+        connection.storageId,
+        (counts.get(connection.storageId) || 0) + 1
+      );
+    }
+    const bindings = await this.#accountRepository.listConnectionBindings();
+    const boundStorageIds = new Set(bindings.map((entry) => entry.storageId));
+    let updated = 0;
+    for (const connection of connections) {
+      if (counts.get(connection.storageId) !== 1 ||
+          !boundStorageIds.has(connection.storageId) ||
+          hasCurrentCapabilities(connection)) {
+        continue;
+      }
+      try {
+        await this.#reportConnection(
+          connection.addonId,
+          optionalLabel(connection.addonName, connection.addonId),
+          connection.storageId,
+          optionalLabel(connection.name, "Google Drive"),
+          clone(GOOGLE_DRIVE_CAPABILITIES)
+        );
+        updated += 1;
+      } catch (error) {
+        this.#logger?.warn?.("vfs.connection.capabilities_update_failed", {
+          error,
+          status: "update_failed"
+        });
+      }
+    }
+    return updated;
   }
 
   async #requireConnectedAccount(accountId) {

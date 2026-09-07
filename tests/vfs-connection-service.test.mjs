@@ -16,6 +16,20 @@ import { ProviderStateRepository } from "../src/state/provider-state.mjs";
 import { FakeStorageArea } from "./helpers/fake-storage.mjs";
 
 const CLIENT_ID = "123456.apps.googleusercontent.com";
+const READ_ONLY_CAPABILITIES = Object.freeze({
+  file: Object.freeze({
+    read: true,
+    add: false,
+    modify: false,
+    delete: false
+  }),
+  folder: Object.freeze({
+    read: true,
+    add: false,
+    modify: false,
+    delete: false
+  })
+});
 
 function toolkitConnection({
   addonId = "consumer@example.invalid",
@@ -81,6 +95,108 @@ test("reconciles product bindings with Toolkit connection records", async () => 
   assert.equal(bindings[0].accountId, "account-1");
   assert.equal(typeof bindings[0].createdAt, "number");
   assert.equal(typeof bindings[0].updatedAt, "number");
+});
+
+test("updates capabilities only for unique account-bound connections", async () => {
+  const oldConnection = toolkitConnection({
+    capabilities: READ_ONLY_CAPABILITIES
+  });
+  const currentConnection = toolkitConnection({ storageId: "storage-2" });
+  const duplicateConnection = toolkitConnection({
+    addonId: "duplicate-one@example.invalid",
+    storageId: "storage-3",
+    capabilities: READ_ONLY_CAPABILITIES
+  });
+  const unboundConnection = toolkitConnection({
+    storageId: "storage-4",
+    capabilities: READ_ONLY_CAPABILITIES
+  });
+  const reports = [];
+  let fixture;
+  fixture = await createFixture({
+    connections: [
+      oldConnection,
+      currentConnection,
+      duplicateConnection,
+      {
+        ...duplicateConnection,
+        addonId: "duplicate-two@example.invalid"
+      },
+      unboundConnection
+    ],
+    reportConnection: async (...args) => {
+      reports.push(args);
+      const stored = await fixture.storageArea.get({
+        [VFS_TOOLKIT_CONNECTIONS_KEY]: []
+      });
+      const connections = stored[VFS_TOOLKIT_CONNECTIONS_KEY].map((entry) =>
+        entry.addonId === args[0] && entry.storageId === args[2]
+          ? {
+              addonId: args[0],
+              addonName: args[1],
+              storageId: args[2],
+              name: args[3],
+              capabilities: args[4]
+            }
+          : entry);
+      await fixture.storageArea.set({
+        [VFS_TOOLKIT_CONNECTIONS_KEY]: connections
+      });
+    }
+  });
+  await addAccount(fixture.accountRepository);
+  for (const storageId of ["storage-1", "storage-2", "storage-3"]) {
+    await fixture.accountRepository.bindConnection({
+      storageId,
+      accountId: "account-1"
+    });
+  }
+
+  assert.deepEqual(await fixture.service.initialize(), []);
+  assert.equal(reports.length, 1);
+  assert.deepEqual(reports[0].slice(0, 4), [
+    oldConnection.addonId,
+    oldConnection.addonName,
+    oldConnection.storageId,
+    oldConnection.name
+  ]);
+  assert.deepEqual(reports[0][4], GOOGLE_DRIVE_CAPABILITIES);
+  assert.equal(reports[0][5], undefined);
+  assert.equal(
+    (await fixture.accountRepository.getConnectionBinding("storage-1"))
+      .accountId,
+    "account-1"
+  );
+
+  await fixture.service.initialize();
+  assert.equal(reports.length, 1);
+});
+
+test("keeps an existing binding when its capability update fails", async () => {
+  let reports = 0;
+  const connection = toolkitConnection({
+    capabilities: READ_ONLY_CAPABILITIES
+  });
+  const { accountRepository, service } = await createFixture({
+    connections: [connection],
+    reportConnection: async () => {
+      reports += 1;
+      throw new Error("storage unavailable");
+    }
+  });
+  await addAccount(accountRepository);
+  await accountRepository.bindConnection({
+    storageId: connection.storageId,
+    accountId: "account-1"
+  });
+
+  assert.deepEqual(await service.initialize(), []);
+  assert.equal(reports, 1);
+  assert.equal(
+    (await accountRepository.getConnectionBinding(connection.storageId))
+      .accountId,
+    "account-1"
+  );
 });
 
 test("authorizes only one current connection with the requested capability", async () => {
