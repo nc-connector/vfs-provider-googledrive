@@ -86,6 +86,12 @@ function optionalFileId(value) {
   return requireText(value, "fileId");
 }
 
+function optionalText(value, name) {
+  return value === undefined || value === null
+    ? undefined
+    : requireText(value, name);
+}
+
 function requireNonNegativeInteger(value, name) {
   if (!Number.isSafeInteger(value) || value < 0) {
     throw new RangeError(name);
@@ -389,6 +395,34 @@ export class GoogleDriveApiClient {
       body: serializeMetadata(metadata),
       signal,
       operation: "files.create.metadata",
+      retryMode: "rate-limit"
+    });
+  }
+
+  async updateFileMetadata(fileId, metadata, {
+    addParents,
+    removeParents,
+    supportsAllDrives = true,
+    resourceKey,
+    signal
+  } = {}) {
+    const normalizedFileId = requireText(fileId, "fileId");
+    return this.#transport.request(this.#accountId, {
+      resourcePath: `files/${encodeURIComponent(normalizedFileId)}`,
+      query: {
+        addParents: optionalText(addParents, "addParents"),
+        removeParents: optionalText(removeParents, "removeParents"),
+        supportsAllDrives,
+        fields: DRIVE_FILE_FIELDS
+      },
+      method: "PATCH",
+      headers: {
+        ...singleResourceKeyHeaders(normalizedFileId, resourceKey),
+        "Content-Type": "application/json; charset=UTF-8"
+      },
+      body: serializeMetadata(metadata),
+      signal,
+      operation: "files.update.metadata",
       retryMode: "rate-limit"
     });
   }

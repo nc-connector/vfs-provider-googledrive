@@ -215,6 +215,42 @@ test("creates metadata in My Drive and Shared Drive folders", async () => {
   assert.equal(calls[0].options.retryMode, "rate-limit");
 });
 
+test("updates metadata for an encoded shared-drive item", async () => {
+  const metadata = { trashed: true };
+  const signal = new AbortController().signal;
+  const { calls, client } = createClient(() => ({
+    id: "file:id",
+    trashed: true
+  }));
+
+  assert.deepEqual(await client.updateFileMetadata("file:id", metadata, {
+    addParents: "new-parent",
+    removeParents: "old-parent",
+    resourceKey: "resource-key",
+    signal
+  }), {
+    id: "file:id",
+    trashed: true
+  });
+
+  assert.equal(calls[0].options.resourcePath, "files/file%3Aid");
+  assert.deepEqual(calls[0].options.query, {
+    addParents: "new-parent",
+    removeParents: "old-parent",
+    supportsAllDrives: true,
+    fields: DRIVE_FILE_FIELDS
+  });
+  assert.equal(calls[0].options.method, "PATCH");
+  assert.deepEqual(calls[0].options.headers, {
+    "X-Goog-Drive-Resource-Keys": "file:id/resource-key",
+    "Content-Type": "application/json; charset=UTF-8"
+  });
+  assert.equal(calls[0].options.body, JSON.stringify(metadata));
+  assert.equal(calls[0].options.signal, signal);
+  assert.equal(calls[0].options.operation, "files.update.metadata");
+  assert.equal(calls[0].options.retryMode, "rate-limit");
+});
+
 test("creates a small file with metadata-first multipart upload", async () => {
   const media = new Blob(["file data"], { type: "text/plain" });
   const { calls, client } = createClient(() => ({ id: "created-file" }));
