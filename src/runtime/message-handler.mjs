@@ -39,6 +39,15 @@ export function createRuntimeMessageHandler({
           () => oauthClient.disconnectAccount(message.accountId)
         );
         break;
+      case "googleDrive:vfs:connections:list":
+        operation = () => connectionService.listConnections();
+        break;
+      case "googleDrive:vfs:connection:revoke":
+        operation = () => connectionService.revokeConnection({
+          addonId: message.addonId,
+          storageId: message.storageId
+        });
+        break;
       case "googleDrive:preferences:get":
         operation = () => preferencesRepository.get();
         break;

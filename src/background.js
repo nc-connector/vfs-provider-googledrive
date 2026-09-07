@@ -54,6 +54,8 @@ const driveTransport = new GoogleDriveTransport({
 const connectionService = new VfsConnectionService({
   storageArea: browser.storage.local,
   accountRepository,
+  sendMessage: (addonId, message) =>
+    browser.runtime.sendMessage(addonId, message),
   logger
 });
 

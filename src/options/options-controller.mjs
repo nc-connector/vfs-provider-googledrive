@@ -8,6 +8,8 @@ const MESSAGE_TYPES = Object.freeze({
   listAccounts: "googleDrive:accounts:list",
   authorizeAccount: "googleDrive:account:authorize",
   disconnectAccount: "googleDrive:account:disconnect",
+  listConnections: "googleDrive:vfs:connections:list",
+  revokeConnection: "googleDrive:vfs:connection:revoke",
   getPreferences: "googleDrive:preferences:get",
   updatePreferences: "googleDrive:preferences:update"
 });
@@ -24,8 +26,11 @@ const ERROR_MESSAGE_KEYS = Object.freeze({
   oauth_token_refresh_failed: "optionsErrorOAuthReauthorizationRequired",
   oauth_refresh_token_missing: "optionsErrorOAuthReauthorizationRequired",
   account_has_connections: "optionsErrorAccountHasConnections",
+  connection_not_found: "vfsConnectionErrorNotFound",
   unexpected_error: "optionsErrorUnexpected"
 });
+
+const REFRESH_STORAGE_KEYS = new Set(["vfs-toolkit-connections"]);
 
 export class OptionsControllerError extends Error {
   constructor(code) {
@@ -63,6 +68,40 @@ export function accountViewModels(accounts, getMessage) {
   }));
 }
 
+export function connectionViewModels(connections, accounts, getMessage) {
+  if (!Array.isArray(connections)) {
+    return [];
+  }
+  const accountById = new Map((Array.isArray(accounts) ? accounts : [])
+    .map((account) => [account.id, account]));
+  return connections.map((connection) => {
+    const account = accountById.get(connection.accountId);
+    const addonName = connection.addonName || connection.addonId || "";
+    const primaryAccountLabel = account?.displayName || account?.emailAddress ||
+      getMessage("optionsAccountFallback");
+    const secondaryAccountLabel = account?.emailAddress &&
+      account.emailAddress !== primaryAccountLabel
+      ? account.emailAddress
+      : "";
+    return {
+      addonId: connection.addonId,
+      addonLabel: addonName && addonName !== connection.addonId
+        ? `${addonName} (${connection.addonId})`
+        : addonName,
+      storageId: connection.storageId,
+      name: connection.name || getMessage("extensionName"),
+      accountLabel: secondaryAccountLabel
+        ? `${primaryAccountLabel} — ${secondaryAccountLabel}`
+        : primaryAccountLabel
+    };
+  });
+}
+
+export function shouldRefreshForStorageChange(changes, areaName) {
+  return areaName === "local" && changes && typeof changes === "object" &&
+    Object.keys(changes).some((key) => REFRESH_STORAGE_KEYS.has(key));
+}
+
 export function errorMessageKey(errorCode) {
   return ERROR_MESSAGE_KEYS[errorCode] || "optionsErrorOAuthGeneric";
 }
@@ -83,14 +122,33 @@ export function createOptionsController({ sendMessage, view, getMessage }) {
     view.setFeedback({ kind: "error", text: getMessage(key) });
   }
 
+  function renderConnectionList(connections, accounts) {
+    view.renderConnections(connectionViewModels(
+      connections,
+      accounts,
+      getMessage
+    ));
+  }
+
   async function refresh() {
-    const [preferences, accounts] = await Promise.all([
+    const [preferences, accounts, connections] = await Promise.all([
       request(MESSAGE_TYPES.getPreferences),
-      request(MESSAGE_TYPES.listAccounts)
+      request(MESSAGE_TYPES.listAccounts),
+      request(MESSAGE_TYPES.listConnections)
     ]);
     view.setPreferences(preferences);
     view.renderAccounts(accountViewModels(accounts, getMessage));
-    return { preferences, accounts };
+    renderConnectionList(connections, accounts);
+    return { preferences, accounts, connections };
+  }
+
+  async function refreshConnections() {
+    const [accounts, connections] = await Promise.all([
+      request(MESSAGE_TYPES.listAccounts),
+      request(MESSAGE_TYPES.listConnections)
+    ]);
+    renderConnectionList(connections, accounts);
+    return { accounts, connections };
   }
 
   async function finishMutation({ kind = "success", messageKey }) {
@@ -169,11 +227,26 @@ export function createOptionsController({ sendMessage, view, getMessage }) {
     }
   }
 
+  async function revokeConnection(addonId, storageId) {
+    view.setBusy(true);
+    try {
+      await request(MESSAGE_TYPES.revokeConnection, { addonId, storageId });
+      return await finishMutation({ messageKey: "optionsConnectionRevoked" });
+    } catch (error) {
+      showError(error);
+      return false;
+    } finally {
+      view.setBusy(false);
+    }
+  }
+
   return {
     authorize,
     disconnect,
     reauthorize,
     refresh,
+    refreshConnections,
+    revokeConnection,
     savePreferences
   };
 }

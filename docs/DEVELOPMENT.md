@@ -279,6 +279,16 @@ capabilities, and discovery records in `vfs-toolkit-connections`. This avoids a
 second copy of Toolkit connection data. Repository account queries omit refresh
 tokens unless an internal authorization lookup is explicitly requested.
 
+The options page requests connection management through the background. The
+connection service lists Toolkit records that have a current product binding.
+Revocation removes the exact consumer add-on and storage-ID pair from the
+Toolkit list before removing its product binding. If another Toolkit record
+still uses the same storage ID, the binding remains. The consumer receives a
+best-effort `vfs-toolkit-remove-connection` message after the stored access has
+been removed; an unavailable consumer does not roll the revocation back. This
+operation does not remove the Google account, revoke its OAuth grant, or delete
+Drive content.
+
 Provider state version 2 adds the change-cursor collection. Version 1 records
 are migrated by retaining their accounts and connection bindings and starting
 with an empty cursor collection. Removing an account also removes all of its

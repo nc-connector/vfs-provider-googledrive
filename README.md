@@ -17,7 +17,7 @@ Connector at runtime.
 The current build provides:
 
 - a Thunderbird Manifest V3 extension with a module background;
-- localized account and provider settings;
+- localized account, consumer-access, and provider settings;
 - a versioned state repository that keeps Google accounts separate from VFS
   consumer connections;
 - versioned preferences for OAuth setup, diagnostics, and Google Workspace
@@ -58,7 +58,8 @@ connections receive the current capability set during startup. Remote Drive
 changes are checked every five minutes for connected accounts. A changed Drive
 invalidates the VFS storage root so an open picker can refresh its current
 folder without relying on unstable Drive paths.
-The settings page does not yet list or revoke individual consumer connections.
+The settings page lists every current consumer connection and can revoke one
+add-on's access without removing the Google account or Drive files.
 A Google Desktop OAuth client ID is required for live account and provider
 testing.
 

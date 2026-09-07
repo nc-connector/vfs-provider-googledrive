@@ -81,6 +81,8 @@ operation cases with the upstream unmodified API 1.3 example client.
 | Account | Reauthorize one account | The selected identity is required and the other account remains unchanged. |
 | Connection | Create, rename, and switch an account-bound connection | The consumer sees the current name and only the selected account's storage. |
 | Connection | Connect two consumers to the same account | Each consumer gets its own storage ID and both remain usable. |
+| Connection | Revoke one consumer in the provider settings | Only the selected connection disappears; the other consumers and Google account remain usable. |
+| Connection | Revoke a connection whose consumer is unavailable | The stored connection and account binding are removed without blocking the settings page. |
 | Isolation | Use a stale, foreign, or removed storage ID | The operation is rejected without accessing Google Drive. |
 | Browse | Open My Drive, Shared with me, and Shared drives | Each virtual root lists only its intended content and all pages are returned. |
 | Names | Browse duplicate and path-like names | Every item remains separately addressable and its displayed path stays stable. |

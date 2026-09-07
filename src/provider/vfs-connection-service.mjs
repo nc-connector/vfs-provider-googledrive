@@ -72,6 +72,10 @@ function hasCurrentCapabilities(connection) {
         GOOGLE_DRIVE_CAPABILITIES[kind][action]));
 }
 
+function sendRuntimeMessage(addonId, message) {
+  return browser.runtime.sendMessage(addonId, message);
+}
+
 export class VfsConnectionError extends Error {
   constructor(code) {
     super(code);
@@ -84,6 +88,7 @@ export class VfsConnectionService {
   #storageArea;
   #accountRepository;
   #reportConnection;
+  #sendMessage;
   #randomUUID;
   #logger;
   #operationQueue = Promise.resolve();
@@ -92,10 +97,11 @@ export class VfsConnectionService {
     storageArea,
     accountRepository,
     reportConnection = reportNewConnection,
+    sendMessage = sendRuntimeMessage,
     randomUUID = () => crypto.randomUUID(),
     logger
   }) {
-    if (!storageArea?.get) {
+    if (!storageArea?.get || !storageArea?.set) {
       throw new TypeError("storageArea");
     }
     for (const method of [
@@ -111,12 +117,14 @@ export class VfsConnectionService {
       }
     }
     if (typeof reportConnection !== "function" ||
+        typeof sendMessage !== "function" ||
         typeof randomUUID !== "function") {
       throw new TypeError("connectionDependencies");
     }
     this.#storageArea = storageArea;
     this.#accountRepository = accountRepository;
     this.#reportConnection = reportConnection;
+    this.#sendMessage = sendMessage;
     this.#randomUUID = randomUUID;
     this.#logger = logger;
   }
@@ -176,6 +184,28 @@ export class VfsConnectionService {
       const bindings = await this.#accountRepository.listConnectionBindings();
       return clone(bindings.filter((binding) =>
         counts.get(binding.storageId) === 1));
+    });
+  }
+
+  async listConnections() {
+    return this.#enqueue(async () => {
+      const connections = await this.#readConnections();
+      await this.#reconcile(connections);
+      const bindings = await this.#accountRepository.listConnectionBindings();
+      const bindingByStorageId = new Map(bindings.map((binding) => [
+        binding.storageId,
+        binding
+      ]));
+      return connections.flatMap((connection) => {
+        const binding = bindingByStorageId.get(connection.storageId);
+        return binding ? [{
+          addonId: connection.addonId,
+          addonName: optionalLabel(connection.addonName, connection.addonId),
+          storageId: connection.storageId,
+          name: optionalLabel(connection.name, "Google Drive"),
+          accountId: binding.accountId
+        }] : [];
+      });
     });
   }
 
@@ -293,6 +323,61 @@ export class VfsConnectionService {
         storageId: requestedStorageId,
         name: requestedName,
         accountId: requestedAccountId
+      };
+    });
+  }
+
+  async revokeConnection({ addonId, storageId }) {
+    const requestedAddonId = requiredString(addonId);
+    const requestedStorageId = requiredString(storageId);
+    return this.#enqueue(async () => {
+      const stored = await this.#storageArea.get({
+        [VFS_TOOLKIT_CONNECTIONS_KEY]: []
+      });
+      const connections = Array.isArray(
+        stored[VFS_TOOLKIT_CONNECTIONS_KEY]
+      ) ? stored[VFS_TOOLKIT_CONNECTIONS_KEY] : [];
+      const matchingConnection = connections.some((connection) =>
+        isStoredConnection(connection) &&
+        connection.addonId === requestedAddonId &&
+        connection.storageId === requestedStorageId);
+      if (!matchingConnection) {
+        throw connectionError("connection_not_found");
+      }
+
+      const remaining = connections.filter((connection) =>
+        !(isStoredConnection(connection) &&
+          connection.addonId === requestedAddonId &&
+          connection.storageId === requestedStorageId));
+      await this.#storageArea.set({
+        [VFS_TOOLKIT_CONNECTIONS_KEY]: remaining
+      });
+      if (!remaining.some((connection) =>
+        isStoredConnection(connection) &&
+        connection.storageId === requestedStorageId)) {
+        await this.#accountRepository.removeConnectionBinding(
+          requestedStorageId
+        );
+      }
+
+      void Promise.resolve().then(() => this.#sendMessage(
+        requestedAddonId,
+        {
+          type: "vfs-toolkit-remove-connection",
+          storageId: requestedStorageId
+        }
+      )).catch((error) => {
+        this.#logger?.debug?.("vfs.connection.notification_failed", {
+          error,
+          status: "consumer_unavailable"
+        });
+      });
+      this.#logger?.info?.("vfs.connection.revoked", {
+        status: "revoked"
+      });
+      return {
+        addonId: requestedAddonId,
+        storageId: requestedStorageId
       };
     });
   }

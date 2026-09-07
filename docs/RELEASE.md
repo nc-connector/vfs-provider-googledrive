@@ -131,8 +131,9 @@ Verify in the candidate that:
 - periodic change polling is described even though it runs without a new click
   after a connection is granted;
 - Google and connected VFS consumers are identified as data recipients;
-- account removal, remote revocation, local retention, Drive trash behavior,
-  and diagnostics match the privacy text; and
+- account removal, consumer-connection revocation, remote OAuth revocation,
+  local retention, Drive trash behavior, and diagnostics match the privacy
+  text; and
 - any future telemetry, additional host, server, or data use is disabled until
   its policy, consent, and release review are complete.
 
@@ -141,7 +142,7 @@ Verify in the candidate that:
 The listing must explain:
 
 - that this is a storage provider used by compatible Thunderbird VFS consumers;
-- where users add Google accounts and create consumer connections;
+- where users add Google accounts and create or revoke consumer connections;
 - the My Drive, Shared with me, Shared Drives, Workspace export, upload, move,
   copy, trash, change-refresh, and multi-account behavior actually shipped;
 - that a Google account is required and Shared Drives depend on the user's
@@ -170,8 +171,9 @@ compatible add-ons through VFS Toolkit API 1.3.
 
 Entry points:
 Open Add-ons Manager -> VFS Provider for Google Drive -> Preferences to enter
-the OAuth client ID and add an account. Create a connection from a compatible
-VFS consumer; the provider setup shows the consumer name and ID.
+the OAuth client ID, add an account, and review or revoke current consumer
+connections. Create a connection from a compatible VFS consumer; the provider
+setup shows the consumer name and ID.
 
 Test account:
 [Private test-account instructions or reviewer allowlisting process]

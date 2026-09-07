@@ -9,9 +9,11 @@ import test from "node:test";
 
 import {
   accountViewModels,
+  connectionViewModels,
   createOptionsController,
   errorMessageKey,
-  normalizePreferenceChanges
+  normalizePreferenceChanges,
+  shouldRefreshForStorageChange
 } from "../src/options/options-controller.mjs";
 
 function createHarness(responses = {}) {
@@ -19,6 +21,7 @@ function createHarness(responses = {}) {
   const calls = [];
   const view = {
     renderAccounts: (value) => calls.push(["accounts", value]),
+    renderConnections: (value) => calls.push(["connections", value]),
     setBusy: (value) => calls.push(["busy", value]),
     setFeedback: (value) => calls.push(["feedback", value]),
     setPreferences: (value) => calls.push(["preferences", value])
@@ -26,7 +29,11 @@ function createHarness(responses = {}) {
   const controller = createOptionsController({
     sendMessage: async (message) => {
       messages.push(message);
-      const response = responses[message.type];
+      const response = Object.hasOwn(responses, message.type)
+        ? responses[message.type]
+        : message.type === "googleDrive:vfs:connections:list"
+          ? { ok: true, value: [] }
+          : undefined;
       return typeof response === "function" ? response(message) : response;
     },
     getMessage: (key) => `translated:${key}`,
@@ -94,6 +101,43 @@ test("builds account rows without exposing authorization data", () => {
   assert.equal(JSON.stringify(rows).includes("must-not-pass"), false);
 });
 
+test("builds connection rows from public account and Toolkit metadata", () => {
+  const rows = connectionViewModels([{
+    addonId: "consumer@example.invalid",
+    addonName: "Example consumer",
+    storageId: "storage-1",
+    name: "Work Drive",
+    accountId: "account-1"
+  }], [{
+    id: "account-1",
+    displayName: "Ada Example",
+    emailAddress: "ada@example.invalid",
+    refreshToken: "must-not-pass"
+  }], (key) => `translated:${key}`);
+
+  assert.deepEqual(rows, [{
+    addonId: "consumer@example.invalid",
+    addonLabel: "Example consumer (consumer@example.invalid)",
+    storageId: "storage-1",
+    name: "Work Drive",
+    accountLabel: "Ada Example — ada@example.invalid"
+  }]);
+  assert.equal(JSON.stringify(rows).includes("must-not-pass"), false);
+});
+
+test("refreshes options only for relevant local storage changes", () => {
+  assert.equal(shouldRefreshForStorageChange({
+    "vfs-toolkit-connections": { oldValue: [], newValue: [] }
+  }, "local"), true);
+  assert.equal(shouldRefreshForStorageChange({
+    "google-drive-provider-state": { oldValue: {}, newValue: {} }
+  }, "local"), false);
+  assert.equal(shouldRefreshForStorageChange({ unrelated: {} }, "local"), false);
+  assert.equal(shouldRefreshForStorageChange({
+    "vfs-toolkit-connections": {}
+  }, "sync"), false);
+});
+
 test("loads preferences and accounts together", async () => {
   const preferences = {
     oauthClientId: "client.apps.googleusercontent.com",
@@ -113,10 +157,43 @@ test("loads preferences and accounts together", async () => {
   assert.deepEqual(result.preferences, preferences);
   assert.deepEqual(harness.messages.map(({ type }) => type).sort(), [
     "googleDrive:accounts:list",
-    "googleDrive:preferences:get"
+    "googleDrive:preferences:get",
+    "googleDrive:vfs:connections:list"
   ]);
   assert.equal(harness.calls.some(([type]) => type === "preferences"), true);
   assert.equal(harness.calls.some(([type]) => type === "accounts"), true);
+});
+
+test("refreshes connection rows without replacing unsaved preferences", async () => {
+  const harness = createHarness({
+    "googleDrive:accounts:list": {
+      ok: true,
+      value: [{ id: "account-1", emailAddress: "ada@example.invalid" }]
+    },
+    "googleDrive:vfs:connections:list": {
+      ok: true,
+      value: [{
+        addonId: "consumer@example.invalid",
+        storageId: "storage-1",
+        accountId: "account-1"
+      }]
+    }
+  });
+
+  await harness.controller.refreshConnections();
+
+  assert.deepEqual(harness.messages.map(({ type }) => type).sort(), [
+    "googleDrive:accounts:list",
+    "googleDrive:vfs:connections:list"
+  ]);
+  assert.equal(
+    harness.calls.some(([type]) => type === "preferences"),
+    false
+  );
+  assert.equal(
+    harness.calls.some(([type]) => type === "connections"),
+    true
+  );
 });
 
 test("reauthorizes only the selected account", async () => {
@@ -151,6 +228,10 @@ test("maps known and unknown OAuth errors to user-facing messages", async () => 
   assert.equal(
     errorMessageKey("account_has_connections"),
     "optionsErrorAccountHasConnections"
+  );
+  assert.equal(
+    errorMessageKey("connection_not_found"),
+    "vfsConnectionErrorNotFound"
   );
   assert.equal(
     errorMessageKey("oauth_request_timeout"),
@@ -189,6 +270,37 @@ test("warns when an account is removed locally without revoking Google access", 
     {
       kind: "warning",
       text: "translated:optionsAccountDisconnectedWithoutRevocation"
+    }
+  ]);
+});
+
+test("revokes only the selected VFS connection", async () => {
+  const harness = createHarness({
+    "googleDrive:vfs:connection:revoke": {
+      ok: true,
+      value: {
+        addonId: "consumer@example.invalid",
+        storageId: "storage-1"
+      }
+    },
+    "googleDrive:preferences:get": { ok: true, value: { exportFormats: {} } },
+    "googleDrive:accounts:list": { ok: true, value: [] }
+  });
+
+  assert.equal(await harness.controller.revokeConnection(
+    "consumer@example.invalid",
+    "storage-1"
+  ), true);
+  assert.deepEqual(harness.messages[0], {
+    type: "googleDrive:vfs:connection:revoke",
+    addonId: "consumer@example.invalid",
+    storageId: "storage-1"
+  });
+  assert.deepEqual(harness.calls.at(-2), [
+    "feedback",
+    {
+      kind: "success",
+      text: "translated:optionsConnectionRevoked"
     }
   ]);
 });

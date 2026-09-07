@@ -167,7 +167,8 @@ h2 {
   background: light-dark(#fff4d2, #47391a);
 }
 
-.account-list {
+.account-list,
+.connection-list {
   display: grid;
   gap: 10px;
   margin: 18px 0 0;
@@ -175,7 +176,8 @@ h2 {
   list-style: none;
 }
 
-.account-card {
+.account-card,
+.connection-card {
   display: flex;
   gap: 16px;
   justify-content: space-between;
@@ -185,13 +187,15 @@ h2 {
   border-radius: 7px;
 }
 
-.account-name {
+.account-name,
+.connection-name {
   margin: 0;
   font-weight: 600;
 }
 
 .account-email,
-.account-status {
+.account-status,
+.connection-detail {
   margin: 3px 0 0;
   color: var(--muted);
   font-size: 13px;
@@ -206,6 +210,21 @@ h2 {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.connection-detail {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.connection-detail-label {
+  font-weight: 600;
+}
+
+.connection-actions {
+  display: flex;
+  flex: 0 0 auto;
 }
 
 .danger-action {
@@ -282,12 +301,14 @@ legend {
   }
 
   .section-heading,
-  .account-card {
+  .account-card,
+  .connection-card {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .account-actions {
+  .account-actions,
+  .connection-actions {
     justify-content: flex-start;
   }
 

@@ -26,6 +26,8 @@ function createHandler(overrides = {}) {
     },
     connectionService: {
       disconnectAccount: async (_accountId, disconnect) => disconnect(),
+      listConnections: async () => [],
+      revokeConnection: async (request) => request,
       getConnection: async (request) => request,
       createConnection: async (request) => request,
       updateConnection: async (request) => request
@@ -145,6 +147,14 @@ test("checks VFS bindings before disconnecting an account", async () => {
 test("routes VFS connection messages without passing extra fields", async () => {
   const calls = [];
   const connectionService = {
+    async listConnections() {
+      calls.push(["list"]);
+      return [];
+    },
+    async revokeConnection(request) {
+      calls.push(["revoke", request]);
+      return request;
+    },
     async getConnection(request) {
       calls.push(["get", request]);
       return request;
@@ -161,6 +171,16 @@ test("routes VFS connection messages without passing extra fields", async () => 
   const handler = createHandler({ connectionService });
   const sender = { id: "provider@example.invalid" };
 
+  await handler({
+    type: "googleDrive:vfs:connections:list",
+    ignored: "value"
+  }, sender);
+  await handler({
+    type: "googleDrive:vfs:connection:revoke",
+    addonId: "consumer@example.invalid",
+    storageId: "storage-1",
+    ignored: "value"
+  }, sender);
   await handler({
     type: "googleDrive:vfs:connection:get",
     addonId: "consumer@example.invalid",
@@ -186,6 +206,11 @@ test("routes VFS connection messages without passing extra fields", async () => 
   }, sender);
 
   assert.deepEqual(calls, [
+    ["list"],
+    ["revoke", {
+      addonId: "consumer@example.invalid",
+      storageId: "storage-1"
+    }],
     ["get", {
       addonId: "consumer@example.invalid",
       storageId: "storage-1"

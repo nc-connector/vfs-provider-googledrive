@@ -19,7 +19,8 @@ request file or folder operations.
 
 The current build provides a localized settings page where a tester can enter a
 Desktop OAuth client ID, add or reauthorize Google accounts, remove an unused
-account, choose Workspace export formats, and enable diagnostic logging. A
+account, manage individual consumer connections, choose Workspace export
+formats, and enable diagnostic logging. A
 compatible VFS consumer can create a connection for one account, rename that
 connection, switch its account, browse and read Drive content, upload new files,
 replace binary files, create folders, move or copy files and folders, merge
@@ -30,9 +31,7 @@ in the recoverable Drive trash. The provider does not permanently delete
 content. Previously granted connections receive the current add, modify, and
 delete capabilities when the provider starts. Remote Drive changes are checked
 every five minutes for accounts with a current VFS connection. A detected
-change causes the corresponding consumer storage to refresh. It does not yet:
-
-- list and revoke individual consumer connections in the provider settings.
+change causes the corresponding consumer storage to refresh.
 
 ## 2. Current platform requirements
 
@@ -176,7 +175,9 @@ shows both the consumer name and its add-on ID before an account is granted.
 
 A Google authorization window must not open during installation, startup, or
 simply opening the settings. An account cannot be removed while a current VFS
-connection still uses it; remove the connection from the consumer first.
+connection still uses it. Revoke each listed connection in the provider
+settings or remove it from its consumer before removing the account. Revoking a
+connection does not remove the Google account or any Drive file.
 
 Google account HTTP requests stop after 30 seconds without a completed
 response. Drive requests stop after five minutes if no response has started.
@@ -215,7 +216,6 @@ The following items must be settled and documented before deployment:
 - Google Cloud project and OAuth client registration;
 - requested Google scopes and their review status;
 - production account recovery and administrative revocation procedures;
-- provider-side display and revocation of individual consumer connections;
 - organization policy and managed deployment options;
 - logging controls, diagnostics, and retention guidance; and
 - organization-specific profile backup and rollback procedures.

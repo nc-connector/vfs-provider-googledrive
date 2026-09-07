@@ -87,6 +87,11 @@ Google cannot confirm revocation, the local record is still removed and the
 provider displays a warning. The user can separately revoke the grant in their
 Google Account.
 
+The provider settings list the add-ons with a current VFS connection. Revoking
+one connection removes that add-on's access record and the local account
+binding for the connection. It does not remove the Google account, revoke its
+Google grant, or delete files from Google Drive.
+
 Removing the add-on removes its active local extension storage according to
 Thunderbird's add-on behavior, but it does not delete files from Google Drive
 and might not revoke the Google grant. Revoke the grant in the Google Account

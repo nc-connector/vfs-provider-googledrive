@@ -44,6 +44,7 @@ function toolkitConnection({
 async function createFixture({
   connections = [],
   reportConnection,
+  sendMessage,
   randomUUID,
   logger
 } = {}) {
@@ -56,6 +57,7 @@ async function createFixture({
     storageArea,
     accountRepository,
     reportConnection: reportConnection || (async () => undefined),
+    sendMessage: sendMessage || (async () => undefined),
     randomUUID: randomUUID || (() => "storage-new"),
     logger
   });
@@ -294,6 +296,45 @@ test("lists only current unambiguous account bindings", async () => {
   );
 });
 
+test("lists Toolkit connections with their account bindings", async () => {
+  const first = toolkitConnection();
+  const second = toolkitConnection({
+    addonId: "second@example.invalid",
+    addonName: "Second consumer",
+    storageId: "storage-2",
+    name: "Shared Drive"
+  });
+  const { accountRepository, service } = await createFixture({
+    connections: [first, second, toolkitConnection({
+      storageId: "storage-unbound"
+    })]
+  });
+  await addAccount(accountRepository, "account-1");
+  await addAccount(accountRepository, "account-2");
+  await accountRepository.bindConnection({
+    storageId: first.storageId,
+    accountId: "account-1"
+  });
+  await accountRepository.bindConnection({
+    storageId: second.storageId,
+    accountId: "account-2"
+  });
+
+  assert.deepEqual(await service.listConnections(), [{
+    addonId: first.addonId,
+    addonName: first.addonName,
+    storageId: first.storageId,
+    name: first.name,
+    accountId: "account-1"
+  }, {
+    addonId: second.addonId,
+    addonName: second.addonName,
+    storageId: second.storageId,
+    name: second.name,
+    accountId: "account-2"
+  }]);
+});
+
 test("creates the product binding before completing Toolkit setup", async () => {
   let fixture;
   let reported;
@@ -453,6 +494,140 @@ test("restores the previous account binding when an update fails", async () => {
     (await accountRepository.getConnectionBinding("storage-1")).accountId,
     "account-1"
   );
+});
+
+test("revokes one consumer connection and notifies that add-on", async () => {
+  const removed = toolkitConnection();
+  const retained = toolkitConnection({
+    addonId: "second@example.invalid",
+    storageId: "storage-2"
+  });
+  const notifications = [];
+  const malformedRecord = { storageId: 42, privateData: "preserve" };
+  const { accountRepository, service, storageArea } = await createFixture({
+    connections: [removed, retained, malformedRecord],
+    sendMessage: async (...args) => notifications.push(args)
+  });
+  await addAccount(accountRepository);
+  await accountRepository.bindConnection({
+    storageId: removed.storageId,
+    accountId: "account-1"
+  });
+  await accountRepository.bindConnection({
+    storageId: retained.storageId,
+    accountId: "account-1"
+  });
+
+  assert.deepEqual(await service.revokeConnection({
+    addonId: removed.addonId,
+    storageId: removed.storageId
+  }), {
+    addonId: removed.addonId,
+    storageId: removed.storageId
+  });
+  assert.deepEqual(
+    storageArea.snapshot()[VFS_TOOLKIT_CONNECTIONS_KEY],
+    [retained, malformedRecord]
+  );
+  assert.equal(
+    await accountRepository.getConnectionBinding(removed.storageId),
+    null
+  );
+  assert.equal(
+    (await accountRepository.getConnectionBinding(retained.storageId))
+      .accountId,
+    "account-1"
+  );
+  assert.deepEqual(notifications, [[removed.addonId, {
+    type: "vfs-toolkit-remove-connection",
+    storageId: removed.storageId
+  }]]);
+});
+
+test("keeps a shared storage binding until its last connection is revoked", async () => {
+  const first = toolkitConnection();
+  const second = toolkitConnection({
+    addonId: "second@example.invalid"
+  });
+  const { accountRepository, service } = await createFixture({
+    connections: [first, second]
+  });
+  await addAccount(accountRepository);
+  await accountRepository.bindConnection({
+    storageId: first.storageId,
+    accountId: "account-1"
+  });
+
+  await service.revokeConnection({
+    addonId: first.addonId,
+    storageId: first.storageId
+  });
+
+  assert.equal(
+    (await accountRepository.getConnectionBinding(first.storageId)).accountId,
+    "account-1"
+  );
+  assert.deepEqual((await service.listConnections()).map(({ addonId }) =>
+    addonId), [second.addonId]);
+});
+
+test("keeps a completed revocation when the consumer is unavailable", async () => {
+  const connection = toolkitConnection();
+  const { accountRepository, service, storageArea } = await createFixture({
+    connections: [connection],
+    sendMessage: async () => {
+      throw new Error("Receiving end does not exist");
+    }
+  });
+  await addAccount(accountRepository);
+  await accountRepository.bindConnection({
+    storageId: connection.storageId,
+    accountId: "account-1"
+  });
+
+  await service.revokeConnection({
+    addonId: connection.addonId,
+    storageId: connection.storageId
+  });
+
+  assert.deepEqual(
+    storageArea.snapshot()[VFS_TOOLKIT_CONNECTIONS_KEY],
+    []
+  );
+  assert.equal(
+    await accountRepository.getConnectionBinding(connection.storageId),
+    null
+  );
+});
+
+test("does not wait for a consumer that stops responding", async () => {
+  const connection = toolkitConnection();
+  const { accountRepository, service } = await createFixture({
+    connections: [connection],
+    sendMessage: () => new Promise(() => {})
+  });
+  await addAccount(accountRepository);
+  await accountRepository.bindConnection({
+    storageId: connection.storageId,
+    accountId: "account-1"
+  });
+
+  assert.deepEqual(await service.revokeConnection({
+    addonId: connection.addonId,
+    storageId: connection.storageId
+  }), {
+    addonId: connection.addonId,
+    storageId: connection.storageId
+  });
+});
+
+test("rejects revocation for a connection that no longer exists", async () => {
+  const { service } = await createFixture();
+
+  await assert.rejects(service.revokeConnection({
+    addonId: "consumer@example.invalid",
+    storageId: "storage-1"
+  }), (error) => error.code === "connection_not_found");
 });
 
 test("keeps a provisional account change hidden from provider requests", async () => {

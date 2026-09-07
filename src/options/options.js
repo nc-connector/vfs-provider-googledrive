@@ -5,7 +5,10 @@
 "use strict";
 
 import { localizeDocument } from "../vendor/i18n/i18n.mjs";
-import { createOptionsController } from "./options-controller.mjs";
+import {
+  createOptionsController,
+  shouldRefreshForStorageChange
+} from "./options-controller.mjs";
 
 localizeDocument();
 document.documentElement.lang = browser.i18n.getMessage("optionsDocumentLanguage") || "de";
@@ -14,6 +17,8 @@ const form = document.getElementById("preferences-form");
 const feedback = document.getElementById("feedback");
 const accountList = document.getElementById("account-list");
 const noAccounts = document.getElementById("no-accounts");
+const connectionList = document.getElementById("connection-list");
+const noConnections = document.getElementById("no-connections");
 const addAccountButton = document.getElementById("add-account");
 const oauthClientId = document.getElementById("oauth-client-id");
 const debugLogging = document.getElementById("debug-logging");
@@ -60,7 +65,7 @@ function setBusy(isBusy) {
   }
 }
 
-function createAccountButton(text, className, callback) {
+function createActionButton(text, className, callback) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = className;
@@ -104,13 +109,13 @@ function renderAccounts(accounts) {
     const actions = document.createElement("div");
     actions.className = "account-actions";
     if (account.canReauthorize) {
-      actions.append(createAccountButton(
+      actions.append(createActionButton(
         getMessage("optionsReauthorizeAccount"),
         "secondary-action",
         () => controller.reauthorize(account.id)
       ));
     }
-    actions.append(createAccountButton(
+    actions.append(createActionButton(
       getMessage("optionsDisconnectAccount"),
       "danger-action",
       () => {
@@ -126,11 +131,69 @@ function renderAccounts(accounts) {
   }
 }
 
+function appendConnectionDetail(parent, labelKey, value) {
+  const detail = document.createElement("p");
+  detail.className = "connection-detail";
+  const label = document.createElement("span");
+  label.className = "connection-detail-label";
+  label.textContent = getMessage(labelKey);
+  const content = document.createElement("span");
+  content.textContent = value;
+  detail.append(label, content);
+  parent.append(detail);
+}
+
+function renderConnections(connections) {
+  connectionList.replaceChildren();
+  noConnections.hidden = connections.length > 0;
+
+  for (const connection of connections) {
+    const item = document.createElement("li");
+    item.className = "connection-card";
+
+    const details = document.createElement("div");
+    const name = document.createElement("p");
+    name.className = "connection-name";
+    name.textContent = connection.name;
+    details.append(name);
+    appendConnectionDetail(
+      details,
+      "vfsConnectionAccountLabel",
+      connection.accountLabel
+    );
+    appendConnectionDetail(
+      details,
+      "optionsConnectionAddonLabel",
+      connection.addonLabel
+    );
+
+    const actions = document.createElement("div");
+    actions.className = "connection-actions";
+    actions.append(createActionButton(
+      getMessage("optionsRevokeConnection"),
+      "danger-action",
+      () => {
+        if (window.confirm(getMessage("optionsConfirmRevokeConnection"))) {
+          return controller.revokeConnection(
+            connection.addonId,
+            connection.storageId
+          );
+        }
+        return false;
+      }
+    ));
+
+    item.append(details, actions);
+    connectionList.append(item);
+  }
+}
+
 controller = createOptionsController({
   sendMessage: (message) => browser.runtime.sendMessage(message),
   getMessage,
   view: {
     renderAccounts,
+    renderConnections,
     setBusy,
     setFeedback,
     setPreferences
@@ -151,6 +214,15 @@ addAccountButton.addEventListener("click", () => {
       await controller.authorize();
     }
   })();
+});
+
+browser.storage.onChanged.addListener((changes, areaName) => {
+  if (!shouldRefreshForStorageChange(changes, areaName)) {
+    return;
+  }
+  void controller.refreshConnections().catch(() => {
+    setFeedback({ kind: "error", text: getMessage("optionsErrorUnexpected") });
+  });
 });
 
 setBusy(true);
