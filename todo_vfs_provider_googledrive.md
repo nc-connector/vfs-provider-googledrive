@@ -172,7 +172,7 @@ kept in sync with the repository.
     OAuth scope and verification boundaries, Shared Drives, and Workspace exports.
   - [x] Document current credential storage, diagnostic redaction, source review,
     and third-party notices.
-  - [ ] Document the release test matrix and manual evidence to retain.
+  - [x] Document the release test matrix and manual evidence to retain.
   - [ ] Complete the ATN submission and release checklist once product identity,
     production OAuth, and supported Thunderbird versions are settled.
 - [x] Add a release changelog before the first release candidate.

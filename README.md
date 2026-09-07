@@ -106,6 +106,7 @@ the Thunderbird `webext-linter` repository.
 - [Changelog](CHANGELOG.md)
 - [Administration guide](docs/ADMIN.md)
 - [Development guide](docs/DEVELOPMENT.md)
+- [Test guide](docs/TESTING.md)
 - [Translations](Translations.md)
 - [Vendored source record](VENDOR.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)

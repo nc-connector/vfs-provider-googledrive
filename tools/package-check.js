@@ -12,7 +12,8 @@ const ROOT_PACKAGE_FILES = [
   "Translations.md",
   "VENDOR.md",
   "docs/ADMIN.md",
-  "docs/DEVELOPMENT.md"
+  "docs/DEVELOPMENT.md",
+  "docs/TESTING.md"
 ];
 
 function assert(condition, message) {

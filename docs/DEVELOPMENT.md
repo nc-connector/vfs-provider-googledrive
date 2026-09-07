@@ -63,6 +63,7 @@ Drive, and this project does not include its WebDAV protocol code.
 | `tools/package-check.js` | packaged-file allowlist check |
 | `tools/webext-linter-*.js` | Thunderbird linter and dependency checks |
 | `docs/ADMIN.md` | deployment and operational status |
+| `docs/TESTING.md` | automated and live release test matrix |
 | `CHANGELOG.md` | release notes |
 | `VENDOR.md` | upstream revision, license, source URL, and hash record |
 | `THIRD_PARTY_NOTICES.md` | packaged third-party attributions and license notices |
@@ -382,6 +383,9 @@ npm run test:review
 `test:review` checks the source tree, builds `.tmp/review.xpi`, compares the XPI
 contents with the package allowlist, and removes the temporary package after a
 successful check.
+
+Manual Thunderbird, VFS compatibility, Google Drive, restart, and release
+evidence requirements are defined in [TESTING.md](TESTING.md).
 
 Create the normal build with:
 

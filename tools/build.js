@@ -14,7 +14,8 @@ const PACKAGE_FILES = [
   "Translations.md",
   "VENDOR.md",
   "docs/ADMIN.md",
-  "docs/DEVELOPMENT.md"
+  "docs/DEVELOPMENT.md",
+  "docs/TESTING.md"
 ];
 
 const crcTable = new Uint32Array(256);
