@@ -35,7 +35,8 @@ function requireApiClient(value) {
     "listDrives",
     "listFiles",
     "downloadBlob",
-    "exportFile"
+    "exportFile",
+    "updateFileMetadata"
   ];
   if (!value || methods.some((method) => typeof value[method] !== "function")) {
     throw new TypeError("apiClient");
@@ -398,6 +399,40 @@ export class GoogleDriveNamespace {
     }
     await this.#createFolder(target.context, target.name, signal);
     reportCreatedFolder(targetDepth);
+  }
+
+  async deleteFile(path, { signal, onProgress = () => {} } = {}) {
+    return this.#trash(path, "file", signal, onProgress);
+  }
+
+  async deleteFolder(path, { signal, onProgress = () => {} } = {}) {
+    return this.#trash(path, "directory", signal, onProgress);
+  }
+
+  async #trash(path, expectedKind, signal, onProgress) {
+    if (typeof onProgress !== "function") {
+      throw new TypeError("onProgress");
+    }
+    const resolved = await this.#resolve(path, signal);
+    if (resolved.type !== "item" ||
+        resolved.presented.kind !== expectedKind) {
+      const code = expectedKind === "file"
+        ? "drive_file_not_found"
+        : "drive_path_not_found";
+      throw new GoogleDriveNamespaceError(code);
+    }
+
+    const { item } = resolved.presented;
+    if (item.capabilities?.canTrash !== true) {
+      throw new GoogleDriveNamespaceError("drive_delete_forbidden");
+    }
+    onProgress(0);
+    await this.#apiClient.updateFileMetadata(item.id, { trashed: true }, {
+      supportsAllDrives: true,
+      resourceKey: item.resourceKey,
+      signal
+    });
+    onProgress(100);
   }
 
   async #resolve(path, signal) {

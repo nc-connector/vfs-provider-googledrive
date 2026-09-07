@@ -65,6 +65,10 @@ function createNamespace(overrides = {}, namespaceOptions = {}) {
       calls.push({ method: "createFileMetadata", metadata, options });
       throw new Error("Unexpected createFileMetadata call");
     },
+    async updateFileMetadata(fileId, metadata, options) {
+      calls.push({ method: "updateFileMetadata", fileId, metadata, options });
+      throw new Error("Unexpected updateFileMetadata call");
+    },
     ...overrides
   };
   return {
@@ -1123,4 +1127,201 @@ test("does not inherit a Shared Drive ID through a folder shortcut", async () =>
 
   assert.equal(listCalls.at(-1).corpora, "user");
   assert.equal(listCalls.at(-1).driveId, undefined);
+});
+
+test("moves files and folders to the Drive trash", async () => {
+  const signal = new AbortController().signal;
+  const progress = [];
+  const trashed = [];
+  const items = [
+    file({
+      id: "file-id",
+      name: "Report.pdf",
+      resourceKey: "file-key",
+      capabilities: { canDownload: true, canTrash: true }
+    }),
+    file({
+      id: "folder-id",
+      name: "Archive",
+      mimeType: GOOGLE_FOLDER_MIME_TYPE,
+      resourceKey: "folder-key",
+      capabilities: {
+        canListChildren: true,
+        canTrash: true
+      }
+    })
+  ];
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: items, incompleteSearch: false };
+    },
+    async updateFileMetadata(fileId, metadata, options) {
+      trashed.push({ fileId, metadata, options });
+    }
+  });
+
+  await namespace.deleteFile("/My Drive/Report.pdf", {
+    signal,
+    onProgress: (percent) => progress.push(percent)
+  });
+  await namespace.deleteFolder("/My Drive/Archive", {
+    signal,
+    onProgress: (percent) => progress.push(percent)
+  });
+
+  assert.deepEqual(trashed, [
+    {
+      fileId: "file-id",
+      metadata: { trashed: true },
+      options: {
+        supportsAllDrives: true,
+        resourceKey: "file-key",
+        signal
+      }
+    },
+    {
+      fileId: "folder-id",
+      metadata: { trashed: true },
+      options: {
+        supportsAllDrives: true,
+        resourceKey: "folder-key",
+        signal
+      }
+    }
+  ]);
+  assert.deepEqual(progress, [0, 100, 0, 100]);
+});
+
+test("trashes the selected shortcut instead of its target", async () => {
+  const updates = [];
+  let targetRequests = 0;
+  const shortcut = file({
+    id: "shortcut-id",
+    name: "Linked folder",
+    mimeType: GOOGLE_SHORTCUT_MIME_TYPE,
+    resourceKey: "shortcut-key",
+    capabilities: { canTrash: true },
+    shortcutDetails: {
+      targetId: "target-folder",
+      targetMimeType: GOOGLE_FOLDER_MIME_TYPE,
+      targetResourceKey: "target-key"
+    }
+  });
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [shortcut], incompleteSearch: false };
+    },
+    async getFile() {
+      targetRequests++;
+      throw new Error("Shortcut target must not be loaded");
+    },
+    async updateFileMetadata(fileId, metadata, options) {
+      updates.push({ fileId, metadata, options });
+    }
+  });
+
+  await namespace.deleteFolder("/My Drive/Linked folder");
+
+  assert.equal(targetRequests, 0);
+  assert.equal(updates[0].fileId, "shortcut-id");
+  assert.equal(updates[0].options.resourceKey, "shortcut-key");
+});
+
+test("trashes the selected Workspace item and duplicate Drive item by ID", async () => {
+  const updates = [];
+  const items = [
+    file({
+      id: "workspace-id",
+      name: "Notes",
+      mimeType: GOOGLE_WORKSPACE_MIME_TYPES.document,
+      capabilities: { canDownload: true, canTrash: true }
+    }),
+    file({
+      id: "duplicate-a",
+      name: "Report.pdf",
+      capabilities: { canDownload: true, canTrash: true }
+    }),
+    file({
+      id: "duplicate-b",
+      name: "Report.pdf",
+      capabilities: { canDownload: true, canTrash: true }
+    })
+  ];
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: items, incompleteSearch: false };
+    },
+    async updateFileMetadata(fileId) {
+      updates.push(fileId);
+    }
+  });
+
+  const listed = await namespace.list("/My Drive");
+  const selectedDuplicate = listed.find((entry) =>
+    entry.name.startsWith("Report.pdf~") && entry.name.includes("duplicate-b"));
+  await namespace.deleteFile("/My Drive/Notes.docx");
+  await namespace.deleteFile(selectedDuplicate.path);
+
+  assert.deepEqual(updates, ["workspace-id", "duplicate-b"]);
+});
+
+test("rejects unavailable and non-trashable delete targets", async () => {
+  let updates = 0;
+  const lockedFile = file({
+    id: "locked-file",
+    name: "Locked.bin",
+    capabilities: { canDownload: true, canTrash: false }
+  });
+  const folder = file({
+    id: "folder-id",
+    name: "Folder",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canTrash: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [lockedFile, folder], incompleteSearch: false };
+    },
+    async updateFileMetadata() {
+      updates++;
+    }
+  });
+
+  await assert.rejects(
+    namespace.deleteFile("/My Drive/Locked.bin"),
+    (error) => error.code === "drive_delete_forbidden"
+  );
+  await assert.rejects(
+    namespace.deleteFile("/My Drive/Folder"),
+    (error) => error.code === "drive_file_not_found"
+  );
+  await assert.rejects(
+    namespace.deleteFolder("/My Drive/Locked.bin"),
+    (error) => error.code === "drive_path_not_found"
+  );
+  await assert.rejects(
+    namespace.deleteFolder("/My Drive"),
+    (error) => error.code === "drive_path_not_found"
+  );
+  assert.equal(updates, 0);
+});
+
+test("validates delete progress before contacting Drive", async () => {
+  let requests = 0;
+  const { namespace } = createNamespace({
+    async listFiles() {
+      requests++;
+      return { files: [], incompleteSearch: false };
+    }
+  });
+
+  await assert.rejects(
+    namespace.deleteFile("/My Drive/file", { onProgress: true }),
+    /onProgress/u
+  );
+  await assert.rejects(
+    namespace.deleteFolder("/My Drive/folder", { onProgress: true }),
+    /onProgress/u
+  );
+  assert.equal(requests, 0);
 });
