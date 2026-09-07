@@ -83,8 +83,9 @@ Drive, and this project does not include its WebDAV protocol code.
   it handles; it must return `undefined` for unrelated messages.
 
 The manifest currently has a minimum Thunderbird version of 140.0. It requests
-`storage` for Toolkit, account, preference, and session state, plus `identity`
-for the interactive OAuth window. Host access is limited to
+`storage` for Toolkit, account, preference, and session state, `identity` for
+the interactive OAuth window, and `alarms` for periodic Drive change checks.
+Host access is limited to
 `oauth2.googleapis.com` for token exchange/revocation and `www.googleapis.com`
 for Drive API calls. The authorization page at `accounts.google.com` is opened
 by `identity.launchWebAuthFlow()` and does not need host access.
@@ -99,6 +100,7 @@ evaluation:
 | `browser.runtime.onMessage.addListener` | internal account and preference requests | none |
 | `browser.runtime.onStartup.addListener` | resumes the MV3 startup boundary | none |
 | `browser.storage.onChanged.addListener` | applies debug changes and reconciles removed VFS connections | `storage` |
+| `browser.alarms.onAlarm.addListener` | polls Google Drive change logs every five minutes | `alarms` |
 | `browser.runtime.onMessageExternal.addListener` | VFS provider discovery | none |
 | `browser.runtime.onConnectExternal.addListener` | consumer-bound VFS requests | none |
 | `browser.windows.onRemoved.addListener` | cancels abandoned setup requests | none |
@@ -115,6 +117,13 @@ internal messages and `undefined` for all other messages. The background
 constructs `GoogleDriveVfsProvider` and calls its synchronous `init()` during
 module evaluation. Provider operations wait for asynchronous repository
 initialization through the shared readiness promise.
+
+`ChangePollScheduler` registers its alarm listener during module evaluation.
+It keeps a matching periodic alarm instead of replacing it on every event-page
+wake, recreates a missing alarm after a full browser restart, and coalesces
+overlapping alarm events. A newly created alarm also starts one immediate poll
+after repository initialization. VFS connection changes request another poll
+after the account bindings have been reconciled.
 
 The provider module uses `browser.storage.local` for consumer connection
 records. Product account records and preferences use separate keys in the same
@@ -222,8 +231,18 @@ tokens unless an internal authorization lookup is explicitly requested.
 Provider state version 2 adds the change-cursor collection. Version 1 records
 are migrated by retaining their accounts and connection bindings and starting
 with an empty cursor collection. Removing an account also removes all of its
-change cursors in the same state write. Automatic polling and VFS storage
-invalidations are not active yet.
+change cursors in the same state write.
+
+`GoogleDriveChangeMonitor` polls one user change log and one log for every
+visible Shared Drive per connected account, then fans the result out to all
+current, uniquely matched VFS storage bindings for that account. The first poll
+stores baseline tokens and does not replay older changes. Later non-empty
+change entries or Shared Drive membership updates are coalesced into one
+`directory/modified` report for `/` per storage binding. Drive tombstones and
+moves do not contain a reliable old VFS path, and duplicate Drive names can also
+change sibling paths, so the monitor does not invent item-level events. It
+reports storage changes before committing the new cursors; after an interrupted
+run, a refresh can repeat but is not silently skipped.
 
 At startup, the connection service re-reports an outdated capability set for
 each uniquely matched local binding through the Toolkit helper. It does not
@@ -312,8 +331,8 @@ creation, replacement, folder creation, move, copy, merge, and delete report
 progress through the Toolkit request ID and use the same abort registry as read
 operations. Multi-step move and copy failures or cancellations report changes
 made before the operation stopped, as described by the upstream provider guide.
-Upload strategy and change tracking remain product-owned work and are not part
-of the vendored Toolkit.
+Upload strategy and Drive change polling remain product-owned work and are not
+part of the vendored Toolkit.
 
 ### Diagnostic logging
 
@@ -400,5 +419,4 @@ The implementation still needs these inputs or later release decisions:
 - the oldest Thunderbird version verified by smoke testing;
 - write timeout behavior;
 - account and connection migration rules;
-- storage-change polling cadence and notification behavior; and
 - release signing, update channel, and managed deployment.

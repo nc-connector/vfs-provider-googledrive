@@ -29,9 +29,10 @@ merge requests follow the permissions and cross-drive restrictions reported by
 Google Drive. Replaced targets and source folders emptied by a merge are placed
 in the recoverable Drive trash. The provider does not permanently delete
 content. Previously granted connections receive the current add, modify, and
-delete capabilities when the provider starts. It does not yet:
+delete capabilities when the provider starts. Remote Drive changes are checked
+every five minutes for accounts with a current VFS connection. A detected
+change causes the corresponding consumer storage to refresh. It does not yet:
 
-- report remote Drive changes to connected consumers; or
 - list and revoke individual consumer connections in the provider settings.
 
 ## 2. Current platform requirements
@@ -39,7 +40,8 @@ delete capabilities when the provider starts. It does not yet:
 - Thunderbird 140 or newer
 - an XPI built from this repository
 
-The manifest requests `storage` and `identity`. Host access is limited to
+The manifest requests `alarms`, `storage`, and `identity`. The alarm wakes the
+MV3 background for periodic Drive change checks. Host access is limited to
 Google's OAuth token/revocation endpoint and Google Drive API endpoint. It does
 not request access to arbitrary sites or include Experiment APIs. The provider
 registers during background startup and advertises only connections previously

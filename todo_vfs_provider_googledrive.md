@@ -115,15 +115,15 @@ kept in sync with the repository.
   move/copy/merge, and trash operations by Toolkit request ID.
 - [x] Partial mutation reporting for move/copy/merge: report work completed
   before a multi-step operation stopped.
-- [ ] Change notifications: schedule Drive Changes checks with an MV3-compatible
+- [x] Change notifications: schedule Drive Changes checks with an MV3-compatible
   event and publish VFS storage invalidations rather than relying on
   `setInterval()`.
   - [x] Read paginated user and Shared Drive logs and advance to their new start
     tokens only after the final page.
   - [x] Persist per-account user and Shared Drive cursors across background
     restarts and remove them with their account.
-  - [ ] Poll only current, unambiguous account-bound VFS connections.
-  - [ ] Coalesce Drive changes into one safe storage-root invalidation per
+  - [x] Poll only current, unambiguous account-bound VFS connections.
+  - [x] Coalesce Drive changes into one safe storage-root invalidation per
     connection and advance cursors only after successful processing.
 - [x] Advertise every current VFS capability only after its callback and error
   path passes the provider API tests.
@@ -150,8 +150,11 @@ kept in sync with the repository.
   cancellation.
 - [x] Cover overwrite/merge and partial multi-item results before advertising
   the related capabilities.
-- [ ] Cover background restart during idle state, token refresh, change polling,
-  setup, and active transfer boundaries.
+- [ ] Cover the remaining background restart boundaries.
+  - [x] Persist idle authentication state and change cursors, and recreate a
+    missing polling alarm without resetting an existing schedule.
+  - [ ] Exercise token refresh, setup, and active transfer boundaries against
+    the full background lifecycle.
 - [ ] Run the upstream VFS example-client tests and benchmark against the provider.
 - [ ] Test interoperability with an unmodified API 1.3 VFS client.
 - [ ] Follow up upstream on serializing Toolkit connection record mutations.

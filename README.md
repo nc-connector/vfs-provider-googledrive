@@ -3,9 +3,9 @@
 > **Development status:** This repository contains a working VFS provider for
 > Google Drive. Consumer add-ons can create an account-bound connection, browse
 > and read Drive content, upload or replace files, create folders, move, copy,
-> and merge items, and move items to the Google Drive trash. Remote change
-> polling and the release work listed below are not complete, so this build is
-> not ready for production.
+> and merge items, move items to the Google Drive trash, and receive remote
+> change updates. Release validation is not complete, so this build is not ready
+> for production.
 
 VFS Provider for Google Drive is intended to make Google Drive storage
 available to compatible Thunderbird add-ons through Thunderbird's VFS Toolkit.
@@ -36,6 +36,8 @@ The current build provides:
   binary file replacement, file and folder moves and copies, folder merges,
   removal to the Google Drive trash, request progress and cancellation, and
   storage quota reporting;
+- MV3 alarm-based polling of user and Shared Drive change logs with persistent
+  cursors and per-connection storage refresh reports;
 - the unmodified Thunderbird VFS provider and i18n modules at a fixed upstream
   revision;
 - a reproducible XPI build script;
@@ -53,7 +55,9 @@ copy their files within Drive without downloading their content. If a
 multi-step move or copy stops after changing some entries, connected clients
 receive a change report for the affected destination. Existing consumer
 connections receive the current capability set during startup. Remote Drive
-change polling is not yet available.
+changes are checked every five minutes for connected accounts. A changed Drive
+invalidates the VFS storage root so an open picker can refresh its current
+folder without relying on unstable Drive paths.
 The settings page does not yet list or revoke individual consumer connections.
 A Google Desktop OAuth client ID is required for live account and provider
 testing.
