@@ -114,14 +114,29 @@ function file({
   };
 }
 
-test("exposes the three virtual Drive roots", async () => {
-  const { namespace } = createNamespace();
+test("uses My Drive as the connection root and exposes shared collections", async () => {
+  const { calls, namespace } = createNamespace({
+    async listFiles(options) {
+      calls.push({ method: "listFiles", options });
+      return {
+        files: [file({ id: "report", name: "Report.pdf" })],
+        incompleteSearch: false
+      };
+    }
+  });
 
   assert.deepEqual(await namespace.list("/"), [
-    { name: "My Drive", path: "/My Drive", kind: "directory" },
     { name: "Shared with me", path: "/Shared with me", kind: "directory" },
-    { name: "Shared drives", path: "/Shared drives", kind: "directory" }
+    { name: "Shared drives", path: "/Shared drives", kind: "directory" },
+    {
+      name: "Report.pdf",
+      path: "/Report.pdf",
+      kind: "file",
+      size: 10,
+      lastModified: Date.parse("2026-09-06T08:00:00.000Z")
+    }
   ]);
+  assert.equal(calls[0].options.q, "'root' in parents and trashed = false");
 });
 
 test("lists My Drive children and presents supported Workspace exports", async () => {
@@ -230,9 +245,9 @@ test("resolves nested folders again by their stable Drive IDs", async () => {
     }
   });
 
-  const entries = await namespace.list("/My Drive/Folder");
+  const entries = await namespace.list("/Folder");
 
-  assert.equal(entries[0].path, "/My Drive/Folder/child.txt");
+  assert.equal(entries[0].path, "/Folder/child.txt");
   assert.equal(calls[1].q, "'folder-id' in parents and trashed = false");
   assert.deepEqual(calls[1].resourceKeys, [{
     fileId: "folder-id",
@@ -432,9 +447,11 @@ test("maps absent storage limits to null instead of inventing a quota", async ()
 
 test("rejects missing paths, files used as folders, and incomplete searches", async () => {
   const binary = file({ id: "binary", name: "file.bin" });
+  let requests = 0;
   const { namespace } = createNamespace({
     async listFiles() {
-      return { files: [binary], incompleteSearch: true };
+      requests++;
+      return { files: [binary], incompleteSearch: requests > 1 };
     }
   });
 
@@ -479,7 +496,7 @@ test("writes a new file under the path name and forwards request state", async (
   });
 
   assert.deepEqual(await namespace.writeFile(
-    "/My Drive/target-name.txt",
+    "/target-name.txt",
     source,
     { signal, onProgress }
   ), { id: "created-file" });
@@ -533,7 +550,7 @@ test("creates missing parent folders before uploading a file", async () => {
   });
 
   await namespace.writeFile(
-    "/My Drive/First/Second/report.bin",
+    "/First/Second/report.bin",
     new Blob(["data"]),
     { signal }
   );
@@ -812,7 +829,7 @@ test("creates nested folders and rejects occupied folder targets", async () => {
     }
   });
 
-  await namespace.addFolder("/My Drive/Parent/Child", {
+  await namespace.addFolder("/Parent/Child", {
     onProgress: (percent) => progress.push(percent)
   });
 
@@ -2595,11 +2612,11 @@ test("moves files and folders to the Drive trash", async () => {
     }
   });
 
-  await namespace.deleteFile("/My Drive/Report.pdf", {
+  await namespace.deleteFile("/Report.pdf", {
     signal,
     onProgress: (percent) => progress.push(percent)
   });
-  await namespace.deleteFolder("/My Drive/Archive", {
+  await namespace.deleteFolder("/Archive", {
     signal,
     onProgress: (percent) => progress.push(percent)
   });

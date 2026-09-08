@@ -153,11 +153,20 @@ function assertDriveEntry(entry) {
  * affect any segment; IDs remain untouched in the returned objects.
  *
  * @param {Array<{id: string, name: string}>} entries
+ * @param {{reservedSegments?: string[]}} [options]
  * @returns {Array<object & {segment: string}>}
  */
-export function createDriveSegments(entries) {
+export function createDriveSegments(entries, { reservedSegments = [] } = {}) {
   if (!Array.isArray(entries)) {
     throw new TypeError("Drive entries must be an array");
+  }
+  if (!Array.isArray(reservedSegments)) {
+    throw new TypeError("Reserved segments must be an array");
+  }
+  const reserved = new Set();
+  for (const segment of reservedSegments) {
+    assertVfsSegment(segment);
+    reserved.add(segment);
   }
 
   const seenIds = new Set();
@@ -173,7 +182,7 @@ export function createDriveSegments(entries) {
 
   return entries.map((entry) => {
     const base = encodeDriveName(entry.name);
-    const segment = nameCounts.get(entry.name) > 1
+    const segment = nameCounts.get(entry.name) > 1 || reserved.has(base)
       ? `${base}${DISAMBIGUATION_SEPARATOR}${encodeDriveComponent(entry.id, "Drive file ID")}`
       : base;
     return { ...entry, segment };

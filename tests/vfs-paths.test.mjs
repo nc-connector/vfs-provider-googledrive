@@ -99,6 +99,23 @@ test("does not collide with a real name that looks like an ID suffix", () => {
   });
 });
 
+test("disambiguates Drive items from reserved virtual root segments", () => {
+  const [entry] = createDriveSegments(
+    [{ id: "drive-item", name: "Shared drives" }],
+    { reservedSegments: ["Shared drives"] }
+  );
+
+  assert.equal(entry.segment, "Shared drives~drive-item");
+  assert.deepEqual(decodeDriveSegment(entry.segment), {
+    name: "Shared drives",
+    id: "drive-item"
+  });
+  assert.throws(
+    () => createDriveSegments([], { reservedSegments: "Shared drives" }),
+    /Reserved segments/u
+  );
+});
+
 test("rejects duplicate or missing identities rather than silently losing siblings", () => {
   assert.throws(
     () => createDriveSegments([{ id: "same", name: "one" }, { id: "same", name: "two" }]),

@@ -269,14 +269,27 @@ export class GoogleDriveNamespace {
   }
 
   async list(path, { signal } = {}) {
-    const resolved = await this.#resolve(path, signal);
-    if (resolved.type === "root") {
-      return Object.values(ROOT_KEYS).map((key) => ({
-        name: this.#roots[key],
-        path: joinVfsPath(this.#roots[key]),
-        kind: "directory"
-      }));
+    if (path === "/") {
+      const entries = await this.#listContext(
+        this.#myDriveRootContext(),
+        path,
+        signal
+      );
+      return [
+        {
+          name: this.#roots.sharedWithMe,
+          path: joinVfsPath(this.#roots.sharedWithMe),
+          kind: "directory"
+        },
+        {
+          name: this.#roots.sharedDrives,
+          path: joinVfsPath(this.#roots.sharedDrives),
+          kind: "directory"
+        },
+        ...entries
+      ];
     }
+    const resolved = await this.#resolve(path, signal);
     if (resolved.type === "drive-list") {
       return this.#listSharedDrives(path, signal);
     }
@@ -416,7 +429,10 @@ export class GoogleDriveNamespace {
       throw new TypeError("onProgress");
     }
     const segments = splitVfsPath(path);
-    const rootSegments = segments[0] === this.#roots.sharedDrives ? 2 : 1;
+    const rootSegments = segments[0] === this.#roots.sharedDrives
+      ? 2
+      : (segments[0] === this.#roots.myDrive ||
+          segments[0] === this.#roots.sharedWithMe ? 1 : 0);
     const targetDepth = segments.length - rootSegments;
     const reportCreatedFolder = (depth) => onProgress(
       Math.round((depth / Math.max(1, targetDepth)) * 100)
@@ -1192,17 +1208,31 @@ export class GoogleDriveNamespace {
     return context.createdContext;
   }
 
+  #myDriveRootContext() {
+    return {
+      type: "folder",
+      parentId: "root",
+      driveId: null,
+      canAddChildren: undefined
+    };
+  }
+
+  #reservedRootSegments(path) {
+    return path === "/" ? Object.values(this.#roots) : [];
+  }
+
   async #resolve(path, signal) {
     const segments = splitVfsPath(path);
     if (segments.length === 0) {
-      return { type: "root" };
+      return { type: "context", context: this.#myDriveRootContext() };
     }
 
-    const [rootSegment, ...childSegments] = segments;
+    const rootSegment = segments[0];
+    let childSegments = segments.slice(1);
     let context;
     let currentPath = joinVfsPath(rootSegment);
     if (rootSegment === this.#roots.myDrive) {
-      context = { type: "folder", parentId: "root", driveId: null };
+      context = this.#myDriveRootContext();
     } else if (rootSegment === this.#roots.sharedWithMe) {
       context = { type: "shared-with-me" };
     } else if (rootSegment === this.#roots.sharedDrives) {
@@ -1229,7 +1259,9 @@ export class GoogleDriveNamespace {
         return { type: "context", context };
       }
     } else {
-      throw new GoogleDriveNamespaceError("drive_path_not_found");
+      context = this.#myDriveRootContext();
+      childSegments = segments;
+      currentPath = "/";
     }
 
     if (childSegments.length === 0) {
@@ -1254,7 +1286,7 @@ export class GoogleDriveNamespace {
 
   async #resolveMutationTarget(path, signal, onFolderCreated) {
     const segments = splitVfsPath(path);
-    if (segments.length < 2) {
+    if (segments.length < 1) {
       throw new GoogleDriveNamespaceError("drive_path_not_found");
     }
     const targetSegment = segments.pop();
@@ -1276,7 +1308,7 @@ export class GoogleDriveNamespace {
     forbiddenCode = "drive_move_forbidden"
   ) {
     const segments = splitVfsPath(path);
-    if (segments.length < 2) {
+    if (segments.length < 1) {
       throw new GoogleDriveNamespaceError("drive_path_not_found");
     }
     const segment = segments.pop();
@@ -1304,19 +1336,20 @@ export class GoogleDriveNamespace {
   }
 
   async #resolveMutationParent(segments, signal, onFolderCreated) {
-    const [rootSegment, ...remainingSegments] = segments;
-    let context;
-    let currentPath = joinVfsPath(rootSegment);
+    const remainingSegments = [...segments];
+    const rootSegment = remainingSegments[0];
+    let context = this.#myDriveRootContext();
+    let currentPath = "/";
     if (rootSegment === this.#roots.myDrive) {
-      context = {
-        type: "folder",
-        parentId: "root",
-        driveId: null,
-        canAddChildren: undefined
-      };
+      remainingSegments.shift();
+      currentPath = joinVfsPath(rootSegment);
     } else if (rootSegment === this.#roots.sharedWithMe) {
+      remainingSegments.shift();
       context = { type: "shared-with-me" };
+      currentPath = joinVfsPath(rootSegment);
     } else if (rootSegment === this.#roots.sharedDrives) {
+      remainingSegments.shift();
+      currentPath = joinVfsPath(rootSegment);
       if (remainingSegments.length === 0) {
         throw new GoogleDriveNamespaceError("drive_write_forbidden");
       }
@@ -1334,8 +1367,6 @@ export class GoogleDriveNamespace {
       };
       remainingSegments.shift();
       currentPath = joinVfsPath(rootSegment, drive.segment);
-    } else {
-      throw new GoogleDriveNamespaceError("drive_path_not_found");
     }
 
     for (let index = 0; index < remainingSegments.length; index += 1) {
@@ -1366,14 +1397,20 @@ export class GoogleDriveNamespace {
 
   async #lookupMutationEntry(context, path, segment, signal) {
     const files = await this.#contextFiles(context, signal);
+    const reservedSegments = this.#reservedRootSegments(path);
     const entries = this.#presentFiles(
       files,
       path,
-      context.driveId || null
+      context.driveId || null,
+      reservedSegments
     );
     const existing = entries.find((entry) => entry.segment === segment);
     if (existing) {
       return { existing, name: null };
+    }
+
+    if (reservedSegments.includes(segment)) {
+      throw targetExistsError();
     }
 
     const collides = files
@@ -1471,7 +1508,12 @@ export class GoogleDriveNamespace {
 
   async #presentContext(context, path, signal) {
     const files = await this.#contextFiles(context, signal);
-    return this.#presentFiles(files, path, context.driveId || null);
+    return this.#presentFiles(
+      files,
+      path,
+      context.driveId || null,
+      this.#reservedRootSegments(path)
+    );
   }
 
   async #contextFiles(context, signal) {
@@ -1498,7 +1540,7 @@ export class GoogleDriveNamespace {
     return files;
   }
 
-  #presentFiles(files, path, contextDriveId) {
+  #presentFiles(files, path, contextDriveId, reservedSegments = []) {
     if (!Array.isArray(files)) {
       throw new GoogleDriveNamespaceError("drive_response_invalid");
     }
@@ -1513,35 +1555,37 @@ export class GoogleDriveNamespace {
         effective: effectiveItem(item)
       }));
 
-    return createDriveSegments(candidates).map((candidate) => {
-      const kind = candidate.effective.mimeType === GOOGLE_FOLDER_MIME_TYPE
-        ? "directory"
-        : "file";
-      const entry = {
-        name: candidate.segment,
-        path: joinVfsPath(...splitVfsPath(path), candidate.segment),
-        kind
-      };
-      if (kind === "file" && !isGoogleWorkspaceFile(candidate.effective.mimeType)) {
-        const size = numberOrUndefined(candidate.item.size);
-        if (size !== undefined) {
-          entry.size = size;
+    return createDriveSegments(candidates, { reservedSegments })
+      .map((candidate) => {
+        const kind = candidate.effective.mimeType === GOOGLE_FOLDER_MIME_TYPE
+          ? "directory"
+          : "file";
+        const entry = {
+          name: candidate.segment,
+          path: joinVfsPath(...splitVfsPath(path), candidate.segment),
+          kind
+        };
+        if (kind === "file" &&
+            !isGoogleWorkspaceFile(candidate.effective.mimeType)) {
+          const size = numberOrUndefined(candidate.item.size);
+          if (size !== undefined) {
+            entry.size = size;
+          }
         }
-      }
-      if (kind === "file") {
-        const lastModified = timeOrUndefined(candidate.item.modifiedTime);
-        if (lastModified !== undefined) {
-          entry.lastModified = lastModified;
+        if (kind === "file") {
+          const lastModified = timeOrUndefined(candidate.item.modifiedTime);
+          if (lastModified !== undefined) {
+            entry.lastModified = lastModified;
+          }
         }
-      }
-      return {
-        ...candidate,
-        displayName: candidate.name,
-        kind,
-        entry,
-        contextDriveId
-      };
-    }).sort(comparePresented);
+        return {
+          ...candidate,
+          displayName: candidate.name,
+          kind,
+          entry,
+          contextDriveId
+        };
+      }).sort(comparePresented);
   }
 
   async #listSharedDrives(path, signal) {
