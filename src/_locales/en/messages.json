@@ -1,12 +1,12 @@
 {
   "extensionName": {
-    "message": "VFS Provider for Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
     "message": "Adds Google Drive storage to compatible Thunderbird add-ons through the VFS Toolkit."
   },
   "optionsTitle": {
-    "message": "VFS Provider for Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "optionsDocumentLanguage": { "message": "en" },
   "optionsStatusText": {
@@ -37,8 +37,6 @@
   "optionsAccountDisconnectedWithoutRevocation": { "message": "The Google account was removed locally, but its Google access could not be revoked. Remove the access in your Google Account as well." },
   "optionsPreferencesHeading": { "message": "Preferences" },
   "optionsPreferencesText": { "message": "These settings apply to the provider. The selected export formats are used when reading Google Workspace files." },
-  "optionsOAuthClientIdLabel": { "message": "OAuth client ID" },
-  "optionsOAuthClientIdHelp": { "message": "For development or managed installations: the client ID of a Google Desktop application. A client ID is not a secret." },
   "optionsDebugLoggingLabel": { "message": "Enable diagnostic logging" },
   "optionsExportsHeading": { "message": "Google Workspace export formats" },
   "optionsExportDocuments": { "message": "Google Docs" },
@@ -51,12 +49,10 @@
   "optionsFormatPptx": { "message": "PPTX" },
   "optionsSavePreferences": { "message": "Save preferences" },
   "optionsPreferencesSaved": { "message": "Preferences saved." },
-  "optionsErrorOAuthNotConfigured": { "message": "Save an OAuth client ID before signing in." },
-  "optionsErrorOAuthClientIdInvalid": { "message": "The OAuth client ID is invalid." },
   "optionsErrorOAuthAccountMismatch": { "message": "The selected Google account does not match the account being signed in again." },
   "optionsErrorOAuthCancelled": { "message": "Google sign-in was cancelled or not approved." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "This Google account must be signed in again." },
-  "optionsErrorOAuthGeneric": { "message": "Google sign-in could not be completed. Check the client ID and Google Cloud setup." },
+  "optionsErrorOAuthGeneric": { "message": "Google sign-in could not be completed. Please try again." },
   "optionsErrorUnexpected": { "message": "The current data could not be loaded or the requested change could not be completed. Please try again." },
   "optionsErrorAccountHasConnections": { "message": "This Google account is still used by one or more VFS connections. Revoke those connections below before signing out." },
   "vfsRootMyDrive": { "message": "My Drive" },

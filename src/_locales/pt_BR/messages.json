@@ -1,12 +1,12 @@
 {
   "extensionName": {
-    "message": "Provedor VFS para o Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
     "message": "Adiciona o armazenamento do Google Drive a complementos compatíveis do Thunderbird por meio do VFS Toolkit."
   },
   "optionsTitle": {
-    "message": "Provedor VFS para o Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "optionsDocumentLanguage": { "message": "pt-BR" },
   "optionsStatusText": {
@@ -37,8 +37,6 @@
   "optionsAccountDisconnectedWithoutRevocation": { "message": "A conta do Google foi removida localmente, mas não foi possível revogar o acesso no Google. Remova o acesso também na sua Conta do Google." },
   "optionsPreferencesHeading": { "message": "Preferências" },
   "optionsPreferencesText": { "message": "Estas configurações valem para o provedor. Os formatos de exportação escolhidos são usados ao ler arquivos do Google Workspace." },
-  "optionsOAuthClientIdLabel": { "message": "ID do cliente OAuth" },
-  "optionsOAuthClientIdHelp": { "message": "Para desenvolvimento ou instalações gerenciadas: ID do cliente de um aplicativo Google para computador. Um ID de cliente não é segredo." },
   "optionsDebugLoggingLabel": { "message": "Ativar registro de diagnóstico" },
   "optionsExportsHeading": { "message": "Formatos de exportação do Google Workspace" },
   "optionsExportDocuments": { "message": "Documentos Google" },
@@ -51,12 +49,10 @@
   "optionsFormatPptx": { "message": "Formato PPTX" },
   "optionsSavePreferences": { "message": "Salvar preferências" },
   "optionsPreferencesSaved": { "message": "Preferências salvas." },
-  "optionsErrorOAuthNotConfigured": { "message": "Salve um ID de cliente OAuth antes de entrar." },
-  "optionsErrorOAuthClientIdInvalid": { "message": "O ID do cliente OAuth é inválido." },
   "optionsErrorOAuthAccountMismatch": { "message": "A conta do Google selecionada não corresponde à conta que está sendo conectada novamente." },
   "optionsErrorOAuthCancelled": { "message": "O login do Google foi cancelado ou não foi aprovado." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "É preciso entrar novamente nesta conta do Google." },
-  "optionsErrorOAuthGeneric": { "message": "Não foi possível concluir o login do Google. Verifique o ID do cliente e a configuração do Google Cloud." },
+  "optionsErrorOAuthGeneric": { "message": "Não foi possível concluir o login no Google. Tente novamente." },
   "optionsErrorUnexpected": { "message": "Não foi possível carregar os dados atuais ou concluir a alteração solicitada. Tente novamente." },
   "optionsErrorAccountHasConnections": { "message": "Esta conta do Google ainda é usada por uma ou mais conexões VFS. Revogue essas conexões abaixo antes de sair da conta." },
   "vfsRootMyDrive": { "message": "Meu Drive" },

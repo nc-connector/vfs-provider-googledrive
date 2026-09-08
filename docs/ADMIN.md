@@ -318,12 +318,12 @@ assigned an invented value.
 
 ### 6.1 Add-on identity and policy locations
 
-The development manifest currently uses this add-on ID:
+The provider uses this permanent add-on ID:
 
     {90c66d9f-a142-43a8-8ffb-707a48d8eb7a}
 
-Confirm that this ID is permanent before creating long-lived policy or
-publishing the first release.
+Use this ID for long-lived policy and deployment rules. Changing it would create
+a different Thunderbird add-on identity and a different OAuth redirect.
 
 Common policies.json locations:
 

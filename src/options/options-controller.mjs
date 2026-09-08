@@ -15,8 +15,6 @@ const MESSAGE_TYPES = Object.freeze({
 });
 
 const ERROR_MESSAGE_KEYS = Object.freeze({
-  oauth_not_configured: "optionsErrorOAuthNotConfigured",
-  oauth_client_id_invalid: "optionsErrorOAuthClientIdInvalid",
   oauth_cancelled: "optionsErrorOAuthCancelled",
   oauth_denied: "optionsErrorOAuthCancelled",
   oauth_account_mismatch: "optionsErrorOAuthAccountMismatch",
@@ -41,12 +39,10 @@ export class OptionsControllerError extends Error {
 }
 
 export function normalizePreferenceChanges({
-  oauthClientId,
   debugLogging,
   exportFormats
 }) {
   return {
-    oauthClientId: typeof oauthClientId === "string" ? oauthClientId.trim() : "",
     debugLogging: Boolean(debugLogging),
     exportFormats: { ...exportFormats }
   };

@@ -1,12 +1,12 @@
 {
   "extensionName": {
-    "message": "Proveedor VFS para Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
     "message": "Añade almacenamiento de Google Drive a complementos compatibles de Thunderbird mediante VFS Toolkit."
   },
   "optionsTitle": {
-    "message": "Proveedor VFS para Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "optionsDocumentLanguage": { "message": "es" },
   "optionsStatusText": {
@@ -37,8 +37,6 @@
   "optionsAccountDisconnectedWithoutRevocation": { "message": "La cuenta de Google se eliminó localmente, pero no se pudo revocar el acceso en Google. Elimina también el acceso desde tu cuenta de Google." },
   "optionsPreferencesHeading": { "message": "Preferencias" },
   "optionsPreferencesText": { "message": "Estas opciones se aplican al proveedor. Los formatos elegidos se usan al leer archivos de Google Workspace." },
-  "optionsOAuthClientIdLabel": { "message": "ID de cliente OAuth" },
-  "optionsOAuthClientIdHelp": { "message": "Para desarrollo o instalaciones administradas: ID de cliente de una aplicación de escritorio de Google. Un ID de cliente no es secreto." },
   "optionsDebugLoggingLabel": { "message": "Activar el registro de diagnóstico" },
   "optionsExportsHeading": { "message": "Formatos de exportación de Google Workspace" },
   "optionsExportDocuments": { "message": "Documentos de Google" },
@@ -51,12 +49,10 @@
   "optionsFormatPptx": { "message": "Formato PPTX" },
   "optionsSavePreferences": { "message": "Guardar preferencias" },
   "optionsPreferencesSaved": { "message": "Preferencias guardadas." },
-  "optionsErrorOAuthNotConfigured": { "message": "Guarde un ID de cliente OAuth antes de iniciar sesión." },
-  "optionsErrorOAuthClientIdInvalid": { "message": "El ID de cliente OAuth no es válido." },
   "optionsErrorOAuthAccountMismatch": { "message": "La cuenta de Google seleccionada no coincide con la cuenta en la que se debe iniciar sesión de nuevo." },
   "optionsErrorOAuthCancelled": { "message": "El inicio de sesión de Google se canceló o no se aprobó." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "Debe iniciar sesión de nuevo en esta cuenta de Google." },
-  "optionsErrorOAuthGeneric": { "message": "No se pudo completar el inicio de sesión de Google. Compruebe el ID de cliente y la configuración de Google Cloud." },
+  "optionsErrorOAuthGeneric": { "message": "No se pudo completar el inicio de sesión en Google. Inténtelo de nuevo." },
   "optionsErrorUnexpected": { "message": "No se pudieron cargar los datos actuales o completar el cambio solicitado. Inténtalo de nuevo." },
   "optionsErrorAccountHasConnections": { "message": "Una o varias conexiones VFS siguen usando esta cuenta de Google. Revoque esas conexiones abajo antes de cerrar sesión." },
   "vfsRootMyDrive": { "message": "Mi unidad" },

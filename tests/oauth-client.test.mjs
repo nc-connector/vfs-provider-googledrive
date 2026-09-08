@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  GOOGLE_OAUTH_CLIENT_ID,
   GoogleOAuthClient,
   GoogleOAuthError,
   OAUTH_REQUEST_TIMEOUT_MS,
@@ -15,11 +16,11 @@ import {
   createPkceValues
 } from "../src/google/oauth-client.mjs";
 import { OAuthSessionRepository } from "../src/google/oauth-session.mjs";
-import { ProviderPreferencesRepository } from "../src/state/provider-preferences.mjs";
 import { ProviderStateRepository } from "../src/state/provider-state.mjs";
 import { FakeStorageArea } from "./helpers/fake-storage.mjs";
 
-const CLIENT_ID = "123456.apps.googleusercontent.com";
+const CLIENT_ID = GOOGLE_OAUTH_CLIENT_ID;
+const LEGACY_CLIENT_ID = "legacy-client.apps.googleusercontent.com";
 
 function jsonResponse(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -35,9 +36,6 @@ function createHarness({ fetchApi, requestTimeoutMs } = {}) {
     storageArea: localArea,
     now: () => 1_000,
     randomUUID: () => "account-1"
-  });
-  const preferencesRepository = new ProviderPreferencesRepository({
-    storageArea: localArea
   });
   const sessionRepository = new OAuthSessionRepository({
     storageArea: sessionArea,
@@ -61,7 +59,6 @@ function createHarness({ fetchApi, requestTimeoutMs } = {}) {
     identityApi,
     sessionRepository,
     accountRepository,
-    preferencesRepository,
     fetchApi,
     logger,
     now: () => 1_000,
@@ -72,7 +69,6 @@ function createHarness({ fetchApi, requestTimeoutMs } = {}) {
     client,
     identityApi,
     localArea,
-    preferencesRepository,
     sessionArea,
     sessionRepository
   };
@@ -92,6 +88,13 @@ function rejectWhenAborted(signal) {
 
 test("uses the documented Google account request deadline", () => {
   assert.equal(OAUTH_REQUEST_TIMEOUT_MS, 30 * 1000);
+});
+
+test("uses the permanent product OAuth client", () => {
+  assert.equal(
+    GOOGLE_OAUTH_CLIENT_ID,
+    "97829492793-hupuhndvki6esrb3hpgbuhgr5ci3mc6m.apps.googleusercontent.com"
+  );
 });
 
 test("builds the Google-compatible Mozilla loopback redirect", async () => {
@@ -131,8 +134,6 @@ test("authorizes a Drive account without sending a client secret", async () => {
       });
     }
   });
-  await harness.preferencesRepository.update({ oauthClientId: CLIENT_ID });
-
   const account = await harness.client.authorize();
 
   assert.equal(account.id, "account-1");
@@ -157,7 +158,6 @@ test("rejects a mismatched state and clears the PKCE transaction", async () => {
       throw new Error("Token exchange must not start");
     }
   });
-  await harness.preferencesRepository.update({ oauthClientId: CLIENT_ID });
   harness.identityApi.launchWebAuthFlow = async ({ url }) => {
     const authorization = new URL(url);
     return `${authorization.searchParams.get("redirect_uri")}?code=x&state=wrong`;
@@ -179,8 +179,6 @@ test("times out token exchange and clears the PKCE transaction", async () => {
     requestTimeoutMs: 5,
     fetchApi: async (_url, { signal }) => rejectWhenAborted(signal)
   });
-  await harness.preferencesRepository.update({ oauthClientId: CLIENT_ID });
-
   await assert.rejects(
     harness.client.authorize(),
     (error) => error instanceof GoogleOAuthError &&
@@ -194,7 +192,6 @@ test("times out token exchange and clears the PKCE transaction", async () => {
 
 test("keeps an identity API failure distinct from an authorization denial", async () => {
   const harness = createHarness();
-  await harness.preferencesRepository.update({ oauthClientId: CLIENT_ID });
   harness.identityApi.launchWebAuthFlow = async () => {
     throw new Error("identity API failed");
   };
@@ -210,7 +207,7 @@ test("keeps an identity API failure distinct from an authorization denial", asyn
   );
 });
 
-test("keeps reauthorization on the selected Google account", async () => {
+test("reauthorizes the selected account with the packaged OAuth client", async () => {
   const requests = [];
   const harness = createHarness({
     fetchApi: async (url, options = {}) => {
@@ -234,14 +231,11 @@ test("keeps reauthorization on the selected Google account", async () => {
       return new Response(null, { status: 200 });
     }
   });
-  await harness.preferencesRepository.update({
-    oauthClientId: "new-client.apps.googleusercontent.com"
-  });
   const account = await harness.accountRepository.upsertAccount({
     googleUserId: "google-user-1",
     displayName: "Ada Example",
     emailAddress: "ada@example.invalid",
-    oauthClientId: CLIENT_ID,
+    oauthClientId: LEGACY_CLIENT_ID,
     refreshToken: "refresh-secret"
   });
   let authorizationUrl;
@@ -277,7 +271,6 @@ test("refreshes one token for concurrent callers", async () => {
       return jsonResponse({ access_token: "new-access", expires_in: 3600 });
     }
   });
-  await harness.preferencesRepository.update({ oauthClientId: CLIENT_ID });
   await harness.accountRepository.upsertAccount({
     googleUserId: "google-user-1",
     oauthClientId: CLIENT_ID,
@@ -301,25 +294,21 @@ test("refreshes an account with the OAuth client that created its grant", async 
       return jsonResponse({ access_token: "new-access", expires_in: 3600 });
     }
   });
-  await harness.preferencesRepository.update({
-    oauthClientId: "new-client.apps.googleusercontent.com"
-  });
   await harness.accountRepository.upsertAccount({
     googleUserId: "google-user-1",
-    oauthClientId: CLIENT_ID,
+    oauthClientId: LEGACY_CLIENT_ID,
     refreshToken: "refresh-secret"
   });
 
   await harness.client.getAccessToken("account-1");
 
-  assert.equal(requestBody.get("client_id"), CLIENT_ID);
+  assert.equal(requestBody.get("client_id"), LEGACY_CLIENT_ID);
 });
 
 test("marks an account for reauthorization after invalid_grant", async () => {
   const harness = createHarness({
     fetchApi: async () => jsonResponse({ error: "invalid_grant" }, 400)
   });
-  await harness.preferencesRepository.update({ oauthClientId: CLIENT_ID });
   await harness.accountRepository.upsertAccount({
     googleUserId: "google-user-1",
     oauthClientId: CLIENT_ID,
@@ -341,7 +330,6 @@ test("keeps an account connected after a token refresh timeout", async () => {
     requestTimeoutMs: 5,
     fetchApi: async (_url, { signal }) => rejectWhenAborted(signal)
   });
-  await harness.preferencesRepository.update({ oauthClientId: CLIENT_ID });
   await harness.accountRepository.upsertAccount({
     googleUserId: "google-user-1",
     oauthClientId: CLIENT_ID,

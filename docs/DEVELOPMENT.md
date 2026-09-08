@@ -177,20 +177,18 @@ and a published build needs the corresponding Google verification work.
 
 #### Live development OAuth setup
 
-The released add-on uses the project's production OAuth client. The current
-development build accepts a separate Desktop client ID through the options page
-so live tests do not use production credentials. Before the first release, the
-production client must replace this development input in the shipped UI.
+All builds use the project's packaged Google Desktop OAuth client. Its public
+client ID is defined once in the OAuth module and is not configurable through
+the options page. The Cloud project display name may change, but the OAuth
+client ID and Gecko add-on ID remain stable product identities.
 
 For local live tests:
 
-1. Create a separate Google Cloud project.
-2. Enable the Google Drive API.
-3. Configure the Google Auth Platform audience and branding.
-4. Add `https://www.googleapis.com/auth/drive` to the requested scopes.
-5. Create an OAuth client with application type **Desktop app**.
-6. Add every tester when an External project remains in Testing status.
-7. Save the Desktop client ID in the provider options.
+1. Enable the Google Drive API in the product's Google Cloud project.
+2. Configure the Google Auth Platform audience and branding.
+3. Add `https://www.googleapis.com/auth/drive` to the requested scopes.
+4. Create the packaged OAuth client with application type **Desktop app**.
+5. Add every tester while the External application remains in Testing status.
 
 Do not add a client secret to source, settings, or an XPI. External-testing
 authorizations that request Drive access normally expire after seven days.
@@ -221,11 +219,16 @@ reauthorization because it says nothing about the validity of the stored grant.
 It is reported as a network failure and can be retried by the user or a later
 VFS request.
 
-The options page saves provider preferences before it starts a new login. A
-reauthorization request includes the selected local account ID, uses that
-account's original OAuth client ID and login hint, and rejects a returned Google
-identity that does not match. The page renders account data as text and never
-receives refresh or access tokens.
+The options page saves provider preferences before it starts a new login. Every
+new authorization uses the packaged product client. A reauthorization request
+includes the selected local account ID and login hint and rejects a returned
+Google identity that does not match. The page renders account data as text and
+never receives refresh or access tokens.
+
+The account record retains the client ID that created its refresh grant as
+authorization metadata, not as a configurable preference. This lets an old
+grant fail safely or be reauthorized if a deliberate client migration is ever
+required; new and reauthorized accounts always use the packaged product client.
 
 ### Drive request layer
 
@@ -366,9 +369,9 @@ background instead of constructing independent writers.
 Provider preferences use a separate versioned record. The initial export
 choices are DOCX for Google Docs, XLSX for Google Sheets, PPTX for Google Slides,
 and PDF for Google Drawings. PDF is also an available choice for Docs, Sheets,
-and Slides. An OAuth client ID can be supplied for development and managed
-deployments until a project-owned production client is selected; OAuth client
-IDs are identifiers, not secrets.
+and Slides. Version 2 removes the former development-only OAuth client setting;
+the packaged OAuth client is part of the product identity and is not an
+administrator or user preference.
 
 Incoming requests must validate the consumer, storage ID, requested capability,
 and current account state before accessing Google Drive. Setup data supplied by
@@ -565,9 +568,7 @@ Before committing a functional provider change:
 
 The implementation still needs these inputs or later release decisions:
 
-- a project-owned production Google OAuth Desktop client ID;
 - final Google trademark presentation for the ATN listing;
-- confirmation that the current development add-on ID is permanent;
 - completed smoke testing on Thunderbird 140 and the current ESR;
 - completed live My Drive, Shared Drive, retry, restart, and VFS compatibility
   checks;

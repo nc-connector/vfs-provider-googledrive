@@ -5,15 +5,16 @@ kept in sync with the repository.
 
 ## Product decisions
 
-- [ ] Register the production Google OAuth application and record its client ID.
+- [x] Register the project-owned Google OAuth Desktop client and wire its public
+  client ID into the add-on. No client secret is used.
 - [x] Use one project-owned OAuth client in releases. Administrators and users
   do not provide their own client ID.
-- [ ] Add the production client to the release build and remove the development
-  client-ID field from the shipped options page.
+- [x] Use the packaged client in every build and remove the development
+  client-ID field from the options page.
 - [ ] Complete restricted-scope verification with the final product identity,
   privacy text, support contact, and production test instructions.
-- [ ] Confirm the permanent Gecko add-on ID before the first ATN submission. The
-  development manifest currently uses `{90c66d9f-a142-43a8-8ffb-707a48d8eb7a}`.
+- [x] Keep `{90c66d9f-a142-43a8-8ffb-707a48d8eb7a}` as the permanent Gecko
+  add-on ID so the Thunderbird identity and OAuth redirect remain stable.
 - [x] Confirm the Drive scope. A full VFS tree needs access beyond files created
   or explicitly opened by this add-on; document the Google verification impact
   before requesting a restricted scope. The provider uses the restricted full

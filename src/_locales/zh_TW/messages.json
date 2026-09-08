@@ -1,12 +1,12 @@
 {
   "extensionName": {
-    "message": "Google Drive VFS 提供者"
+    "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
     "message": "透過 VFS Toolkit 為相容的 Thunderbird 附加元件加入 Google Drive 儲存空間。"
   },
   "optionsTitle": {
-    "message": "Google Drive VFS 提供者"
+    "message": "VFS-Provider: Google Drive"
   },
   "optionsDocumentLanguage": { "message": "zh-TW" },
   "optionsStatusText": {
@@ -37,8 +37,6 @@
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Google 帳戶已從本機移除，但無法撤銷其在 Google 端的存取授權。請同時在您的 Google 帳戶中移除該存取權。" },
   "optionsPreferencesHeading": { "message": "偏好設定" },
   "optionsPreferencesText": { "message": "這些設定適用於提供者。讀取 Google Workspace 檔案時會使用所選的匯出格式。" },
-  "optionsOAuthClientIdLabel": { "message": "OAuth 用戶端 ID" },
-  "optionsOAuthClientIdHelp": { "message": "供開發或受管理的安裝使用：Google 桌面應用程式的用戶端 ID。用戶端 ID 並非機密。" },
   "optionsDebugLoggingLabel": { "message": "啟用診斷記錄" },
   "optionsExportsHeading": { "message": "Google Workspace 匯出格式" },
   "optionsExportDocuments": { "message": "Google 文件" },
@@ -51,12 +49,10 @@
   "optionsFormatPptx": { "message": "PPTX 格式" },
   "optionsSavePreferences": { "message": "儲存偏好設定" },
   "optionsPreferencesSaved": { "message": "偏好設定已儲存。" },
-  "optionsErrorOAuthNotConfigured": { "message": "請先儲存 OAuth 用戶端 ID，再登入。" },
-  "optionsErrorOAuthClientIdInvalid": { "message": "OAuth 用戶端 ID 無效。" },
   "optionsErrorOAuthAccountMismatch": { "message": "所選 Google 帳戶與要重新登入的帳戶不一致。" },
   "optionsErrorOAuthCancelled": { "message": "Google 登入已取消或未獲核准。" },
   "optionsErrorOAuthReauthorizationRequired": { "message": "此 Google 帳戶需要重新登入。" },
-  "optionsErrorOAuthGeneric": { "message": "無法完成 Google 登入。請檢查用戶端 ID 和 Google Cloud 設定。" },
+  "optionsErrorOAuthGeneric": { "message": "無法完成 Google 登入。請再試一次。" },
   "optionsErrorUnexpected": { "message": "無法載入目前資料或完成要求的變更。請再試一次。" },
   "optionsErrorAccountHasConnections": { "message": "此 Google 帳戶仍由一個或多個 VFS 連線使用。請先在下方撤銷這些連線，再登出帳戶。" },
   "vfsRootMyDrive": { "message": "我的雲端硬碟" },

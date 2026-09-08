@@ -1,12 +1,12 @@
 {
   "extensionName": {
-    "message": "Provider VFS per Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
     "message": "Aggiunge lo spazio di archiviazione di Google Drive ai componenti aggiuntivi di Thunderbird compatibili tramite VFS Toolkit."
   },
   "optionsTitle": {
-    "message": "Provider VFS per Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "optionsDocumentLanguage": { "message": "it" },
   "optionsStatusText": {
@@ -37,8 +37,6 @@
   "optionsAccountDisconnectedWithoutRevocation": { "message": "L’account Google è stato rimosso localmente, ma non è stato possibile revocare l’accesso presso Google. Rimuovi l’accesso anche dal tuo Account Google." },
   "optionsPreferencesHeading": { "message": "Preferenze" },
   "optionsPreferencesText": { "message": "Queste impostazioni si applicano al provider. I formati scelti vengono usati durante la lettura dei file Google Workspace." },
-  "optionsOAuthClientIdLabel": { "message": "ID client OAuth" },
-  "optionsOAuthClientIdHelp": { "message": "Per sviluppo o installazioni gestite: ID client di un’applicazione desktop Google. Un ID client non è segreto." },
   "optionsDebugLoggingLabel": { "message": "Attiva registrazione diagnostica" },
   "optionsExportsHeading": { "message": "Formati di esportazione Google Workspace" },
   "optionsExportDocuments": { "message": "Documenti Google" },
@@ -51,12 +49,10 @@
   "optionsFormatPptx": { "message": "Formato PPTX" },
   "optionsSavePreferences": { "message": "Salva preferenze" },
   "optionsPreferencesSaved": { "message": "Preferenze salvate." },
-  "optionsErrorOAuthNotConfigured": { "message": "Salva un ID client OAuth prima di accedere." },
-  "optionsErrorOAuthClientIdInvalid": { "message": "L’ID client OAuth non è valido." },
   "optionsErrorOAuthAccountMismatch": { "message": "L’account Google selezionato non corrisponde all’account a cui accedere di nuovo." },
   "optionsErrorOAuthCancelled": { "message": "L’accesso a Google è stato annullato o non approvato." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "È necessario accedere di nuovo a questo account Google." },
-  "optionsErrorOAuthGeneric": { "message": "Non è stato possibile completare l’accesso a Google. Controlla l’ID client e la configurazione di Google Cloud." },
+  "optionsErrorOAuthGeneric": { "message": "Non è stato possibile completare l’accesso a Google. Riprova." },
   "optionsErrorUnexpected": { "message": "Non è stato possibile caricare i dati correnti o completare la modifica richiesta. Riprova." },
   "optionsErrorAccountHasConnections": { "message": "Questo account Google è ancora usato da una o più connessioni VFS. Revoca tali connessioni qui sotto prima di uscire." },
   "vfsRootMyDrive": { "message": "Il mio Drive" },

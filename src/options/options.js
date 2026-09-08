@@ -20,7 +20,6 @@ const noAccounts = document.getElementById("no-accounts");
 const connectionList = document.getElementById("connection-list");
 const noConnections = document.getElementById("no-connections");
 const addAccountButton = document.getElementById("add-account");
-const oauthClientId = document.getElementById("oauth-client-id");
 const debugLogging = document.getElementById("debug-logging");
 const exportDocument = document.getElementById("export-document");
 const exportSpreadsheet = document.getElementById("export-spreadsheet");
@@ -33,7 +32,6 @@ function getMessage(key) {
 
 function readPreferences() {
   return {
-    oauthClientId: oauthClientId.value,
     debugLogging: debugLogging.checked,
     exportFormats: {
       document: exportDocument.value,
@@ -45,7 +43,6 @@ function readPreferences() {
 }
 
 function setPreferences(preferences) {
-  oauthClientId.value = preferences.oauthClientId;
   debugLogging.checked = preferences.debugLogging;
   exportDocument.value = preferences.exportFormats.document;
   exportSpreadsheet.value = preferences.exportFormats.spreadsheet;

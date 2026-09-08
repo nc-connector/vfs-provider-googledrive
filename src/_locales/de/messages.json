@@ -1,12 +1,12 @@
 {
   "extensionName": {
-    "message": "VFS-Anbieter für Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
     "message": "Fügt kompatiblen Thunderbird-Add-ons über das VFS Toolkit Speicher in Google Drive hinzu."
   },
   "optionsTitle": {
-    "message": "VFS-Anbieter für Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "optionsDocumentLanguage": { "message": "de" },
   "optionsStatusText": {
@@ -37,8 +37,6 @@
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Das Google-Konto wurde lokal entfernt, der Zugriff bei Google konnte jedoch nicht widerrufen werden. Entfernen Sie den Zugriff zusätzlich in Ihrem Google-Konto." },
   "optionsPreferencesHeading": { "message": "Einstellungen" },
   "optionsPreferencesText": { "message": "Diese Einstellungen gelten für den Anbieter. Die gewählten Exportformate werden beim Lesen von Google-Workspace-Dateien verwendet." },
-  "optionsOAuthClientIdLabel": { "message": "OAuth-Client-ID" },
-  "optionsOAuthClientIdHelp": { "message": "Für Entwicklung oder verwaltete Installationen: Client-ID einer Google-Desktop-Anwendung. Eine Client-ID ist kein Geheimnis." },
   "optionsDebugLoggingLabel": { "message": "Diagnoseprotokollierung aktivieren" },
   "optionsExportsHeading": { "message": "Exportformate für Google Workspace" },
   "optionsExportDocuments": { "message": "Google-Dokumente" },
@@ -51,12 +49,10 @@
   "optionsFormatPptx": { "message": "PPTX-Datei" },
   "optionsSavePreferences": { "message": "Einstellungen speichern" },
   "optionsPreferencesSaved": { "message": "Einstellungen gespeichert." },
-  "optionsErrorOAuthNotConfigured": { "message": "Vor der Anmeldung muss eine OAuth-Client-ID gespeichert werden." },
-  "optionsErrorOAuthClientIdInvalid": { "message": "Die OAuth-Client-ID ist ungültig." },
   "optionsErrorOAuthAccountMismatch": { "message": "Das ausgewählte Google-Konto stimmt nicht mit dem erneut anzumeldenden Konto überein." },
   "optionsErrorOAuthCancelled": { "message": "Die Google-Anmeldung wurde abgebrochen oder nicht bestätigt." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "Die Anmeldung für dieses Google-Konto muss erneut durchgeführt werden." },
-  "optionsErrorOAuthGeneric": { "message": "Die Google-Anmeldung konnte nicht abgeschlossen werden. Prüfen Sie die Client-ID und die Google-Cloud-Einrichtung." },
+  "optionsErrorOAuthGeneric": { "message": "Die Google-Anmeldung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut." },
   "optionsErrorUnexpected": { "message": "Die aktuellen Daten konnten nicht geladen oder die angeforderte Änderung nicht abgeschlossen werden. Bitte erneut versuchen." },
   "optionsErrorAccountHasConnections": { "message": "Dieses Google-Konto wird noch von mindestens einer VFS-Verbindung verwendet. Entziehen Sie diesen Verbindungen unten den Zugriff, bevor Sie das Konto abmelden." },
   "vfsRootMyDrive": { "message": "Meine Ablage" },

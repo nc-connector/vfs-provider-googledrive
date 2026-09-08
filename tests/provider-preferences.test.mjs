@@ -10,6 +10,7 @@ import test from "node:test";
 import {
   DEFAULT_PROVIDER_PREFERENCES,
   PROVIDER_PREFERENCES_KEY,
+  PROVIDER_PREFERENCES_VERSION,
   ProviderPreferencesRepository
 } from "../src/state/provider-preferences.mjs";
 import { FakeStorageArea } from "./helpers/fake-storage.mjs";
@@ -33,12 +34,10 @@ test("updates one export choice without replacing the others", async () => {
   });
 
   const preferences = await repository.update({
-    oauthClientId: "  client.apps.googleusercontent.com  ",
     debugLogging: true,
     exportFormats: { document: "pdf" }
   });
 
-  assert.equal(preferences.oauthClientId, "client.apps.googleusercontent.com");
   assert.equal(preferences.debugLogging, true);
   assert.deepEqual(preferences.exportFormats, {
     document: "pdf",
@@ -46,6 +45,32 @@ test("updates one export choice without replacing the others", async () => {
     presentation: "pptx",
     drawing: "pdf"
   });
+});
+
+test("removes the development OAuth setting from stored preferences", async () => {
+  const storageArea = new FakeStorageArea({
+    [PROVIDER_PREFERENCES_KEY]: {
+      version: 1,
+      oauthClientId: "legacy.apps.googleusercontent.com",
+      debugLogging: true,
+      exportFormats: {
+        document: "pdf",
+        spreadsheet: "xlsx",
+        presentation: "pptx",
+        drawing: "pdf"
+      }
+    }
+  });
+  const repository = new ProviderPreferencesRepository({ storageArea });
+
+  const preferences = await repository.initialize();
+
+  assert.equal(preferences.version, PROVIDER_PREFERENCES_VERSION);
+  assert.equal(Object.hasOwn(preferences, "oauthClientId"), false);
+  assert.deepEqual(
+    storageArea.snapshot()[PROVIDER_PREFERENCES_KEY],
+    preferences
+  );
 });
 
 test("rejects export values that Drive cannot produce for the file type", async () => {

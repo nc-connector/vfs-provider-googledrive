@@ -1,12 +1,12 @@
 {
   "extensionName": {
-    "message": "VFS-provider voor Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
     "message": "Voegt via VFS Toolkit opslag in Google Drive toe aan compatibele Thunderbird-add-ons."
   },
   "optionsTitle": {
-    "message": "VFS-provider voor Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "optionsDocumentLanguage": { "message": "nl" },
   "optionsStatusText": {
@@ -37,8 +37,6 @@
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Het Google-account is lokaal verwijderd, maar de toegang bij Google kon niet worden ingetrokken. Verwijder de toegang ook in uw Google-account." },
   "optionsPreferencesHeading": { "message": "Voorkeuren" },
   "optionsPreferencesText": { "message": "Deze instellingen gelden voor de provider. De gekozen exportindelingen worden gebruikt bij het lezen van Google Workspace-bestanden." },
-  "optionsOAuthClientIdLabel": { "message": "OAuth-client-ID" },
-  "optionsOAuthClientIdHelp": { "message": "Voor ontwikkeling of beheerde installaties: client-ID van een Google-desktoptoepassing. Een client-ID is geen geheim." },
   "optionsDebugLoggingLabel": { "message": "Diagnostische logboekregistratie inschakelen" },
   "optionsExportsHeading": { "message": "Exportindelingen voor Google Workspace" },
   "optionsExportDocuments": { "message": "Google-documenten" },
@@ -51,12 +49,10 @@
   "optionsFormatPptx": { "message": "PPTX-bestand" },
   "optionsSavePreferences": { "message": "Voorkeuren opslaan" },
   "optionsPreferencesSaved": { "message": "Voorkeuren opgeslagen." },
-  "optionsErrorOAuthNotConfigured": { "message": "Sla vóór het aanmelden een OAuth-client-ID op." },
-  "optionsErrorOAuthClientIdInvalid": { "message": "De OAuth-client-ID is ongeldig." },
   "optionsErrorOAuthAccountMismatch": { "message": "Het geselecteerde Google-account komt niet overeen met het account waarvoor opnieuw wordt aangemeld." },
   "optionsErrorOAuthCancelled": { "message": "De Google-aanmelding is geannuleerd of niet goedgekeurd." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "Voor dit Google-account moet opnieuw worden aangemeld." },
-  "optionsErrorOAuthGeneric": { "message": "De Google-aanmelding kon niet worden voltooid. Controleer de client-ID en Google Cloud-instellingen." },
+  "optionsErrorOAuthGeneric": { "message": "De Google-aanmelding kon niet worden voltooid. Probeer het opnieuw." },
   "optionsErrorUnexpected": { "message": "De huidige gegevens konden niet worden geladen of de gevraagde wijziging kon niet worden voltooid. Probeer het opnieuw." },
   "optionsErrorAccountHasConnections": { "message": "Dit Google-account wordt nog door een of meer VFS-verbindingen gebruikt. Trek die verbindingen hieronder in voordat u zich afmeldt." },
   "vfsRootMyDrive": { "message": "Mijn Drive" },

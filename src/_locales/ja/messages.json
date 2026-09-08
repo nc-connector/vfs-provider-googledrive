@@ -1,12 +1,12 @@
 {
   "extensionName": {
-    "message": "Google Drive 用 VFS プロバイダー"
+    "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
     "message": "VFS Toolkit を介して、互換性のある Thunderbird アドオンに Google Drive ストレージを追加します。"
   },
   "optionsTitle": {
-    "message": "Google Drive 用 VFS プロバイダー"
+    "message": "VFS-Provider: Google Drive"
   },
   "optionsDocumentLanguage": { "message": "ja" },
   "optionsStatusText": {
@@ -37,8 +37,6 @@
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Google アカウントはローカルから削除されましたが、Google 側のアクセス権を取り消せませんでした。Google アカウントでもアクセス権を削除してください。" },
   "optionsPreferencesHeading": { "message": "設定項目" },
   "optionsPreferencesText": { "message": "これらの設定はプロバイダーに適用されます。選択したエクスポート形式は Google Workspace ファイルの読み取り時に使用されます。" },
-  "optionsOAuthClientIdLabel": { "message": "OAuth クライアント ID" },
-  "optionsOAuthClientIdHelp": { "message": "開発または管理対象インストール用: Google デスクトップ アプリのクライアント ID。クライアント ID は秘密情報ではありません。" },
   "optionsDebugLoggingLabel": { "message": "診断ログを有効にする" },
   "optionsExportsHeading": { "message": "Google Workspace のエクスポート形式" },
   "optionsExportDocuments": { "message": "Google ドキュメント" },
@@ -51,12 +49,10 @@
   "optionsFormatPptx": { "message": "PPTX 形式" },
   "optionsSavePreferences": { "message": "設定を保存" },
   "optionsPreferencesSaved": { "message": "設定を保存しました。" },
-  "optionsErrorOAuthNotConfigured": { "message": "ログインする前に OAuth クライアント ID を保存してください。" },
-  "optionsErrorOAuthClientIdInvalid": { "message": "OAuth クライアント ID が無効です。" },
   "optionsErrorOAuthAccountMismatch": { "message": "選択した Google アカウントは、再ログインするアカウントと一致しません。" },
   "optionsErrorOAuthCancelled": { "message": "Google へのログインがキャンセルされたか、承認されませんでした。" },
   "optionsErrorOAuthReauthorizationRequired": { "message": "この Google アカウントにもう一度ログインする必要があります。" },
-  "optionsErrorOAuthGeneric": { "message": "Google へのログインを完了できませんでした。クライアント ID と Google Cloud の設定を確認してください。" },
+  "optionsErrorOAuthGeneric": { "message": "Google へのログインを完了できませんでした。もう一度お試しください。" },
   "optionsErrorUnexpected": { "message": "現在のデータを読み込めなかったか、要求された変更を完了できませんでした。もう一度お試しください。" },
   "optionsErrorAccountHasConnections": { "message": "この Google アカウントは 1 つ以上の VFS 接続で使用中です。ログアウトする前に、下に表示された接続のアクセス権を取り消してください。" },
   "vfsRootMyDrive": { "message": "マイドライブ" },

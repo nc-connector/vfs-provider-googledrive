@@ -68,9 +68,9 @@ changes are checked every five minutes for connected accounts. A changed Drive
 invalidates the VFS storage root so an open picker can refresh its current
 folder without relying on unstable Drive paths.
 The settings page lists every current consumer connection and can revoke one
-add-on's access without removing the Google account or Drive files.
-A Google Desktop OAuth client ID is required for live account and provider
-testing.
+add-on's access without removing the Google account or Drive files. The add-on
+includes its project-owned Google Desktop OAuth client; administrators and users
+do not create or enter OAuth credentials.
 
 ## Requirements
 

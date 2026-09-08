@@ -10,6 +10,8 @@ import {
 } from "../core/request-deadline.mjs";
 
 export const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
+export const GOOGLE_OAUTH_CLIENT_ID =
+  "97829492793-hupuhndvki6esrb3hpgbuhgr5ci3mc6m.apps.googleusercontent.com";
 export const OAUTH_REQUEST_TIMEOUT_MS = 30 * 1000;
 
 const AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -106,7 +108,6 @@ export class GoogleOAuthClient {
   #identityApi;
   #sessionRepository;
   #accountRepository;
-  #preferencesRepository;
   #fetch;
   #logger;
   #crypto;
@@ -118,7 +119,6 @@ export class GoogleOAuthClient {
     identityApi,
     sessionRepository,
     accountRepository,
-    preferencesRepository,
     fetchApi = fetch,
     logger,
     cryptoApi = crypto,
@@ -128,7 +128,6 @@ export class GoogleOAuthClient {
     this.#identityApi = identityApi;
     this.#sessionRepository = sessionRepository;
     this.#accountRepository = accountRepository;
-    this.#preferencesRepository = preferencesRepository;
     this.#fetch = fetchApi;
     this.#logger = logger;
     this.#crypto = cryptoApi;
@@ -139,17 +138,14 @@ export class GoogleOAuthClient {
     );
   }
 
-  async authorize({ accountId, clientId, interactive = true } = {}) {
-    const preferences = await this.#preferencesRepository.get();
+  async authorize({ accountId, interactive = true } = {}) {
     const expectedAccount = accountId
       ? await this.#accountRepository.getAccount(accountId)
       : null;
     if (accountId && !expectedAccount) {
       throw new GoogleOAuthError("oauth_reauthorization_required", 401);
     }
-    const normalizedClientId = requireClientId(
-      clientId || expectedAccount?.oauthClientId || preferences.oauthClientId
-    );
+    const normalizedClientId = requireClientId(GOOGLE_OAUTH_CLIENT_ID);
     const redirectUri = await createGoogleRedirectUri(this.#identityApi);
     const pkce = await createPkceValues(this.#crypto);
     await this.#sessionRepository.removeExpiredTransactions(TRANSACTION_MAX_AGE_MS);

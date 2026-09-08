@@ -1,12 +1,12 @@
 {
   "extensionName": {
-    "message": "Провайдер VFS для Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
     "message": "Добавляет хранилище Google Drive в совместимые дополнения Thunderbird с помощью VFS Toolkit."
   },
   "optionsTitle": {
-    "message": "Провайдер VFS для Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "optionsDocumentLanguage": { "message": "ru" },
   "optionsStatusText": {
@@ -37,8 +37,6 @@
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Аккаунт Google удалён локально, но отозвать доступ на стороне Google не удалось. Удалите доступ также в своём аккаунте Google." },
   "optionsPreferencesHeading": { "message": "Настройки" },
   "optionsPreferencesText": { "message": "Эти настройки относятся к провайдеру. Выбранные форматы экспорта используются при чтении файлов Google Workspace." },
-  "optionsOAuthClientIdLabel": { "message": "Идентификатор клиента OAuth" },
-  "optionsOAuthClientIdHelp": { "message": "Для разработки или управляемых установок: идентификатор клиента настольного приложения Google. Идентификатор клиента не является секретом." },
   "optionsDebugLoggingLabel": { "message": "Включить диагностический журнал" },
   "optionsExportsHeading": { "message": "Форматы экспорта Google Workspace" },
   "optionsExportDocuments": { "message": "Документы Google" },
@@ -51,12 +49,10 @@
   "optionsFormatPptx": { "message": "Формат PPTX" },
   "optionsSavePreferences": { "message": "Сохранить настройки" },
   "optionsPreferencesSaved": { "message": "Настройки сохранены." },
-  "optionsErrorOAuthNotConfigured": { "message": "Перед входом сохраните идентификатор клиента OAuth." },
-  "optionsErrorOAuthClientIdInvalid": { "message": "Недопустимый идентификатор клиента OAuth." },
   "optionsErrorOAuthAccountMismatch": { "message": "Выбранная учётная запись Google не совпадает с учётной записью для повторного входа." },
   "optionsErrorOAuthCancelled": { "message": "Вход в Google был отменён или не подтверждён." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "В эту учётную запись Google необходимо войти снова." },
-  "optionsErrorOAuthGeneric": { "message": "Не удалось завершить вход в Google. Проверьте идентификатор клиента и настройки Google Cloud." },
+  "optionsErrorOAuthGeneric": { "message": "Не удалось завершить вход в Google. Повторите попытку." },
   "optionsErrorUnexpected": { "message": "Не удалось загрузить текущие данные или выполнить запрошенное изменение. Повторите попытку." },
   "optionsErrorAccountHasConnections": { "message": "Эта учётная запись Google всё ещё используется одним или несколькими подключениями VFS. Перед выходом отзовите эти подключения ниже." },
   "vfsRootMyDrive": { "message": "Мой диск" },

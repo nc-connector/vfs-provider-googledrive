@@ -15,7 +15,6 @@ import {
   VFS_TOOLKIT_CONNECTIONS_KEY,
   VfsConnectionService
 } from "../src/provider/vfs-connection-service.mjs";
-import { ProviderPreferencesRepository } from "../src/state/provider-preferences.mjs";
 import { ProviderStateRepository } from "../src/state/provider-state.mjs";
 import { FakeStorageArea } from "./helpers/fake-storage.mjs";
 
@@ -70,20 +69,15 @@ test("refreshes from stored account state after background reconstruction", asyn
     storageArea: sessionArea,
     now: () => now
   });
-  const restartedPreferences = new ProviderPreferencesRepository({
-    storageArea: localArea
-  });
   await Promise.all([
     restartedAccounts.initialize(),
-    restartedSession.initialize(),
-    restartedPreferences.initialize()
+    restartedSession.initialize()
   ]);
   let refreshRequests = 0;
   const restartedClient = new GoogleOAuthClient({
     identityApi: {},
     sessionRepository: restartedSession,
     accountRepository: restartedAccounts,
-    preferencesRepository: restartedPreferences,
     fetchApi: async () => {
       refreshRequests++;
       return tokenResponse("new-access");

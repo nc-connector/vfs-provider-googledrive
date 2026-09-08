@@ -55,8 +55,6 @@ const FALLBACK_MESSAGES = Object.freeze({
 });
 
 const AUTH_ERROR_CODES = new Set([
-  "oauth_not_configured",
-  "oauth_client_id_invalid",
   "oauth_reauthorization_required",
   "oauth_refresh_token_missing",
   "oauth_token_refresh_failed"

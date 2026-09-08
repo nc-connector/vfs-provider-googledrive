@@ -1,12 +1,12 @@
 {
   "extensionName": {
-    "message": "VFS-szolgáltató a Google Drive-hoz"
+    "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
     "message": "Google Drive-tárhelyet ad a kompatibilis Thunderbird-kiegészítőkhöz a VFS Toolkit segítségével."
   },
   "optionsTitle": {
-    "message": "VFS-szolgáltató a Google Drive-hoz"
+    "message": "VFS-Provider: Google Drive"
   },
   "optionsDocumentLanguage": { "message": "hu" },
   "optionsStatusText": {
@@ -37,8 +37,6 @@
   "optionsAccountDisconnectedWithoutRevocation": { "message": "A Google-fiókot helyileg eltávolítottuk, de a Google-hozzáférést nem sikerült visszavonni. Távolítsa el a hozzáférést a Google-fiókjában is." },
   "optionsPreferencesHeading": { "message": "Beállítások" },
   "optionsPreferencesText": { "message": "Ezek a beállítások a szolgáltatóra vonatkoznak. A kiválasztott exportformátumokat a Google Workspace-fájlok olvasásakor használjuk." },
-  "optionsOAuthClientIdLabel": { "message": "OAuth-kliensazonosító" },
-  "optionsOAuthClientIdHelp": { "message": "Fejlesztéshez vagy felügyelt telepítéshez: egy Google asztali alkalmazás kliensazonosítója. A kliensazonosító nem titkos adat." },
   "optionsDebugLoggingLabel": { "message": "Diagnosztikai naplózás engedélyezése" },
   "optionsExportsHeading": { "message": "Google Workspace exportformátumok" },
   "optionsExportDocuments": { "message": "Google-dokumentumok" },
@@ -51,12 +49,10 @@
   "optionsFormatPptx": { "message": "PPTX-formátum" },
   "optionsSavePreferences": { "message": "Beállítások mentése" },
   "optionsPreferencesSaved": { "message": "A beállítások mentve." },
-  "optionsErrorOAuthNotConfigured": { "message": "Bejelentkezés előtt mentse az OAuth-kliensazonosítót." },
-  "optionsErrorOAuthClientIdInvalid": { "message": "Az OAuth-kliensazonosító érvénytelen." },
   "optionsErrorOAuthAccountMismatch": { "message": "A kiválasztott Google-fiók nem egyezik az újból bejelentkeztetendő fiókkal." },
   "optionsErrorOAuthCancelled": { "message": "A Google-bejelentkezés megszakadt vagy nem lett jóváhagyva." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "Ebbe a Google-fiókba újra be kell jelentkezni." },
-  "optionsErrorOAuthGeneric": { "message": "A Google-bejelentkezés nem fejezhető be. Ellenőrizze a kliensazonosítót és a Google Cloud beállításait." },
+  "optionsErrorOAuthGeneric": { "message": "A Google-bejelentkezést nem sikerült befejezni. Próbálja újra." },
   "optionsErrorUnexpected": { "message": "Az aktuális adatokat nem sikerült betölteni, vagy a kért módosítást nem sikerült végrehajtani. Próbálja újra." },
   "optionsErrorAccountHasConnections": { "message": "Ezt a Google-fiókot még egy vagy több VFS-kapcsolat használja. Kijelentkezés előtt vonja vissza ezeket a kapcsolatokat alább." },
   "vfsRootMyDrive": { "message": "Saját meghajtó" },

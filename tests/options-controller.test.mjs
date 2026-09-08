@@ -44,7 +44,6 @@ function createHarness(responses = {}) {
 
 test("normalizes values before saving provider preferences", () => {
   assert.deepEqual(normalizePreferenceChanges({
-    oauthClientId: "  client.apps.googleusercontent.com  ",
     debugLogging: 1,
     exportFormats: {
       document: "docx",
@@ -53,7 +52,6 @@ test("normalizes values before saving provider preferences", () => {
       drawing: "pdf"
     }
   }), {
-    oauthClientId: "client.apps.googleusercontent.com",
     debugLogging: true,
     exportFormats: {
       document: "docx",
@@ -140,7 +138,6 @@ test("refreshes options only for relevant local storage changes", () => {
 
 test("loads preferences and accounts together", async () => {
   const preferences = {
-    oauthClientId: "client.apps.googleusercontent.com",
     debugLogging: false,
     exportFormats: {}
   };

@@ -17,8 +17,6 @@ const ERROR_MESSAGE_KEYS = Object.freeze({
   connection_not_found: "vfsConnectionErrorNotFound",
   connection_account_unavailable: "vfsConnectionErrorAccountUnavailable",
   connection_create_failed: "vfsConnectionErrorUnexpected",
-  oauth_not_configured: "optionsErrorOAuthNotConfigured",
-  oauth_client_id_invalid: "optionsErrorOAuthClientIdInvalid",
   oauth_cancelled: "optionsErrorOAuthCancelled",
   oauth_denied: "optionsErrorOAuthCancelled",
   oauth_account_mismatch: "optionsErrorOAuthAccountMismatch",

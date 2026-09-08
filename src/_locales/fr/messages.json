@@ -1,12 +1,12 @@
 {
   "extensionName": {
-    "message": "Fournisseur VFS pour Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
     "message": "Ajoute le stockage Google Drive aux modules complémentaires Thunderbird compatibles grâce à VFS Toolkit."
   },
   "optionsTitle": {
-    "message": "Fournisseur VFS pour Google Drive"
+    "message": "VFS-Provider: Google Drive"
   },
   "optionsDocumentLanguage": { "message": "fr" },
   "optionsStatusText": {
@@ -37,8 +37,6 @@
   "optionsAccountDisconnectedWithoutRevocation": { "message": "Le compte Google a été supprimé localement, mais son accès n’a pas pu être révoqué auprès de Google. Supprimez également l’accès dans votre compte Google." },
   "optionsPreferencesHeading": { "message": "Préférences" },
   "optionsPreferencesText": { "message": "Ces réglages s’appliquent au fournisseur. Les formats choisis sont utilisés lors de la lecture des fichiers Google Workspace." },
-  "optionsOAuthClientIdLabel": { "message": "ID client OAuth" },
-  "optionsOAuthClientIdHelp": { "message": "Pour le développement ou les installations gérées : ID client d’une application Google pour ordinateur. Un ID client n’est pas secret." },
   "optionsDebugLoggingLabel": { "message": "Activer la journalisation de diagnostic" },
   "optionsExportsHeading": { "message": "Formats d’exportation Google Workspace" },
   "optionsExportDocuments": { "message": "Documents Google" },
@@ -51,12 +49,10 @@
   "optionsFormatPptx": { "message": "Format PPTX" },
   "optionsSavePreferences": { "message": "Enregistrer les préférences" },
   "optionsPreferencesSaved": { "message": "Préférences enregistrées." },
-  "optionsErrorOAuthNotConfigured": { "message": "Enregistrez un ID client OAuth avant de vous connecter." },
-  "optionsErrorOAuthClientIdInvalid": { "message": "L’ID client OAuth n’est pas valide." },
   "optionsErrorOAuthAccountMismatch": { "message": "Le compte Google sélectionné ne correspond pas au compte à reconnecter." },
   "optionsErrorOAuthCancelled": { "message": "La connexion à Google a été annulée ou non approuvée." },
   "optionsErrorOAuthReauthorizationRequired": { "message": "Ce compte Google doit être reconnecté." },
-  "optionsErrorOAuthGeneric": { "message": "La connexion à Google n’a pas pu être terminée. Vérifiez l’ID client et la configuration Google Cloud." },
+  "optionsErrorOAuthGeneric": { "message": "La connexion à Google n’a pas pu être terminée. Veuillez réessayer." },
   "optionsErrorUnexpected": { "message": "Les données actuelles n’ont pas pu être chargées ou la modification demandée n’a pas pu être effectuée. Réessayez." },
   "optionsErrorAccountHasConnections": { "message": "Ce compte Google est encore utilisé par une ou plusieurs connexions VFS. Révoquez ces connexions ci-dessous avant de vous déconnecter." },
   "vfsRootMyDrive": { "message": "Mon Drive" },

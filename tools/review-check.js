@@ -126,7 +126,9 @@ function checkLocales() {
       const message = String(messages[key]?.message || "").trim();
       assert(message, `${locale}.${key} is empty`);
       assert(!/(TODO|TBD|TRANSLATE_ME|FIXME)/i.test(message), `${locale}.${key} contains a work marker`);
-      if (locale !== "en" && key !== "extensionName") {
+      if (locale !== "en" &&
+          key !== "extensionName" &&
+          key !== "optionsTitle") {
         assert(message !== english[key].message, `${locale}.${key} is still English`);
       }
     }

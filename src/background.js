@@ -44,7 +44,6 @@ const oauthClient = new GoogleOAuthClient({
   identityApi: browser.identity,
   sessionRepository: oauthSessionRepository,
   accountRepository,
-  preferencesRepository,
   logger
 });
 const driveTransport = new GoogleDriveTransport({

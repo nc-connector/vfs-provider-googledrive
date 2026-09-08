@@ -5,7 +5,9 @@
 "use strict";
 
 export const PROVIDER_PREFERENCES_KEY = "google-drive-provider-preferences";
-export const PROVIDER_PREFERENCES_VERSION = 1;
+export const PROVIDER_PREFERENCES_VERSION = 2;
+
+const LEGACY_PROVIDER_PREFERENCES_VERSION = 1;
 
 export const EXPORT_FORMATS = Object.freeze({
   document: Object.freeze(["docx", "pdf"]),
@@ -16,7 +18,6 @@ export const EXPORT_FORMATS = Object.freeze({
 
 export const DEFAULT_PROVIDER_PREFERENCES = Object.freeze({
   version: PROVIDER_PREFERENCES_VERSION,
-  oauthClientId: "",
   debugLogging: false,
   exportFormats: Object.freeze({
     document: "docx",
@@ -28,13 +29,6 @@ export const DEFAULT_PROVIDER_PREFERENCES = Object.freeze({
 
 function clone(value) {
   return structuredClone(value);
-}
-
-function normalizeClientId(value) {
-  if (typeof value !== "string") {
-    throw new TypeError("oauthClientId must be a string");
-  }
-  return value.trim();
 }
 
 function normalizeExportFormats(value, fallback) {
@@ -56,7 +50,8 @@ function normalizePreferences(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Stored provider preferences are invalid");
   }
-  if (value.version !== PROVIDER_PREFERENCES_VERSION) {
+  if (value.version !== PROVIDER_PREFERENCES_VERSION &&
+      value.version !== LEGACY_PROVIDER_PREFERENCES_VERSION) {
     throw new Error(`Unsupported provider preferences version: ${value.version}`);
   }
   if (typeof value.debugLogging !== "boolean") {
@@ -64,7 +59,6 @@ function normalizePreferences(value) {
   }
   return {
     version: PROVIDER_PREFERENCES_VERSION,
-    oauthClientId: normalizeClientId(value.oauthClientId),
     debugLogging: value.debugLogging,
     exportFormats: normalizeExportFormats(
       value.exportFormats,
@@ -93,15 +87,17 @@ export class ProviderPreferencesRepository {
       });
       return preferences;
     }
-    return normalizePreferences(stored[PROVIDER_PREFERENCES_KEY]);
+    const preferences = normalizePreferences(stored[PROVIDER_PREFERENCES_KEY]);
+    if (stored[PROVIDER_PREFERENCES_KEY].version !== PROVIDER_PREFERENCES_VERSION) {
+      await this.#storageArea.set({
+        [PROVIDER_PREFERENCES_KEY]: preferences
+      });
+    }
+    return preferences;
   }
 
   async get() {
-    const stored = await this.#storageArea.get(PROVIDER_PREFERENCES_KEY);
-    if (!Object.hasOwn(stored, PROVIDER_PREFERENCES_KEY)) {
-      return this.initialize();
-    }
-    return normalizePreferences(stored[PROVIDER_PREFERENCES_KEY]);
+    return this.initialize();
   }
 
   async update(patch) {
