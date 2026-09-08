@@ -6,8 +6,10 @@ kept in sync with the repository.
 ## Product decisions
 
 - [ ] Register the production Google OAuth application and record its client ID.
-- [ ] Decide whether releases use one project-owned OAuth client or optionally
-  support administrator-provided client IDs.
+- [x] Use one project-owned OAuth client in releases. Administrators and users
+  do not provide their own client ID.
+- [ ] Add the production client to the release build and remove the development
+  client-ID field from the shipped options page.
 - [ ] Complete restricted-scope verification with the final product identity,
   privacy text, support contact, and production test instructions.
 - [ ] Confirm the permanent Gecko add-on ID before the first ATN submission. The
@@ -158,6 +160,8 @@ kept in sync with the repository.
 
 ## Tests and release readiness
 
+- [ ] Run `npm run test:unit` in CI. The current review job runs
+  `npm run test:review`, which does not execute the unit suite.
 - [x] Cover every advertised VFS capability, including missing parents,
   duplicate names, pagination, empty folders, conflict errors, progress, and
   cancellation.
@@ -182,16 +186,18 @@ kept in sync with the repository.
 - [ ] Smoke-test the XPI on the oldest supported Thunderbird and the current ESR.
 - [ ] Run live tests against My Drive and a real Shared Drive, including token
   expiry, refresh, rate-limit retry, resumable upload, and change polling.
-- [x] Add release documentation for the implemented scope.
+- [x] Add administrator and developer documentation for the implemented scope.
   - [x] Document development Google Cloud setup, account connection and recovery,
     OAuth scope and verification boundaries, Shared Drives, and Workspace exports.
   - [x] Document current credential storage, diagnostic redaction, source review,
     and third-party notices.
   - [x] Provide a complete add-on-specific privacy policy for the ATN privacy
     field and packaged documentation.
-  - [x] Document the release test matrix and manual evidence to retain.
-  - [x] Document the ATN submission and release checklist, with unresolved
-    product identity, production OAuth, and compatibility values kept as gates.
+  - [x] Keep automated checks, live candidate cases, retained evidence, and the
+    ATN handoff in the development guide, with unresolved product identity,
+    production OAuth, and compatibility values kept as gates.
+  - [x] Document Google's 10 MB Workspace export limit in the administrator
+    guide and its troubleshooting steps.
 - [ ] Add a release changelog with the first release candidate.
 - [x] Complete license and third-party notices for all currently packaged source.
 - [ ] Replace the open PR #96 VFS review revision with its merged upstream commit,

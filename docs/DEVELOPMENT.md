@@ -63,9 +63,8 @@ Drive, and this project does not include its WebDAV protocol code.
 | `tools/package-check.js` | packaged-file allowlist check |
 | `tools/webext-linter-*.js` | Thunderbird linter and dependency checks |
 | `docs/assets/` | documentation-only product branding assets |
-| `docs/ADMIN.md` | deployment and operational status |
-| `docs/TESTING.md` | automated and live release test matrix |
-| `docs/RELEASE.md` | candidate and ATN submission checklist |
+| `docs/ADMIN.md` | installation, deployment, operation, and recovery |
+| `docs/DEVELOPMENT.md` | development, validation, and release handoff |
 | `PRIVACY.md` | add-on data handling and user-control policy |
 | `VENDOR.md` | upstream revision, license, source URL, and hash record |
 | `THIRD_PARTY_NOTICES.md` | packaged third-party attributions and license notices |
@@ -175,6 +174,32 @@ The provider requests `https://www.googleapis.com/auth/drive`. The narrower
 `drive.file` scope cannot represent an existing Drive tree because it only sees
 files created by or explicitly opened for the app. The full scope is restricted
 and a published build needs the corresponding Google verification work.
+
+#### Live development OAuth setup
+
+The released add-on uses the project's production OAuth client. The current
+development build accepts a separate Desktop client ID through the options page
+so live tests do not use production credentials. Before the first release, the
+production client must replace this development input in the shipped UI.
+
+For local live tests:
+
+1. Create a separate Google Cloud project.
+2. Enable the Google Drive API.
+3. Configure the Google Auth Platform audience and branding.
+4. Add `https://www.googleapis.com/auth/drive` to the requested scopes.
+5. Create an OAuth client with application type **Desktop app**.
+6. Add every tester when an External project remains in Testing status.
+7. Save the Desktop client ID in the provider options.
+
+Do not add a client secret to source, settings, or an XPI. External-testing
+authorizations that request Drive access normally expire after seven days.
+
+References:
+
+- [OAuth 2.0 for desktop apps](https://developers.google.com/identity/protocols/oauth2/native-app)
+- [Google OAuth app audience](https://support.google.com/cloud/answer/15549945)
+- [Google Drive API scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)
 
 Refresh tokens and minimal Google account metadata are stored in
 `storage.local`; normal account queries omit the refresh token. Access tokens
@@ -453,7 +478,7 @@ the default locale, and each English key must exist in all 15 supported locale
 folders. The locale list and update steps are recorded in
 [Translations.md](../Translations.md).
 
-## 10. Build and review
+## 10. Build, validation, and release handoff
 
 Use Node.js 22 or newer.
 
@@ -465,9 +490,6 @@ npm run test:review
 `test:review` checks the source tree, builds `.tmp/review.xpi`, compares the XPI
 contents with the package allowlist, and removes the temporary package after a
 successful check.
-
-Manual Thunderbird, VFS compatibility, Google Drive, restart, and release
-evidence requirements are defined in [TESTING.md](TESTING.md).
 
 Create the normal build with:
 
@@ -483,6 +505,46 @@ npm test
 
 The full check downloads the current Thunderbird WebExtension linter, audits
 the selected linter dependencies, and runs it against the extension source.
+
+Use the exact packaged candidate for manual validation. At minimum, test:
+
+- the latest maintenance release in the Thunderbird 140 ESR line and the
+  current ESR at candidate time;
+- installation and a cold restart without an automatic Google sign-in;
+- account setup, reauthorization, removal, and two separate accounts;
+- two independent VFS consumers, including revoking only one connection;
+- My Drive, Shared with me, and a real Shared Drive;
+- binary and Google Workspace reads;
+- multipart and resumable uploads on both sides of the 5 MB boundary;
+- create, replace, move, copy, merge, trash, cancellation, and duplicate names;
+- an expired token, a rate-limit response, a network interruption, and a
+  background restart; and
+- remote change notification after the five-minute polling interval.
+
+Use disposable Drive content. Record the commit, XPI SHA-256, Thunderbird
+versions, VFS consumer version, account type, result of each case, and sanitized
+logs for failures. Never store credentials, tokens, private file names, or test
+content in the repository.
+
+For a release handoff:
+
+1. Create the candidate from a clean checkout with `npm ci`, `npm test`, and
+   `npm run build`.
+2. Build the same commit a second time and compare the unsigned XPI hashes.
+3. Inspect the XPI for unreviewed files, credentials, logs, work plans, and
+   generated development directories.
+4. Complete the manual cases above with the exact candidate.
+5. Confirm the manifest identity, permissions, supported Thunderbird range,
+   product OAuth configuration, privacy text, license notices, translations,
+   and release notes.
+6. Give ATN reviewers private access to a disposable test account when needed,
+   plus the build commands, vendor sources, data flow, and manual test results.
+
+Use the current
+[Thunderbird ATN review policy](https://thunderbird.github.io/atn-review-policy/)
+and
+[add-on reviewer guide](https://github.com/thunderbird/addon-reviewer-guide/blob/main/add-on-review-guide.md)
+for the submission.
 
 ## 11. Change checklist
 
@@ -505,5 +567,8 @@ The implementation still needs these inputs or later release decisions:
 
 - a project-owned production Google OAuth Desktop client ID;
 - final Google trademark presentation for the ATN listing;
-- the oldest Thunderbird version verified by smoke testing;
+- confirmation that the current development add-on ID is permanent;
+- completed smoke testing on Thunderbird 140 and the current ESR;
+- completed live My Drive, Shared Drive, retry, restart, and VFS compatibility
+  checks;
 - release signing, update channel, and managed deployment.

@@ -1,254 +1,590 @@
 # Administration Guide — VFS Provider for Google Drive
 
-> **Development status:** The current package provides Google Drive storage
-> through VFS, including account-bound setup, browsing, reading, new file
-> uploads and replacement, folder creation, file and folder moves, folder
-> copies and merges, and removal to the Google Drive trash. It is not ready for
-> production deployment because release validation is incomplete.
+This guide is for administrators and operations teams that prepare, deploy,
+operate, and remove VFS Provider for Google Drive. Source layout, build
+commands, test implementation, and release preparation belong in
+[DEVELOPMENT.md](DEVELOPMENT.md).
 
-This guide records the current setup and administrative boundary of the
-project while the provider is under development. Decisions that still depend
-on release infrastructure or policy are listed separately.
+## Contents
 
-## 1. Intended service scope
+- [1. Service scope](#1-service-scope)
+- [2. Requirements](#2-requirements)
+- [3. Install, update, and roll back](#3-install-update-and-roll-back)
+- [4. Initial configuration](#4-initial-configuration)
+- [5. Operational behavior and limits](#5-operational-behavior-and-limits)
+- [6. Enterprise rollout](#6-enterprise-rollout)
+- [7. Operational checks](#7-operational-checks)
+- [8. Troubleshooting](#8-troubleshooting)
+- [9. Logging and support data](#9-logging-and-support-data)
+- [10. Backup, recovery, and offboarding](#10-backup-recovery-and-offboarding)
 
-The finished add-on is intended to expose a user's Google Drive as a storage
-connection to compatible Thunderbird add-ons through the Thunderbird VFS
-Toolkit. A consuming add-on will need a user-approved connection before it can
-request file or folder operations.
+## 1. Service scope
 
-The current build provides a localized settings page where a tester can enter a
-Desktop OAuth client ID, add or reauthorize Google accounts, remove an unused
-account, manage individual consumer connections, choose Workspace export
-formats, and enable diagnostic logging. A
-compatible VFS consumer can create a connection for one account, rename that
-connection, switch its account, browse and read Drive content, upload new files,
-replace binary files, create folders, move or copy files and folders, merge
-folders, and move files or folders to the Google Drive trash. Move, copy, and
-merge requests follow the permissions and cross-drive restrictions reported by
-Google Drive. Replaced targets and source folders emptied by a merge are placed
-in the recoverable Drive trash. The provider does not permanently delete
-content. Previously granted connections receive the current add, modify, and
-delete capabilities when the provider starts. Remote Drive changes are checked
-every five minutes for accounts with a current VFS connection. A detected
-change causes the corresponding consumer storage to refresh.
+VFS Provider for Google Drive makes user-approved Google Drive accounts
+available to compatible Thunderbird add-ons through the Thunderbird VFS
+Toolkit.
 
-## 2. Current platform requirements
+The provider supports:
 
-- Thunderbird 140 or newer
-- an XPI built from this repository
+- separate authorization for multiple Google accounts;
+- a separate VFS connection for each consumer add-on and selected account;
+- My Drive, Shared with me, and Shared drives;
+- file and folder browsing;
+- binary file downloads and uploads;
+- Google Docs, Sheets, Slides, and Drawings exported as regular files;
+- folder creation, rename, move, copy, merge, and removal to Drive trash;
+- file replacement, rename, move, copy, and removal to Drive trash;
+- request progress and cancellation; and
+- refresh notifications after remote Drive changes.
 
-The manifest requests `alarms`, `storage`, and `identity`. The alarm wakes the
-MV3 background for periodic Drive change checks. Host access is limited to
-Google's OAuth token/revocation endpoint and Google Drive API endpoint. It does
-not request access to arbitrary sites or include Experiment APIs. The provider
-registers during background startup and advertises only connections previously
-approved by the user for the requesting consumer add-on.
+The provider does not read Thunderbird messages, address books, or calendars.
+It does not operate a project-owned server and does not send telemetry. Google
+Drive remains the system that stores the files.
 
-## 3. Google Cloud and account setup
+A consumer add-on receives no access merely because both add-ons are installed.
+The user must review the requesting add-on, select a Google account, and grant
+an account-bound VFS connection.
 
-### 3.1 Create a development project
+## 2. Requirements
 
-Use a separate Google Cloud project for development and live tests:
+### 2.1 Client and account requirements
 
-1. Create or select the development project in Google Cloud Console.
-2. Enable the Google Drive API in the project's API library.
-3. Configure the Google Auth Platform branding and audience. An Internal
-   audience is limited to the project's Google Workspace organization. For an
-   External audience in Testing status, add every tester explicitly.
-4. Add `https://www.googleapis.com/auth/drive` to the project's requested data
-   access scopes.
-5. Create an OAuth client with application type **Desktop app**.
-6. Copy the client ID ending in `.apps.googleusercontent.com`.
+- Thunderbird 140.0 or newer
+- an approved VFS Provider for Google Drive XPI
+- a compatible Thunderbird VFS consumer
+- a Google account permitted to authorize the product's Google application
+- Google Workspace membership and a suitable Drive role for Shared Drive use
 
-Do not place a client secret in this repository, an XPI, or provider settings.
-An installed desktop client cannot keep a shared secret; this implementation
-uses PKCE and the Mozilla loopback callback returned through
-`browser.identity`.
+Google permissions still apply after a VFS connection is granted. The provider
+cannot raise a user's Drive role, grant Shared Drive membership, or bypass an
+organization's Google Workspace controls.
 
-Google limits an External project in Testing status to its listed test users.
-For scopes beyond basic identity, those authorizations and their refresh tokens
-normally expire after seven days. That mode is therefore suitable for
-development, not a public release.
+### 2.2 Thunderbird permissions
 
-Official setup references:
+The add-on requests only these Thunderbird permissions:
 
-- [OAuth 2.0 for desktop apps](https://developers.google.com/identity/protocols/oauth2/native-app)
-- [Drive API scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)
-- [Google OAuth test audiences](https://support.google.com/cloud/answer/15549945)
+| Permission | Operational use |
+| --- | --- |
+| alarms | Check connected Drive accounts for remote changes every five minutes |
+| identity | Open Google's interactive authorization flow |
+| storage | Store accounts, refresh grants, VFS bindings, change cursors, and preferences in the Thunderbird profile |
 
-### 3.2 Configure the provider
+The add-on does not use Thunderbird Experiment APIs, native messaging, or
+remotely loaded executable code.
 
-1. Build and install the development XPI.
-2. Open the add-on settings.
-3. Enter the Desktop app client ID and save the provider settings.
-4. Select **Add account**, complete the Google consent flow, and confirm that
-   the expected account appears as connected.
-5. Repeat the account step for each Google account that should be available to
-   VFS consumers.
-6. In a compatible VFS consumer, create a new provider connection, choose one
-   connected account, review the requesting add-on name and ID, and grant the
-   requested access.
+Treat the Thunderbird profile as credential-bearing data. Refresh tokens are
+stored in extension storage inside that profile rather than in an operating
+system credential vault. Access tokens and unfinished authorization data are
+kept only in session storage.
 
-Changing the client ID preference affects new authorizations. Existing account
-records retain the client ID that created their grant so token refresh and
-reauthorization continue against the matching Google project.
+### 2.3 Network access
 
-### 3.3 Scope and verification boundary
+Thunderbird clients need HTTPS access to:
 
-The provider requests the full Drive scope because a filesystem-style VFS
-connection must browse and manage an existing Drive tree. The narrower
-`drive.file` scope covers files created by the application or explicitly opened
-for it and cannot expose an existing arbitrary tree to connected VFS clients.
+| Host | Use |
+| --- | --- |
+| accounts.google.com | Interactive Google sign-in and consent |
+| oauth2.googleapis.com | Token exchange, refresh, and revocation |
+| www.googleapis.com | Google Drive API, downloads, exports, and uploads |
 
-Google classifies the full Drive scope as restricted. Before a public release,
-the project owner must complete the applicable Google verification work and
-provide the required homepage, privacy, support, scope justification, and test
-instructions. Whether an additional security assessment applies depends on the
-final production data handling and must be confirmed with Google's current
-requirements. Development and production should use separate Cloud projects.
+Firewalls, proxies, and TLS inspection must permit GET, POST, PATCH, and PUT.
+They must not remove the Authorization, Content-Type, Content-Range, Range,
+X-Upload-Content-Type, X-Upload-Content-Length, or
+X-Goog-Drive-Resource-Keys headers.
 
-### 3.4 Shared Drives
+Set proxy request-size and timeout limits for the largest supported upload.
+One OAuth or account request stops after 30 seconds without a completed
+response. A Drive request stops after five minutes if response headers have not
+arrived. The five-minute limit covers transmitting one multipart request or one
+resumable chunk; it is not a total-duration limit for a download after headers
+arrive.
 
-Shared Drives are available only when the selected account belongs to a Google
-Workspace edition that provides them and the account is a member of the drive.
-They appear below the provider's **Shared drives** root. The provider uses
-Drive-specific queries and `supportsAllDrives` handling; it does not grant
-membership or raise the user's role. Every read or mutation remains limited by
-the permissions Google returns for that account.
+## 3. Install, update, and roll back
 
-Moving folders across drive boundaries is not generally supported by Google.
-The provider rejects such moves rather than simulating them with a download and
-upload. File copies use Google's server-side copy operation where allowed.
+### 3.1 Individual installation
 
-See [Google's Shared Drive API guide](https://developers.google.com/workspace/drive/api/guides/enable-shareddrives)
-for the underlying account, query, and permission rules.
+**Goal:** Install an approved build in one Thunderbird profile.
 
-### 3.5 Google Workspace exports
+**Prerequisites:**
 
-Google Docs, Sheets, Slides, and Drawings do not have downloadable native file
-content. The provider exports them when a VFS client reads the file. Settings
-apply across the provider accounts:
+- a signed or otherwise organization-approved XPI;
+- Thunderbird 140.0 or newer.
 
-| Google file | Available format | Initial choice |
+**Steps:**
+
+1. Open Thunderbird's Add-ons Manager.
+2. Select **Install Add-on From File** and choose the approved XPI.
+3. Restart Thunderbird when requested.
+4. Open **Add-ons Manager → VFS Provider for Google Drive → Preferences**.
+5. Complete [Initial configuration](#4-initial-configuration).
+
+**Expected result:** The options page opens without starting Google sign-in,
+and a compatible VFS consumer can discover the provider.
+
+**Verification:** Run the first four checks in [Operational
+checks](#7-operational-checks).
+
+**Rollback:** Remove the add-on or reinstall the previously approved version.
+Before downgrading, follow [Rollback](#33-rollback) because newer provider
+state may not be readable by an older build.
+
+### 3.2 Managed update
+
+1. Retain the currently approved XPI and a protected profile backup from the
+   same version.
+2. Validate the new XPI with the organization's Thunderbird, Google account,
+   proxy, and VFS consumer combinations.
+3. Test one small upload, one resumable upload, one Workspace export, one
+   remote refresh, and one restart.
+4. Deploy to a pilot group.
+5. Review provider logs and Google Workspace audit data for failures.
+6. Expand the rollout only after the pilot checks pass.
+
+Updating the add-on does not itself open an authorization window. Existing
+accounts and consumer connections remain unless a release note explicitly
+states otherwise.
+
+### 3.3 Rollback
+
+Provider state uses versioned records in the Thunderbird profile. A new release
+may migrate those records forward. It does not automatically downgrade them.
+
+**Prerequisites:** A profile backup created while the previous add-on version
+was installed and the matching approved XPI.
+
+**Steps:**
+
+1. Stop distribution of the newer XPI.
+2. Close Thunderbird.
+3. Restore the version-matched profile backup.
+4. Install the matching previous XPI through the normal deployment channel.
+5. Start Thunderbird and run [Operational checks](#7-operational-checks).
+
+**Expected result:** Accounts and VFS connections match the restored profile
+state, and the previous provider version can browse and transfer test data.
+
+Installing an older XPI over an unknown newer provider-state version is not a
+supported rollback method. The provider leaves unknown newer state untouched
+instead of guessing how to downgrade it.
+
+## 4. Initial configuration
+
+The released add-on includes the publisher's OAuth configuration. Account
+authorization and provider preferences are stored per Thunderbird profile. An
+enterprise policy can install the add-on, but each Google account still needs
+an explicit user authorization.
+
+### 4.1 Configure provider preferences
+
+1. Open **Add-ons Manager → VFS Provider for Google Drive → Preferences**.
+2. Select the required Google Workspace export formats.
+3. Leave **Enable diagnostic logging** off during normal operation.
+4. Select **Save preferences**.
+
+Expected result: the page reports that preferences were saved.
+
+### 4.2 Add a Google account
+
+1. Select **Add Google account**.
+2. Review Google's application name and requested Drive access.
+3. Sign in with the intended account and approve the request.
+4. Return to the options page.
+
+Expected result: the account appears under **Google accounts** with status
+**Connected**.
+
+Repeat the procedure for each account that users need. No account is added at
+installation, Thunderbird startup, or merely by opening the settings.
+
+If an account shows **Sign-in required again**, select **Sign in again** for
+that account. The returned Google identity must match the stored account; the
+provider does not silently replace it with another signed-in account.
+
+### 4.3 Grant a VFS connection
+
+Connections are initiated by a compatible consumer add-on, not from the
+provider's options page.
+
+1. In the consumer add-on, choose to add a VFS storage connection.
+2. Select VFS Provider for Google Drive.
+3. In the provider-owned setup window, verify the requesting add-on name and
+   ID.
+4. Select the intended Google account.
+5. Review or change the displayed connection name.
+6. Select **Connect**.
+
+Expected result: the consumer receives one storage connection bound to that
+consumer and account. Another consumer cannot reuse the connection without its
+own user grant.
+
+### 4.4 Revoke a connection or remove an account
+
+To remove one consumer's access:
+
+1. Open the provider options.
+2. Find the entry under **VFS connections**.
+3. Verify the consumer add-on and Google account.
+4. Select **Revoke access** and confirm.
+
+Expected result: only that consumer connection is removed. The Google account,
+other consumer connections, and Drive files remain.
+
+To remove a Google account:
+
+1. Revoke every VFS connection that still uses the account.
+2. Select **Sign out and remove** for that account.
+3. Confirm the action.
+
+The provider asks Google to revoke the grant and removes its local account
+record. If remote revocation cannot be confirmed, it reports that the account
+was removed locally. In that case, remove the app's access separately in the
+user's [Google Account connections](https://myaccount.google.com/connections).
+
+### 4.5 Google Workspace export formats
+
+The export choices apply to all configured accounts:
+
+| Google file | Available format | Initial setting |
 | --- | --- | --- |
-| Docs | DOCX or PDF | DOCX |
-| Sheets | XLSX or PDF | XLSX |
-| Slides | PPTX or PDF | PPTX |
-| Drawings | PDF | PDF |
+| Google Docs | DOCX or PDF | DOCX |
+| Google Sheets | XLSX or PDF | XLSX |
+| Google Slides | PPTX or PDF | PPTX |
+| Google Drawings | PDF | PDF |
 
-The chosen extension is shown in the VFS tree and used for the downloaded
-file. Export does not alter the original Google Workspace file.
+The selected extension appears in the VFS picker. Exporting does not modify the
+Google Workspace source file. Google's
+[files.export endpoint](https://developers.google.com/workspace/drive/api/reference/rest/v3/files/export)
+limits the exported byte content to 10 MB.
 
-## 4. Build inspection
+## 5. Operational behavior and limits
 
-For an internal review build:
+### 5.1 Storage roots and access
 
-```sh
-npm ci
-npm run test:review
-npm run build
-```
+Each connection exposes three virtual roots:
 
-The current package is written to
-`dist/vfs-provider-googledrive_0_1_0.xpi`. The XPI contains the extension source,
-license, vendor record, and project documentation. Development dependencies and
-build output are not source inputs.
+- **My Drive**
+- **Shared with me**
+- **Shared drives**
 
-Run the full Thunderbird linter check before a release candidate is evaluated:
+Shared Drives appear only when the selected Google Workspace account is a
+member. Every operation follows the permissions Google reports for the account
+and item. A visible item may therefore be readable but not writable, movable,
+copyable, or trashable.
 
-```sh
-npm test
-```
+Google Drive permits duplicate names. The provider keeps duplicate siblings
+separately addressable even when their visible names match. File and folder
+shortcuts can be opened through their targets; changing or removing the
+shortcut acts on the shortcut itself.
 
-This command downloads the current Thunderbird WebExtension linter and needs
-network access.
+### 5.2 Uploads, copies, moves, and deletion
 
-## 5. Development-build behavior
+- Files up to and including 5,000,000 bytes use one multipart upload.
+- Larger files use resumable upload with 8 MiB chunks.
+- After an uncertain resumable response, the provider asks Drive which bytes
+  were accepted before it continues.
+- File copies use Google's server-side copy operation.
+- Folder copies create the target tree and copy files within Drive.
+- Ordinary moves change Drive metadata without downloading the file.
+- Unsupported cross-drive folder moves are rejected.
+- Delete operations move items to the recoverable Google Drive trash; the
+  provider never permanently deletes Drive content.
 
-After loading the development XPI, the add-on options page can store the Desktop
-OAuth client ID and start Google authorization only after the tester presses
-the add-account or sign-in-again button. The page discloses the requested Drive
-access before that action. A compatible VFS client discovers the provider and
-opens the provider-owned setup popup when the user adds a connection. The popup
-shows both the consumer name and its add-on ID before an account is granted.
+A canceled or interrupted multi-step copy, move, or merge may already have
+changed some Drive items. Inspect the source and destination before repeating
+the operation.
 
-A Google authorization window must not open during installation, startup, or
-simply opening the settings. An account cannot be removed while a current VFS
-connection still uses it. Revoke each listed connection in the provider
-settings or remove it from its consumer before removing the account. Revoking a
-connection does not remove the Google account or any Drive file.
+### 5.3 Remote changes
 
-Google account HTTP requests stop after 30 seconds without a completed
-response. Drive requests stop after five minutes if no response has started.
-This Drive deadline includes transmitting an individual upload request but is
-removed when download response headers arrive, so it is not a total-duration
-limit for large downloads. Consumer cancellation remains available throughout
-the file operation.
+The provider checks user and Shared Drive change logs every five minutes for
+accounts with at least one current VFS connection. When it detects a change, it
+asks each connected consumer to refresh that storage.
 
-Use **Sign in again** when Google rejects a stored grant or the account is
-marked for reauthorization. Removing an unused account asks Google to revoke
-its grant and then removes the local credentials. If Google cannot be reached,
-the local account is still removed and the settings page reports that remote
-revocation could not be confirmed. A user can also revoke access from their
-Google Account; the provider will then require authorization again.
+The first poll establishes a baseline and does not replay older Drive history.
+An open picker may require a refresh or reopen after the notification.
 
-### Upgrades and rollback
+### 5.4 File size and memory
 
-Provider-owned account data and account-to-storage bindings use a versioned
-record in Thunderbird's extension storage. An upgrade migrates only versions
-known to that release. The current migration retains accounts, refresh grants,
-and consumer bindings while adding empty change-poll cursor state. Toolkit-owned
-consumer connection records are not rewritten by the product migration.
+The VFS interface returns a complete File object to the consumer. The provider
+does not intentionally create a temporary disk cache for downloaded content.
+Reading a very large Drive file can therefore require a similar amount of
+available Thunderbird memory. Define an organizational size limit if client
+devices cannot safely hold the largest expected file.
 
-Do not use an older add-on build after a newer release has changed the stored
-schema unless that older build explicitly supports it. Unknown newer state is
-left untouched instead of being downgraded. For a managed deployment, retain a
-Thunderbird-profile backup that matches the installed add-on version before an
-upgrade. Restoring that matching profile backup is the supported rollback path
-for provider state.
+Drive quota is reported when Google supplies a finite limit. An account for
+which Google reports no limit remains visible as unlimited rather than being
+assigned an invented value.
 
-## 6. Planned administrative decisions
+## 6. Enterprise rollout
 
-The following items must be settled and documented before deployment:
+### 6.1 Add-on identity and policy locations
 
-- supported Thunderbird release range;
-- Google Cloud project and OAuth client registration;
-- requested Google scopes and their review status;
-- production account recovery and administrative revocation procedures;
-- organization policy and managed deployment options;
-- logging controls, diagnostics, and retention guidance; and
-- organization-specific profile backup and rollback procedures.
+The development manifest currently uses this add-on ID:
 
-No administrator should create production OAuth credentials from assumptions in
-this scaffold.
+    {90c66d9f-a142-43a8-8ffb-707a48d8eb7a}
 
-## 7. Security and support data
+Confirm that this ID is permanent before creating long-lived policy or
+publishing the first release.
 
-The OAuth service stores refresh tokens in the Thunderbird profile through
-`storage.local` and access tokens in `storage.session`. Thunderbird does not
-document either location as an operating-system credential vault. Protecting
-the Thunderbird profile and device is therefore part of credential protection.
-Authorization codes, access tokens, refresh tokens, authorization headers, and
-file content are excluded from product logs. Diagnostic output identifies an
-operation and result without exposing account or file data that is not needed
-for support.
+Common policies.json locations:
 
-Before sharing a future diagnostic log, review it for user identifiers, file
-names, folder names, and storage IDs.
+- Windows: C:\Program Files\Mozilla Thunderbird\distribution\policies.json
+- macOS: /Applications/Thunderbird.app/Contents/Resources/distribution/policies.json
+- Linux: /usr/lib/thunderbird/distribution/policies.json or the distribution
+  path used by the installed package
 
-The complete add-on-specific data handling disclosure is maintained in
-[PRIVACY.md](../PRIVACY.md). The same full text must be supplied in ATN's
-privacy policy field for the submitted version.
+Use about:policies in Thunderbird to check policy discovery and parsing.
 
-## 8. Source and vendor review
+### 6.2 Force-install template
 
-The Thunderbird VFS provider and HTML localization modules are packaged from a
-fixed `thunderbird/webext-support` revision without local changes. Their source
-URLs, licenses, and SHA-256 values are recorded in [VENDOR.md](../VENDOR.md).
-The license attributions shipped with the XPI are collected in
-[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+Replace the placeholder with the approved HTTPS XPI URL:
 
-Developer architecture, reference projects, and review commands are documented
-in [DEVELOPMENT.md](DEVELOPMENT.md). Candidate validation and ATN submission are
-covered by [TESTING.md](TESTING.md) and [RELEASE.md](RELEASE.md).
+    {
+      "policies": {
+        "ExtensionSettings": {
+          "*": {
+            "installation_mode": "allowed"
+          },
+          "{90c66d9f-a142-43a8-8ffb-707a48d8eb7a}": {
+            "installation_mode": "force_installed",
+            "install_url": "<approved-xpi-url>",
+            "updates_disabled": false
+          }
+        }
+      }
+    }
+
+Do not deploy this template with the placeholder or before the add-on ID and
+distribution URL are final. See Thunderbird's
+[enterprise policy documentation](https://enterprise.thunderbird.net/manage-updates-policies-and-customization/managing-thunderbird-policies)
+and Mozilla's
+[ExtensionSettings reference](https://mozilla.github.io/policy-templates/#extensionsettings).
+
+### 6.3 Google Workspace controls
+
+When users see an administrator-policy error during Google authorization:
+
+1. Obtain the released product's OAuth application details from its official
+   support documentation.
+2. Open Google Workspace Admin app access controls.
+3. Review the requested full Drive scope and the affected organizational unit.
+4. Permit or trust the product's OAuth application only after the
+   organization's security and data-handling review.
+5. Ask the user to start **Add Google account** or **Sign in again** once more.
+
+Expected result: Google shows the consent flow instead of
+admin_policy_enforced. Do not weaken domain-wide controls for unrelated OAuth
+clients.
+
+### 6.4 Rollout verification
+
+1. Open about:policies and check for policy errors.
+2. Restart Thunderbird.
+3. Confirm that the add-on is installed and enabled.
+4. Open its options and confirm that no sign-in starts automatically.
+5. Connect a disposable Google account.
+6. Grant one connection from the approved VFS consumer.
+7. Complete [Operational checks](#7-operational-checks).
+
+## 7. Operational checks
+
+Run these checks after installation, update, rollback, OAuth-policy change,
+proxy change, or a significant Google Workspace policy change:
+
+| Check | Expected result |
+| --- | --- |
+| Cold start | Thunderbird starts without opening Google authorization and without a provider error |
+| Provider discovery | The approved VFS consumer lists VFS Provider for Google Drive |
+| Account setup | The intended account appears as Connected |
+| Connection grant | The setup window shows the consumer name and ID before access is granted |
+| Browse | My Drive and Shared with me open; Shared drives opens for a member account |
+| Small upload | A file no larger than 5,000,000 bytes uploads and can be read back |
+| Large upload | A larger file completes through resumable upload and matches the source size |
+| Workspace export | One Doc, Sheet, Slide, and Drawing opens in the configured format |
+| Mutation | Create, rename, move, copy, and trash work where Drive permissions allow them |
+| Remote refresh | A Drive change made outside Thunderbird becomes visible after the next poll and refresh |
+| Restart | Existing accounts and connections remain usable after Thunderbird restarts |
+| Revocation | Revoking one connection removes only that consumer's access |
+
+Use disposable files and folders for mutation checks. Inspect both source and
+destination after canceling or interrupting a multi-step operation.
+
+## 8. Troubleshooting
+
+### 8.1 Provider is not listed by a consumer
+
+1. Confirm that both add-ons are enabled in the same Thunderbird profile.
+2. Confirm Thunderbird is version 140.0 or newer.
+3. Confirm the consumer supports the Thunderbird VFS Toolkit used by the
+   provider.
+4. Restart Thunderbird and retry provider discovery.
+5. Enable diagnostic logging and check for the first [GDRVFS] startup error.
+
+If another compatible consumer can discover the provider, investigate the
+original consumer's discovery and permission settings.
+
+### 8.2 Google sign-in does not start or cannot complete
+
+Check:
+
+- the installed XPI came from the approved product distribution channel;
+- the Google account is active and can use Google Drive;
+- Google Workspace app access controls permit the released product;
+- the system can reach all hosts in [Network access](#23-network-access); and
+- the Google consent window was not canceled.
+
+If Google reports an invalid, deleted, or unverified application, record the
+exact Google error and contact product support. Administrators do not replace
+the product's OAuth configuration locally.
+
+### 8.3 Account requires sign-in again
+
+Common causes include a revoked grant, an account security change, or a Google
+Workspace policy change.
+
+1. Select **Sign in again** beside the affected account.
+2. Choose the same Google identity.
+3. Repeat a browse check.
+
+If reauthorization repeatedly fails, check the Google Workspace app access
+policy and contact product support with the exact Google error.
+
+### 8.4 Shared Drives are missing or read-only
+
+1. Confirm the account is a Google Workspace account with Shared Drive access.
+2. Confirm the account is a member of the expected Shared Drive.
+3. Check the account's role and the affected item's Drive capabilities.
+4. Reopen or refresh the picker after a membership change.
+
+An empty **Shared drives** root does not by itself indicate a provider fault.
+The provider cannot add membership or raise the account's role.
+
+### 8.5 Google Drive reports access denied or unavailable
+
+Check whether the item was removed, moved to trash, unshared, or changed by
+another user. Then check the selected account's Drive role and the destination
+folder's permissions. A shortcut target can also become unavailable while the
+shortcut remains visible.
+
+Repeat the operation only after checking the actual Drive state. A failed client
+response does not prove that a preceding mutation made no change.
+
+### 8.6 Upload stalls, times out, or is rate-limited
+
+1. Check client connectivity and proxy logs for the three Google hosts.
+2. Check whether required methods or upload headers are blocked.
+3. Compare the proxy timeout with the five-minute per-request deadline.
+4. Check the first [GDRVFS] error code and HTTP status.
+5. Wait before retrying when Google returns a rate-limit response.
+6. Inspect Drive for a completed or partial result before repeating a write.
+
+The provider retries safe reads and explicit rate-limit rejections within
+bounded delays. It does not blindly repeat a write after an unknown network
+outcome.
+
+### 8.7 A Google Workspace file cannot be exported
+
+Check the selected export format and whether Google offers that format for the
+file type. Google's
+[files.export endpoint](https://developers.google.com/workspace/drive/api/reference/rest/v3/files/export)
+cannot return exported content larger than 10 MB. For a larger document, use
+Google Drive's own download or export workflow instead.
+
+### 8.8 Remote changes are not visible
+
+1. Wait at least one five-minute polling interval.
+2. Refresh or reopen the consumer's picker.
+3. Confirm the account still has a current VFS connection.
+4. Check that Thunderbird alarms are not disabled by a damaged profile.
+5. Enable diagnostic logging and look for drive.changes.poll entries.
+
+### 8.9 An account cannot be removed
+
+The account is still bound to one or more VFS connections. Revoke every listed
+connection for that account, then select **Sign out and remove** again.
+
+### 8.10 Remote revocation could not be confirmed
+
+The local account has already been removed. Open the user's
+[Google Account connections](https://myaccount.google.com/connections), select
+the application, and remove its access. Then verify that the account no longer
+appears in the provider options.
+
+## 9. Logging and support data
+
+Diagnostic logging is disabled by default.
+
+1. Open the provider options.
+2. Enable **Enable diagnostic logging** and save the preferences.
+3. Open Thunderbird's Error Console.
+4. Reproduce the problem once.
+5. Filter for **[GDRVFS]**.
+6. Save only the relevant sequence, then disable diagnostic logging.
+
+Collect:
+
+- Thunderbird version;
+- provider and consumer add-on versions;
+- approximate operation time;
+- Google account type: consumer or Workspace;
+- whether My Drive or a Shared Drive was involved;
+- operation and phase;
+- stable error code and numeric HTTP status; and
+- matching proxy or Google Workspace audit event, when available.
+
+The provider removes tokens, authorization data, account and storage
+identifiers, names, paths, addresses, request URLs, request bodies, file
+content, and free-text exception messages from its own entries. Other
+Thunderbird or add-on output may contain more information. Review every log
+before sharing it.
+
+The provider has no remote telemetry or monitoring endpoint. Operational
+monitoring therefore comes from Thunderbird support logs, endpoint monitoring,
+Google Workspace audit data, and reports from the consuming add-on.
+
+Data handling is described in [PRIVACY.md](../PRIVACY.md).
+
+## 10. Backup, recovery, and offboarding
+
+### 10.1 Backup
+
+The provider has no separate server-side database. Its operational state is in
+the Thunderbird profile, while files remain in Google Drive.
+
+Before an update:
+
+1. Retain the approved XPI and its version.
+2. Close Thunderbird.
+3. Back up the complete Thunderbird profile through the organization's normal
+   endpoint backup process.
+4. Protect the backup as credential-bearing data because it can contain OAuth
+   refresh tokens.
+5. Record which add-on version matches the backup.
+
+### 10.2 Recovery
+
+1. Install the provider version that matches the backup.
+2. Restore the profile while Thunderbird is closed.
+3. Start Thunderbird.
+4. Check every configured account and VFS connection.
+5. Use **Sign in again** if Google no longer accepts a restored grant.
+6. Run [Operational checks](#7-operational-checks).
+
+Restoring a profile does not restore Drive content that Google has already
+deleted or changed. Use Google Drive's own trash, retention, and recovery tools
+for server-side content.
+
+### 10.3 Offboarding
+
+To remove access completely:
+
+1. Revoke every consumer connection in the provider options.
+2. Use **Sign out and remove** for every Google account.
+3. Remove any remaining grant from the user's
+   [Google Account connections](https://myaccount.google.com/connections).
+4. Remove the add-on from Thunderbird.
+5. Retire profile backups according to the organization's credential-retention
+   policy.
+
+Removing the add-on or a VFS connection does not delete Drive files. Items
+previously moved to trash remain subject to Google Drive's retention and
+permanent-deletion rules.

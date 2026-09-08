@@ -180,8 +180,6 @@ function checkFiles() {
     "VENDOR.md",
     "docs/ADMIN.md",
     "docs/DEVELOPMENT.md",
-    "docs/RELEASE.md",
-    "docs/TESTING.md",
     "docs/assets/google-drive-logo.png",
     "src/assets/icon-16.png",
     "src/assets/icon-32.png",

@@ -15,8 +15,7 @@ const PACKAGE_FILES = [
   "VENDOR.md",
   "docs/ADMIN.md",
   "docs/DEVELOPMENT.md",
-  "docs/RELEASE.md",
-  "docs/TESTING.md"
+  "docs/assets/google-drive-logo.png"
 ];
 
 const crcTable = new Uint32Array(256);

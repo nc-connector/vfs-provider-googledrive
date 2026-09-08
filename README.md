@@ -116,8 +116,6 @@ the Thunderbird `webext-linter` repository.
 - [Privacy policy](PRIVACY.md)
 - [Administration guide](docs/ADMIN.md)
 - [Development guide](docs/DEVELOPMENT.md)
-- [Test guide](docs/TESTING.md)
-- [Release guide](docs/RELEASE.md)
 - [Translations](Translations.md)
 - [Vendored source record](VENDOR.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
