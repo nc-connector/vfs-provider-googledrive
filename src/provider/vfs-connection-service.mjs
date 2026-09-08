@@ -76,6 +76,49 @@ function sendRuntimeMessage(addonId, message) {
   return browser.runtime.sendMessage(addonId, message);
 }
 
+export function createToolkitConnectionReporter({
+  getProvider,
+  reportConnection = reportNewConnection
+}) {
+  if (typeof getProvider !== "function" ||
+      typeof reportConnection !== "function") {
+    throw new TypeError("connectionReporterDependencies");
+  }
+
+  return async function reportToolkitConnection(
+    addonId,
+    addonName,
+    storageId,
+    name,
+    capabilities,
+    setupToken
+  ) {
+    if (!setupToken) {
+      return reportConnection(
+        addonId,
+        addonName,
+        storageId,
+        name,
+        capabilities
+      );
+    }
+
+    // The setup completion listener lives in the background frame. A runtime
+    // message sent by that same frame is not delivered back to its own listener,
+    // so background-owned setup flows must complete through the provider object.
+    const provider = getProvider();
+    if (typeof provider?.completeSetup !== "function") {
+      throw new TypeError("vfsProvider");
+    }
+    return provider.completeSetup(
+      setupToken,
+      storageId,
+      name,
+      capabilities
+    );
+  };
+}
+
 export class VfsConnectionError extends Error {
   constructor(code) {
     super(code);

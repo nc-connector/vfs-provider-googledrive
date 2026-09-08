@@ -9,6 +9,7 @@ import test from "node:test";
 
 import { GOOGLE_DRIVE_CAPABILITIES } from "../src/provider/google-drive-vfs-provider.mjs";
 import {
+  createToolkitConnectionReporter,
   VFS_TOOLKIT_CONNECTIONS_KEY,
   VfsConnectionService
 } from "../src/provider/vfs-connection-service.mjs";
@@ -75,6 +76,73 @@ async function addAccount(accountRepository, id = "account-1", status = "connect
     status
   });
 }
+
+test("completes setup directly through the active Toolkit provider", async () => {
+  const calls = [];
+  const provider = {
+    completeSetup: async (...args) => {
+      calls.push(["completeSetup", ...args]);
+      return { addonId: "consumer@example.invalid", storageId: args[1] };
+    }
+  };
+  const reporter = createToolkitConnectionReporter({
+    getProvider: () => provider,
+    reportConnection: async (...args) => calls.push([
+      "reportConnection",
+      ...args
+    ])
+  });
+  const capabilities = { file: { read: true } };
+
+  assert.deepEqual(await reporter(
+    "consumer@example.invalid",
+    "Example consumer",
+    "storage-1",
+    "Work Drive",
+    capabilities,
+    "setup-token"
+  ), {
+    addonId: "consumer@example.invalid",
+    storageId: "storage-1"
+  });
+  assert.deepEqual(calls, [[
+    "completeSetup",
+    "setup-token",
+    "storage-1",
+    "Work Drive",
+    capabilities
+  ]]);
+});
+
+test("uses the Toolkit reporter when no setup request is pending", async () => {
+  const calls = [];
+  const reporter = createToolkitConnectionReporter({
+    getProvider: () => ({
+      completeSetup: async (...args) => calls.push(["completeSetup", ...args])
+    }),
+    reportConnection: async (...args) => calls.push([
+      "reportConnection",
+      ...args
+    ])
+  });
+  const capabilities = { file: { read: true } };
+
+  await reporter(
+    "consumer@example.invalid",
+    "Example consumer",
+    "storage-1",
+    "Work Drive",
+    capabilities
+  );
+  assert.deepEqual(calls, [[
+    "reportConnection",
+    "consumer@example.invalid",
+    "Example consumer",
+    "storage-1",
+    "Work Drive",
+    capabilities
+  ]]);
+});
 
 test("reconciles product bindings with Toolkit connection records", async () => {
   const { accountRepository, service } = await createFixture({

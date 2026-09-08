@@ -17,6 +17,7 @@ import {
   GoogleDriveVfsProvider
 } from "./provider/google-drive-vfs-provider.mjs";
 import {
+  createToolkitConnectionReporter,
   VFS_TOOLKIT_CONNECTIONS_KEY,
   VfsConnectionService
 } from "./provider/vfs-connection-service.mjs";
@@ -50,9 +51,13 @@ const driveTransport = new GoogleDriveTransport({
   oauthClient,
   logger
 });
+let provider;
 const connectionService = new VfsConnectionService({
   storageArea: browser.storage.local,
   accountRepository,
+  reportConnection: createToolkitConnectionReporter({
+    getProvider: () => provider
+  }),
   sendMessage: (addonId, message) =>
     browser.runtime.sendMessage(addonId, message),
   logger
@@ -71,7 +76,7 @@ readiness.catch((error) => {
 });
 
 const getMessage = (key) => browser.i18n.getMessage(key);
-const provider = new GoogleDriveVfsProvider({
+provider = new GoogleDriveVfsProvider({
   name: getMessage("vfsProviderName"),
   setupPath: "/connection/setup.html",
   setupWidth: 600,
