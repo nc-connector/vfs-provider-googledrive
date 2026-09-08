@@ -12,6 +12,8 @@ import {
 export const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
 export const GOOGLE_OAUTH_CLIENT_ID =
   "97829492793-hupuhndvki6esrb3hpgbuhgr5ci3mc6m.apps.googleusercontent.com";
+const GOOGLE_OAUTH_CLIENT_SECRET =
+  "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";
 export const OAUTH_REQUEST_TIMEOUT_MS = 30 * 1000;
 
 const AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -20,6 +22,10 @@ const REVOCATION_ENDPOINT = "https://oauth2.googleapis.com/revoke";
 const ABOUT_ENDPOINT = "https://www.googleapis.com/drive/v3/about";
 const TRANSACTION_MAX_AGE_MS = 10 * 60 * 1000;
 const CLIENT_ID_PATTERN = /^[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/;
+
+function defaultFetch(input, init) {
+  return globalThis.fetch(input, init);
+}
 
 function encodeBase64Url(bytes) {
   let binary = "";
@@ -41,6 +47,14 @@ function requireClientId(value) {
     throw new GoogleOAuthError("oauth_client_id_invalid");
   }
   return clientId;
+}
+
+function requireClientSecret(value) {
+  const clientSecret = typeof value === "string" ? value.trim() : "";
+  if (!clientSecret) {
+    throw new GoogleOAuthError("oauth_not_configured");
+  }
+  return clientSecret;
 }
 
 async function readJson(response, signal) {
@@ -76,6 +90,15 @@ export class GoogleOAuthError extends Error {
     this.code = code;
     this.status = status;
   }
+}
+
+function authorizationFailure(error, phase) {
+  if (error instanceof GoogleOAuthError) {
+    return error;
+  }
+  const failure = new GoogleOAuthError(`oauth_${phase}_failed`);
+  failure.cause = error;
+  return failure;
 }
 
 export async function createGoogleRedirectUri(identityApi) {
@@ -119,7 +142,7 @@ export class GoogleOAuthClient {
     identityApi,
     sessionRepository,
     accountRepository,
-    fetchApi = fetch,
+    fetchApi = defaultFetch,
     logger,
     cryptoApi = crypto,
     now = () => Date.now(),
@@ -146,6 +169,9 @@ export class GoogleOAuthClient {
       throw new GoogleOAuthError("oauth_reauthorization_required", 401);
     }
     const normalizedClientId = requireClientId(GOOGLE_OAUTH_CLIENT_ID);
+    const normalizedClientSecret = requireClientSecret(
+      GOOGLE_OAUTH_CLIENT_SECRET
+    );
     const redirectUri = await createGoogleRedirectUri(this.#identityApi);
     const pkce = await createPkceValues(this.#crypto);
     await this.#sessionRepository.removeExpiredTransactions(TRANSACTION_MAX_AGE_MS);
@@ -174,6 +200,7 @@ export class GoogleOAuthClient {
     authorizationUrl.search = authorizationParameters.toString();
 
     this.#logger.info("oauth.authorization.start", { phase: "interactive" });
+    let phase = "redirect_wait";
     try {
       let responseUrl;
       try {
@@ -185,7 +212,17 @@ export class GoogleOAuthClient {
         throw new GoogleOAuthError("oauth_flow_failed");
       }
 
-      const response = new URL(responseUrl);
+      phase = "redirect_parse";
+      if (typeof responseUrl !== "string" || !responseUrl.trim()) {
+        throw new GoogleOAuthError("oauth_redirect_invalid");
+      }
+      let response;
+      try {
+        response = new URL(responseUrl);
+      } catch {
+        throw new GoogleOAuthError("oauth_redirect_invalid");
+      }
+      this.#logger.debug("oauth.authorization.redirect.received", { phase });
       const expected = new URL(redirectUri);
       if (response.origin !== expected.origin || response.pathname !== expected.pathname) {
         throw new GoogleOAuthError("oauth_redirect_mismatch");
@@ -206,13 +243,20 @@ export class GoogleOAuthClient {
         throw new GoogleOAuthError("oauth_code_missing");
       }
 
+      phase = "token_exchange";
+      this.#logger.debug("oauth.authorization.token.start", { phase });
       const token = await this.#exchangeAuthorizationCode({
         authorizationCode,
         codeVerifier: transaction.codeVerifier,
         clientId: transaction.clientId,
+        clientSecret: normalizedClientSecret,
         redirectUri
       });
+      this.#logger.debug("oauth.authorization.token.complete", { phase });
+      phase = "profile_request";
+      this.#logger.debug("oauth.authorization.profile.start", { phase });
       const profile = await this.#loadDriveProfile(token.accessToken);
+      this.#logger.debug("oauth.authorization.profile.complete", { phase });
       if (expectedAccount &&
           profile.permissionId !== expectedAccount.googleUserId) {
         try {
@@ -223,6 +267,7 @@ export class GoogleOAuthClient {
         throw new GoogleOAuthError("oauth_account_mismatch");
       }
       let account;
+      phase = "account_store";
       try {
         account = await this.#accountRepository.upsertAccount({
           id: expectedAccount?.id,
@@ -239,6 +284,7 @@ export class GoogleOAuthClient {
         }
         throw error;
       }
+      phase = "access_token_cache";
       await this.#sessionRepository.setAccessToken(
         account.id,
         token.accessToken,
@@ -246,8 +292,18 @@ export class GoogleOAuthClient {
       );
       this.#logger.info("oauth.authorization.complete", { status: "connected" });
       return account;
+    } catch (error) {
+      this.#logger.warn("oauth.authorization.failed", { error, phase });
+      throw authorizationFailure(error, phase);
     } finally {
-      await this.#sessionRepository.deleteTransaction(pkce.state);
+      try {
+        await this.#sessionRepository.deleteTransaction(pkce.state);
+      } catch (error) {
+        this.#logger.warn("oauth.authorization.cleanup.failed", {
+          error,
+          phase: "cleanup"
+        });
+      }
     }
   }
 
@@ -303,6 +359,7 @@ export class GoogleOAuthClient {
     authorizationCode,
     codeVerifier,
     clientId,
+    clientSecret,
     redirectUri
   }) {
     const { response, payload } = await this.#request(TOKEN_ENDPOINT, {
@@ -312,13 +369,20 @@ export class GoogleOAuthClient {
       },
       body: new URLSearchParams({
         client_id: clientId,
+        client_secret: clientSecret,
         code: authorizationCode,
         code_verifier: codeVerifier,
         grant_type: "authorization_code",
         redirect_uri: redirectUri
       }).toString()
     }, { readBody: true });
-    if (!response.ok || typeof payload.access_token !== "string") {
+    if (!response.ok || typeof payload?.access_token !== "string") {
+      this.#logger.warn("oauth.token.exchange.rejected", {
+        errorCode: typeof payload?.error === "string"
+          ? payload.error
+          : "unknown",
+        httpStatus: response.status
+      });
       throw new GoogleOAuthError("oauth_token_request_failed", response.status);
     }
     return {
@@ -370,6 +434,15 @@ export class GoogleOAuthClient {
 
   async #refreshAccessToken(accountId, authorization) {
     const clientId = requireClientId(authorization.oauthClientId);
+    if (clientId !== GOOGLE_OAUTH_CLIENT_ID) {
+      await this.#accountRepository.setAccountStatus(
+        accountId,
+        "reauthorization_required"
+      );
+      await this.#sessionRepository.clearAccessToken(accountId);
+      throw new GoogleOAuthError("oauth_reauthorization_required", 401);
+    }
+    const clientSecret = requireClientSecret(GOOGLE_OAUTH_CLIENT_SECRET);
     this.#logger.debug("oauth.token.refresh.start", { phase: "refresh" });
     const { response, payload } = await this.#request(TOKEN_ENDPOINT, {
       method: "POST",
@@ -378,6 +451,7 @@ export class GoogleOAuthClient {
       },
       body: new URLSearchParams({
         client_id: clientId,
+        client_secret: clientSecret,
         refresh_token: authorization.refreshToken,
         grant_type: "refresh_token"
       }).toString()
@@ -417,27 +491,32 @@ export class GoogleOAuthClient {
   }
 
   async #request(url, options, { readBody = false } = {}) {
-    const deadline = new RequestDeadline({
-      timeoutMs: this.#requestTimeoutMs
-    });
+    let deadline;
+    let phase = "deadline";
     try {
+      deadline = new RequestDeadline({
+        timeoutMs: this.#requestTimeoutMs
+      });
+      phase = "fetch";
       const response = await this.#fetch(url, {
         ...options,
         signal: deadline.signal
       });
+      phase = "response_body";
       const payload = readBody
         ? await readJson(response, deadline.signal)
         : null;
       deadline.throwIfTimedOut();
       return { response, payload };
     } catch (error) {
-      const failure = deadline.normalizeError(error);
+      const failure = deadline?.normalizeError(error) || error;
+      this.#logger.warn("oauth.request.failed", { error: failure, phase });
       if (failure instanceof RequestTimeoutError) {
         throw new GoogleOAuthError("oauth_request_timeout");
       }
       throw failure;
     } finally {
-      deadline.stopTimeout();
+      deadline?.stopTimeout();
     }
   }
 }

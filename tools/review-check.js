@@ -109,6 +109,27 @@ function checkManifest() {
   ]), "Unexpected extension host permissions");
 }
 
+function checkOAuthConfiguration() {
+  const oauthSource = fs.readFileSync(
+    path.join(SOURCE_DIR, "google", "oauth-client.mjs"),
+    "utf8"
+  );
+  assert(
+    oauthSource.includes(
+      "97829492793-hupuhndvki6esrb3hpgbuhgr5ci3mc6m.apps.googleusercontent.com"
+    ),
+    "Unexpected packaged OAuth client ID"
+  );
+  assert(
+    /const GOOGLE_OAUTH_CLIENT_SECRET\s*=\s*"[^"\r\n]+";/u.test(oauthSource),
+    "The packaged OAuth client secret is missing"
+  );
+  assert(
+    oauthSource.includes("client_secret: clientSecret"),
+    "OAuth token requests must include the packaged client secret"
+  );
+}
+
 function checkLocales() {
   const localeRoot = path.join(SOURCE_DIR, "_locales");
   const locales = fs.readdirSync(localeRoot, { withFileTypes: true })
@@ -236,6 +257,7 @@ function checkFiles() {
 
 function run() {
   checkManifest();
+  checkOAuthConfiguration();
   checkLocales();
   checkVendor();
   checkAssets();

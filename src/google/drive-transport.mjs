@@ -25,6 +25,10 @@ const RETRY_MODES = new Set(["safe", "always", "never", "rate-limit"]);
 const SAFE_RETRY_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const EXTRA_SUCCESS_STATUSES = new Set([308]);
 
+function defaultFetch(input, init) {
+  return globalThis.fetch(input, init);
+}
+
 export function validateDriveUploadSessionUrl(value) {
   if (typeof value !== "string" || !value) {
     throw new TypeError("uploadSessionUrl");
@@ -227,7 +231,7 @@ export class GoogleDriveTransport {
 
   constructor({
     oauthClient,
-    fetchApi = fetch,
+    fetchApi = defaultFetch,
     logger,
     sleep = defaultSleep,
     now = () => Date.now(),

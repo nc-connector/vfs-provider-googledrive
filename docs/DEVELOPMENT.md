@@ -165,10 +165,13 @@ loopback redirect from the fixed add-on ID:
 http://127.0.0.1/mozoauth2/<extension-id-hash>
 ```
 
-The Google Cloud credential must be a Desktop app client. Public installed
-clients do not use a client secret. A 32-byte random verifier and independent
-state value are held in `storage.session` for the authorization transaction.
-The returned state and redirect are checked before the code is exchanged.
+The Google Cloud credential must be a Desktop app client. Google currently
+requires that client's ID and client secret in token-exchange and refresh
+requests. Both values are packaged with the installed add-on and therefore are
+public client credentials, not a confidentiality boundary. A 32-byte random
+verifier and independent state value are held in `storage.session` for the
+authorization transaction. The returned state and redirect are checked before
+the code is exchanged, and PKCE binds the returned code to that transaction.
 
 The provider requests `https://www.googleapis.com/auth/drive`. The narrower
 `drive.file` scope cannot represent an existing Drive tree because it only sees
@@ -177,10 +180,11 @@ and a published build needs the corresponding Google verification work.
 
 #### Live development OAuth setup
 
-All builds use the project's packaged Google Desktop OAuth client. Its public
-client ID is defined once in the OAuth module and is not configurable through
-the options page. The Cloud project display name may change, but the OAuth
-client ID and Gecko add-on ID remain stable product identities.
+All builds use the project's packaged Google Desktop OAuth client. Its client
+ID and client secret are defined once in the OAuth module and are not
+configurable through the options page. The Cloud project display name may
+change, but the OAuth client ID and Gecko add-on ID remain stable product
+identities.
 
 For local live tests:
 
@@ -190,8 +194,11 @@ For local live tests:
 4. Create the packaged OAuth client with application type **Desktop app**.
 5. Add every tester while the External application remains in Testing status.
 
-Do not add a client secret to source, settings, or an XPI. External-testing
-authorizations that request Drive access normally expire after seven days.
+Do not log the packaged client secret or copy it into account records. It is
+unavoidably inspectable in a distributed installed application and must never
+be treated as proof that a request came from an untampered add-on. External-
+testing authorizations that request Drive access normally expire after seven
+days.
 
 References:
 

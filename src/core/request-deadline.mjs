@@ -18,6 +18,14 @@ function abortReason(signal) {
   return new DOMException("request_aborted", "AbortError");
 }
 
+function defaultScheduleTimeout(callback, timeoutMs) {
+  return globalThis.setTimeout(callback, timeoutMs);
+}
+
+function defaultCancelTimeout(timerId) {
+  globalThis.clearTimeout(timerId);
+}
+
 export class RequestTimeoutError extends Error {
   constructor(timeoutMs) {
     super("request_timeout");
@@ -38,8 +46,8 @@ export class RequestDeadline {
   constructor({
     signal,
     timeoutMs,
-    scheduleTimeout = setTimeout,
-    cancelTimeout = clearTimeout
+    scheduleTimeout = defaultScheduleTimeout,
+    cancelTimeout = defaultCancelTimeout
   }) {
     if (signal !== undefined &&
         (typeof signal !== "object" || typeof signal.aborted !== "boolean")) {

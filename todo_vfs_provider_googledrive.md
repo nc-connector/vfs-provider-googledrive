@@ -5,8 +5,10 @@ kept in sync with the repository.
 
 ## Product decisions
 
-- [x] Register the project-owned Google OAuth Desktop client and wire its public
-  client ID into the add-on. No client secret is used.
+- [x] Register the project-owned Google OAuth Desktop client and wire its client
+  ID and required client secret into the add-on. Installed applications cannot
+  keep this credential pair confidential, so PKCE remains the authorization-code
+  protection and neither value is accepted from administrators or users.
 - [x] Use one project-owned OAuth client in releases. Administrators and users
   do not provide their own client ID.
 - [x] Use the packaged client in every build and remove the development

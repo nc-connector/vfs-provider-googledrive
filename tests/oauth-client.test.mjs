@@ -29,7 +29,15 @@ function jsonResponse(payload, status = 200) {
   });
 }
 
-function createHarness({ fetchApi, requestTimeoutMs } = {}) {
+function createHarness({
+  fetchApi,
+  requestTimeoutMs,
+  logger = {
+    debug() {},
+    info() {},
+    warn() {}
+  }
+} = {}) {
   const localArea = new FakeStorageArea();
   const sessionArea = new FakeStorageArea();
   const accountRepository = new ProviderStateRepository({
@@ -49,11 +57,6 @@ function createHarness({ fetchApi, requestTimeoutMs } = {}) {
       const state = authorization.searchParams.get("state");
       return `${redirectUri}?code=authorization-code&state=${state}`;
     }
-  };
-  const logger = {
-    debug() {},
-    info() {},
-    warn() {}
   };
   const client = new GoogleOAuthClient({
     identityApi,
@@ -97,6 +100,37 @@ test("uses the permanent product OAuth client", () => {
   );
 });
 
+test("calls the native fetch function through its global receiver", async () => {
+  const originalFetch = globalThis.fetch;
+  const receivers = [];
+  globalThis.fetch = function (url) {
+    receivers.push(this);
+    if (String(url).startsWith("https://oauth2.googleapis.com/token")) {
+      return Promise.resolve(jsonResponse({
+        access_token: "access-secret",
+        refresh_token: "refresh-secret",
+        expires_in: 3600
+      }));
+    }
+    return Promise.resolve(jsonResponse({
+      user: {
+        permissionId: "google-user-1",
+        displayName: "Ada Example",
+        emailAddress: "ada@example.invalid"
+      }
+    }));
+  };
+
+  try {
+    const harness = createHarness();
+    await harness.client.authorize();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(receivers, [globalThis, globalThis]);
+});
+
 test("builds the Google-compatible Mozilla loopback redirect", async () => {
   const redirectUri = await createGoogleRedirectUri({
     getRedirectURL: async () => "https://stablehash.extensions.allizom.org/callback"
@@ -113,7 +147,7 @@ test("creates PKCE values with the required URL-safe shape", async () => {
   assert.match(values.state, /^[A-Za-z0-9_-]{43}$/);
 });
 
-test("authorizes a Drive account without sending a client secret", async () => {
+test("authorizes a Drive account with the packaged client credentials and PKCE", async () => {
   const requests = [];
   const harness = createHarness({
     fetchApi: async (url, options = {}) => {
@@ -140,8 +174,9 @@ test("authorizes a Drive account without sending a client secret", async () => {
   assert.equal(account.emailAddress, "ada@example.invalid");
   const tokenBody = new URLSearchParams(requests[0].options.body);
   assert.equal(tokenBody.get("client_id"), CLIENT_ID);
-  assert.equal(tokenBody.get("client_secret"), null);
+  assert.equal(tokenBody.has("client_secret"), true);
   assert.equal(tokenBody.get("grant_type"), "authorization_code");
+  assert.equal(tokenBody.has("code_verifier"), true);
   assert.equal(
     await harness.sessionRepository.getAccessToken("account-1"),
     "access-secret"
@@ -207,6 +242,84 @@ test("keeps an identity API failure distinct from an authorization denial", asyn
   );
 });
 
+test("rejects an empty identity callback as an invalid redirect", async () => {
+  const harness = createHarness();
+  harness.identityApi.launchWebAuthFlow = async () => undefined;
+
+  await assert.rejects(
+    harness.client.authorize(),
+    (error) => error instanceof GoogleOAuthError &&
+      error.code === "oauth_redirect_invalid"
+  );
+  assert.deepEqual(
+    harness.sessionArea.snapshot()["google-drive-oauth-session"].transactions,
+    {}
+  );
+});
+
+test("reports the safe authorization phase for unexpected token errors", async () => {
+  const warnings = [];
+  const sourceError = new TypeError("network failure");
+  const harness = createHarness({
+    fetchApi: async () => {
+      throw sourceError;
+    },
+    logger: {
+      debug() {},
+      info() {},
+      warn(event, details) {
+        warnings.push({ event, details });
+      }
+    }
+  });
+
+  await assert.rejects(
+    harness.client.authorize(),
+    (error) => error instanceof GoogleOAuthError &&
+      error.code === "oauth_token_exchange_failed" &&
+      error.cause === sourceError
+  );
+  const requestWarning = warnings.find(({ event }) =>
+    event === "oauth.request.failed");
+  assert.equal(requestWarning.details.phase, "fetch");
+  assert.equal(requestWarning.details.error, sourceError);
+  const authorizationWarning = warnings.find(({ event }) =>
+    event === "oauth.authorization.failed");
+  assert.equal(authorizationWarning.details.phase, "token_exchange");
+  assert.equal(authorizationWarning.details.error, sourceError);
+});
+
+test("preserves a rejected Google token response without logging its description", async () => {
+  const warnings = [];
+  const harness = createHarness({
+    fetchApi: async () => jsonResponse({
+      error: "invalid_request",
+      error_description: "credential details must remain private"
+    }, 400),
+    logger: {
+      debug() {},
+      info() {},
+      warn(event, details) {
+        warnings.push({ event, details });
+      }
+    }
+  });
+
+  await assert.rejects(
+    harness.client.authorize(),
+    (error) => error instanceof GoogleOAuthError &&
+      error.code === "oauth_token_request_failed" &&
+      error.status === 400
+  );
+  const rejection = warnings.find(({ event }) =>
+    event === "oauth.token.exchange.rejected");
+  assert.deepEqual(rejection.details, {
+    errorCode: "invalid_request",
+    httpStatus: 400
+  });
+  assert.equal(JSON.stringify(warnings).includes("credential details"), false);
+});
+
 test("reauthorizes the selected account with the packaged OAuth client", async () => {
   const requests = [];
   const harness = createHarness({
@@ -265,9 +378,11 @@ test("reauthorizes the selected account with the packaged OAuth client", async (
 
 test("refreshes one token for concurrent callers", async () => {
   let refreshRequests = 0;
+  let requestBody;
   const harness = createHarness({
-    fetchApi: async () => {
+    fetchApi: async (_url, options) => {
       refreshRequests++;
+      requestBody = new URLSearchParams(options.body);
       return jsonResponse({ access_token: "new-access", expires_in: 3600 });
     }
   });
@@ -284,13 +399,15 @@ test("refreshes one token for concurrent callers", async () => {
 
   assert.deepEqual(tokens, ["new-access", "new-access"]);
   assert.equal(refreshRequests, 1);
+  assert.equal(requestBody.get("client_id"), CLIENT_ID);
+  assert.equal(requestBody.has("client_secret"), true);
 });
 
-test("refreshes an account with the OAuth client that created its grant", async () => {
-  let requestBody;
+test("requires reauthorization for a grant from another OAuth client", async () => {
+  let refreshRequests = 0;
   const harness = createHarness({
-    fetchApi: async (_url, options) => {
-      requestBody = new URLSearchParams(options.body);
+    fetchApi: async () => {
+      refreshRequests++;
       return jsonResponse({ access_token: "new-access", expires_in: 3600 });
     }
   });
@@ -300,9 +417,18 @@ test("refreshes an account with the OAuth client that created its grant", async 
     refreshToken: "refresh-secret"
   });
 
-  await harness.client.getAccessToken("account-1");
+  await assert.rejects(
+    harness.client.getAccessToken("account-1"),
+    (error) => error instanceof GoogleOAuthError &&
+      error.code === "oauth_reauthorization_required" &&
+      error.status === 401
+  );
 
-  assert.equal(requestBody.get("client_id"), LEGACY_CLIENT_ID);
+  assert.equal(refreshRequests, 0);
+  assert.equal(
+    (await harness.accountRepository.getAccount("account-1")).status,
+    "reauthorization_required"
+  );
 });
 
 test("marks an account for reauthorization after invalid_grant", async () => {

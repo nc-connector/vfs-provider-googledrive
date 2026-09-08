@@ -65,6 +65,32 @@ test("keeps caller cancellation active after removing the deadline", () => {
   assert.doesNotThrow(() => deadline.throwIfTimedOut());
 });
 
+test("calls native timer functions through their global receiver", () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const receivers = [];
+  globalThis.setTimeout = function () {
+    receivers.push(["schedule", this]);
+    return "timer-1";
+  };
+  globalThis.clearTimeout = function (timerId) {
+    receivers.push(["cancel", this, timerId]);
+  };
+
+  try {
+    const deadline = new RequestDeadline({ timeoutMs: 30_000 });
+    deadline.stopTimeout();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+  }
+
+  assert.deepEqual(receivers, [
+    ["schedule", globalThis],
+    ["cancel", globalThis, "timer-1"]
+  ]);
+});
+
 test("rejects invalid deadline inputs", () => {
   assert.throws(() => new RequestDeadline({ timeoutMs: 0 }), /timeoutMs/);
   assert.throws(() => new RequestDeadline({
