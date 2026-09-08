@@ -3,8 +3,9 @@
     "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
-    "message": "VFS Toolkit を介して、互換性のある Thunderbird アドオンに Google Drive ストレージを追加します。"
+    "message": "VFS Toolkit 用の Google Drive ストレージプロバイダー。"
   },
+  "vfsProviderName": { "message": "Google Drive" },
   "optionsTitle": {
     "message": "VFS-Provider: Google Drive"
   },

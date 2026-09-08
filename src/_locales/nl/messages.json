@@ -3,8 +3,9 @@
     "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
-    "message": "Voegt via VFS Toolkit opslag in Google Drive toe aan compatibele Thunderbird-add-ons."
+    "message": "Google Drive-opslagprovider voor VFS Toolkit."
   },
+  "vfsProviderName": { "message": "Google Drive" },
   "optionsTitle": {
     "message": "VFS-Provider: Google Drive"
   },

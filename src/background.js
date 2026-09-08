@@ -72,7 +72,7 @@ readiness.catch((error) => {
 
 const getMessage = (key) => browser.i18n.getMessage(key);
 const provider = new GoogleDriveVfsProvider({
-  name: getMessage("extensionName"),
+  name: getMessage("vfsProviderName"),
   setupPath: "/connection/setup.html",
   setupWidth: 600,
   setupHeight: 560,

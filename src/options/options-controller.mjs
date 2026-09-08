@@ -85,7 +85,7 @@ export function connectionViewModels(connections, accounts, getMessage) {
         ? `${addonName} (${connection.addonId})`
         : addonName,
       storageId: connection.storageId,
-      name: connection.name || getMessage("extensionName"),
+      name: connection.name || getMessage("vfsProviderName"),
       accountLabel: secondaryAccountLabel
         ? `${primaryAccountLabel} — ${secondaryAccountLabel}`
         : primaryAccountLabel

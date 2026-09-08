@@ -123,6 +123,17 @@ test("builds connection rows from public account and Toolkit metadata", () => {
   assert.equal(JSON.stringify(rows).includes("must-not-pass"), false);
 });
 
+test("uses the short provider name when connection metadata has no name", () => {
+  const [row] = connectionViewModels([{
+    addonId: "consumer@example.invalid",
+    storageId: "storage-1",
+    name: "",
+    accountId: "account-1"
+  }], [], (key) => `translated:${key}`);
+
+  assert.equal(row.name, "translated:vfsProviderName");
+});
+
 test("refreshes options only for relevant local storage changes", () => {
   assert.equal(shouldRefreshForStorageChange({
     "vfs-toolkit-connections": { oldValue: [], newValue: [] }

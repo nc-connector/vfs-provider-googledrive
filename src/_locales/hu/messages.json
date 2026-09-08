@@ -3,8 +3,9 @@
     "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
-    "message": "Google Drive-tárhelyet ad a kompatibilis Thunderbird-kiegészítőkhöz a VFS Toolkit segítségével."
+    "message": "Google Drive-tárhelyszolgáltató a VFS Toolkithez."
   },
+  "vfsProviderName": { "message": "Google Drive" },
   "optionsTitle": {
     "message": "VFS-Provider: Google Drive"
   },

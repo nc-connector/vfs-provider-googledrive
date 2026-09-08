@@ -3,8 +3,9 @@
     "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
-    "message": "透過 VFS Toolkit 為相容的 Thunderbird 附加元件加入 Google Drive 儲存空間。"
+    "message": "適用於 VFS Toolkit 的 Google Drive 儲存空間提供者。"
   },
+  "vfsProviderName": { "message": "Google Drive" },
   "optionsTitle": {
     "message": "VFS-Provider: Google Drive"
   },

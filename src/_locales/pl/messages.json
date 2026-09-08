@@ -3,8 +3,9 @@
     "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
-    "message": "Dodaje przestrzeń dyskową Google Drive do zgodnych dodatków Thunderbirda za pośrednictwem VFS Toolkit."
+    "message": "Dostawca pamięci masowej Google Drive dla VFS Toolkit."
   },
+  "vfsProviderName": { "message": "Google Drive" },
   "optionsTitle": {
     "message": "VFS-Provider: Google Drive"
   },

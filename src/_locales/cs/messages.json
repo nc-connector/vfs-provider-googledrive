@@ -3,8 +3,9 @@
     "message": "VFS-Provider: Google Drive"
   },
   "extensionDescription": {
-    "message": "Přidává úložiště Google Drive do kompatibilních doplňků Thunderbirdu prostřednictvím VFS Toolkit."
+    "message": "Poskytovatel úložiště Google Drive pro VFS Toolkit."
   },
+  "vfsProviderName": { "message": "Google Drive" },
   "optionsTitle": {
     "message": "VFS-Provider: Google Drive"
   },
