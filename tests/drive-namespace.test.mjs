@@ -2644,6 +2644,23 @@ test("moves files and folders to the Drive trash", async () => {
   assert.deepEqual(progress, [0, 100, 0, 100]);
 });
 
+test("silently ignores missing file and folder deletes", async () => {
+  let updates = 0;
+  const { namespace } = createNamespace({
+    async listFiles() {
+      return { files: [], incompleteSearch: false };
+    },
+    async updateFileMetadata() {
+      updates++;
+    }
+  });
+
+  await namespace.deleteFile("/missing.txt");
+  await namespace.deleteFolder("/missing-folder");
+
+  assert.equal(updates, 0);
+});
+
 test("trashes the selected shortcut instead of its target", async () => {
   const updates = [];
   let targetRequests = 0;

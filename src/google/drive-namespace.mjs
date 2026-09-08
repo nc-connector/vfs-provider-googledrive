@@ -534,7 +534,16 @@ export class GoogleDriveNamespace {
     if (typeof onProgress !== "function") {
       throw new TypeError("onProgress");
     }
-    const resolved = await this.#resolve(path, signal);
+    let resolved;
+    try {
+      resolved = await this.#resolve(path, signal);
+    } catch (error) {
+      if (error instanceof GoogleDriveNamespaceError &&
+          error.code === "drive_path_not_found") {
+        return;
+      }
+      throw error;
+    }
     if (resolved.type !== "item" ||
         resolved.presented.kind !== expectedKind) {
       const code = expectedKind === "file"
