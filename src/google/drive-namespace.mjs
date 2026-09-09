@@ -578,7 +578,7 @@ export class GoogleDriveNamespace {
       throw new TypeError("onPartialChanges");
     }
     const oldSegments = splitVfsPath(oldPath);
-    if (oldSegments.length < 2) {
+    if (oldSegments.length < 1) {
       throw new GoogleDriveNamespaceError("drive_path_not_found");
     }
     const source = await this.#resolve(oldPath, signal);
@@ -679,7 +679,7 @@ export class GoogleDriveNamespace {
       throw new TypeError("onPartialChanges");
     }
     const oldSegments = splitVfsPath(oldPath);
-    if (oldSegments.length < 2) {
+    if (oldSegments.length < 1) {
       throw new GoogleDriveNamespaceError("drive_path_not_found");
     }
     const source = await this.#resolve(oldPath, signal);

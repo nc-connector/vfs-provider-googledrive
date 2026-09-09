@@ -1272,6 +1272,71 @@ test("moves and renames a folder without walking its descendants", async () => {
   assert.equal(updates[0].options.removeParents, "root");
 });
 
+test("moves files and folders from the My Drive VFS root", async () => {
+  const updates = [];
+  const sourceFile = file({
+    id: "source-file",
+    name: "Source.txt",
+    parents: ["root"],
+    capabilities: {
+      canDownload: true,
+      canMoveItemWithinDrive: true
+    }
+  });
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source folder",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    parents: ["root"],
+    capabilities: {
+      canListChildren: true,
+      canMoveItemWithinDrive: true
+    }
+  });
+  const targetFolder = file({
+    id: "target-folder",
+    name: "Target",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      return options.q.includes("'root'")
+        ? {
+            files: [sourceFile, sourceFolder, targetFolder],
+            incompleteSearch: false
+          }
+        : { files: [], incompleteSearch: false };
+    },
+    async updateFileMetadata(fileId, metadata, options) {
+      updates.push({ fileId, metadata, options });
+    }
+  });
+
+  await namespace.moveFile("/Source.txt", "/Target/Source.txt");
+  await namespace.moveFolder("/Source folder", "/Target/Source folder");
+
+  assert.deepEqual(updates.map(({ fileId, metadata, options }) => ({
+    fileId,
+    metadata,
+    addParents: options.addParents,
+    removeParents: options.removeParents
+  })), [
+    {
+      fileId: "source-file",
+      metadata: {},
+      addParents: "target-folder",
+      removeParents: "root"
+    },
+    {
+      fileId: "source-folder",
+      metadata: {},
+      addParents: "target-folder",
+      removeParents: "root"
+    }
+  ]);
+});
+
 test("moves files into Shared Drives and rejects unsupported folder moves", async () => {
   const updates = [];
   const sourceFile = file({
@@ -1943,6 +2008,93 @@ test("copies a file in Drive without downloading its content", async () => {
     }
   }]);
   assert.deepEqual(progress, [0, 100]);
+});
+
+test("copies files and folders from the My Drive VFS root", async () => {
+  const operations = [];
+  const sourceFile = file({
+    id: "source-file",
+    name: "Source.txt",
+    capabilities: { canDownload: true, canCopy: true }
+  });
+  const sourceFolder = file({
+    id: "source-folder",
+    name: "Source folder",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true }
+  });
+  const targetFolder = file({
+    id: "target-folder",
+    name: "Target",
+    mimeType: GOOGLE_FOLDER_MIME_TYPE,
+    capabilities: { canListChildren: true, canAddChildren: true }
+  });
+  const { namespace } = createNamespace({
+    async listFiles(options) {
+      return options.q.includes("'root'")
+        ? {
+            files: [sourceFile, sourceFolder, targetFolder],
+            incompleteSearch: false
+          }
+        : { files: [], incompleteSearch: false };
+    },
+    async createFileMetadata(metadata, options) {
+      operations.push({ method: "create", metadata, options });
+      return file({
+        id: "copied-folder",
+        name: metadata.name,
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        parents: metadata.parents,
+        capabilities: { canListChildren: true, canAddChildren: true }
+      });
+    },
+    async copyFile(fileId, metadata, options) {
+      operations.push({ method: "copy", fileId, metadata, options });
+      return file({
+        id: "copied-file",
+        name: metadata.name,
+        parents: metadata.parents
+      });
+    }
+  });
+
+  await namespace.copyFile("/Source.txt", "/Target/Source.txt");
+  await namespace.copyFolder("/Source folder", "/Target/Source folder");
+
+  assert.deepEqual(operations.map(({ method, fileId, metadata }) => ({
+    method,
+    fileId,
+    metadata
+  })), [
+    {
+      method: "copy",
+      fileId: "source-file",
+      metadata: { name: "Source.txt", parents: ["target-folder"] }
+    },
+    {
+      method: "create",
+      fileId: undefined,
+      metadata: {
+        name: "Source folder",
+        mimeType: GOOGLE_FOLDER_MIME_TYPE,
+        parents: ["target-folder"]
+      }
+    }
+  ]);
+});
+
+test("rejects the VFS root as a move or copy source", async () => {
+  const { calls, namespace } = createNamespace();
+
+  await assert.rejects(
+    namespace.moveFile("/", "/Moved.txt"),
+    (error) => error.code === "drive_path_not_found"
+  );
+  await assert.rejects(
+    namespace.copyFile("/", "/Copied.txt"),
+    (error) => error.code === "drive_path_not_found"
+  );
+  assert.equal(calls.length, 0);
 });
 
 test("requires overwrite and replaces a copied file target in order", async () => {
