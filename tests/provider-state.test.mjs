@@ -326,3 +326,69 @@ test("serializes overlapping account writes", async () => {
     ["google-user-1", "google-user-2"]
   );
 });
+
+test("derives OAuth-client compatibility without mutating accounts or bindings", async () => {
+  let effectiveClientId = CLIENT_ID;
+  const storageArea = new FakeStorageArea();
+  const repository = new ProviderStateRepository({
+    storageArea,
+    randomUUID: () => "account-1",
+    resolveAccountStatus: (account) =>
+      account.status === "connected" &&
+      account.oauthClientId === effectiveClientId
+        ? "connected"
+        : "reauthorization_required"
+  });
+  await repository.initialize();
+  await repository.upsertAccount({
+    googleUserId: "google-user-1",
+    oauthClientId: CLIENT_ID,
+    refreshToken: "old-refresh"
+  });
+  await repository.bindConnection({
+    storageId: "storage-1",
+    accountId: "account-1"
+  });
+
+  effectiveClientId = "custom.apps.googleusercontent.com";
+  assert.equal(
+    (await repository.getAccount("account-1")).status,
+    "reauthorization_required"
+  );
+  assert.equal(
+    (await repository.getAccountAuthorization("account-1")).status,
+    "reauthorization_required"
+  );
+  assert.equal(
+    storageArea.snapshot()[PROVIDER_STATE_KEY].accounts[0].status,
+    "connected"
+  );
+  assert.equal(
+    (await repository.getConnectionBinding("storage-1")).accountId,
+    "account-1"
+  );
+
+  effectiveClientId = CLIENT_ID;
+  assert.equal((await repository.getAccount("account-1")).status, "connected");
+});
+
+test("never reuses a refresh token after an account changes OAuth client", async () => {
+  const { repository, storageArea } = createRepository();
+  await repository.initialize();
+  const account = await repository.upsertAccount({
+    googleUserId: "google-user-1",
+    oauthClientId: CLIENT_ID,
+    refreshToken: "old-refresh"
+  });
+
+  await assert.rejects(repository.upsertAccount({
+    id: account.id,
+    googleUserId: account.googleUserId,
+    oauthClientId: "custom.apps.googleusercontent.com",
+    refreshToken: ""
+  }), /refreshToken is required/u);
+
+  const stored = storageArea.snapshot()[PROVIDER_STATE_KEY].accounts[0];
+  assert.equal(stored.oauthClientId, CLIENT_ID);
+  assert.equal(stored.refreshToken, "old-refresh");
+});

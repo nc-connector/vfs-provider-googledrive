@@ -73,11 +73,12 @@ function normalizeCursorInput(cursors) {
   });
 }
 
-function publicAccount(account) {
+function publicAccount(account, resolveAccountStatus) {
   const {
     refreshToken: _refreshToken,
     ...metadata
   } = account;
+  metadata.status = resolveAccountStatus(metadata);
   return clone(metadata);
 }
 
@@ -109,19 +110,25 @@ export class ProviderStateRepository {
   #storageArea;
   #now;
   #randomUUID;
+  #resolveAccountStatus;
   #writeQueue = Promise.resolve();
 
   constructor({
     storageArea,
     now = () => Date.now(),
-    randomUUID = () => crypto.randomUUID()
+    randomUUID = () => crypto.randomUUID(),
+    resolveAccountStatus = (account) => account.status
   }) {
     if (!storageArea?.get || !storageArea?.set) {
       throw new TypeError("A WebExtension storage area is required");
     }
+    if (typeof resolveAccountStatus !== "function") {
+      throw new TypeError("resolveAccountStatus must be a function");
+    }
     this.#storageArea = storageArea;
     this.#now = now;
     this.#randomUUID = randomUUID;
+    this.#resolveAccountStatus = resolveAccountStatus;
   }
 
   async initialize() {
@@ -130,14 +137,17 @@ export class ProviderStateRepository {
 
   async listAccounts() {
     const state = await this.#read();
-    return state.accounts.map(publicAccount);
+    return state.accounts.map((account) =>
+      publicAccount(account, this.#resolveAccountStatus));
   }
 
   async getAccount(accountId) {
     const normalizedId = requireNonEmptyString(accountId, "accountId");
     const state = await this.#read();
     const account = state.accounts.find((entry) => entry.id === normalizedId);
-    return account ? publicAccount(account) : null;
+    return account
+      ? publicAccount(account, this.#resolveAccountStatus)
+      : null;
   }
 
   async getAccountAuthorization(accountId) {
@@ -147,11 +157,12 @@ export class ProviderStateRepository {
     if (!account) {
       return null;
     }
+    const status = this.#resolveAccountStatus(account);
     return {
       accountId: account.id,
       oauthClientId: account.oauthClientId,
       refreshToken: account.refreshToken,
-      status: account.status
+      status
     };
   }
 
@@ -181,7 +192,10 @@ export class ProviderStateRepository {
       if (!normalizedOauthClientId) {
         throw new TypeError("oauthClientId is required for a new account");
       }
-      const normalizedRefreshToken = normalizeOptionalString(refreshToken) || existing?.refreshToken;
+      const normalizedRefreshToken = normalizeOptionalString(refreshToken) ||
+        (existing?.oauthClientId === normalizedOauthClientId
+          ? existing.refreshToken
+          : "");
       if (!normalizedRefreshToken) {
         throw new TypeError("refreshToken is required for a new account");
       }
@@ -204,7 +218,7 @@ export class ProviderStateRepository {
       } else {
         state.accounts.push(account);
       }
-      return publicAccount(account);
+      return publicAccount(account, this.#resolveAccountStatus);
     });
   }
 
@@ -220,7 +234,7 @@ export class ProviderStateRepository {
       }
       account.status = status;
       account.updatedAt = this.#now();
-      return publicAccount(account);
+      return publicAccount(account, this.#resolveAccountStatus);
     });
   }
 
@@ -240,7 +254,7 @@ export class ProviderStateRepository {
       state.changeCursors = state.changeCursors
         .filter((cursor) => cursor.accountId !== normalizedId);
       return {
-        account: publicAccount(account),
+        account: publicAccount(account, this.#resolveAccountStatus),
         removedStorageIds
       };
     });

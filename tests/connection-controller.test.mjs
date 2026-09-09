@@ -266,6 +266,10 @@ test("keeps the popup open and shows connection failures", async () => {
     "vfsErrorNetworkDescription"
   );
   assert.equal(
+    connectionErrorMessageKey("oauth_managed_policy_invalid"),
+    "optionsErrorOAuthPolicyInvalid"
+  );
+  assert.equal(
     connectionErrorMessageKey("unknown"),
     "vfsConnectionErrorUnexpected"
   );

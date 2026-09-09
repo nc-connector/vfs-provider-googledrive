@@ -613,6 +613,13 @@ test("maps user-actionable Drive failures to localized provider details", () => 
       "vfsErrorAuthenticationTitle"
     ],
     [
+      Object.assign(new Error("managed policy invalid"), {
+        code: "oauth_managed_policy_invalid"
+      }),
+      "google-drive-authentication",
+      "vfsErrorAuthenticationTitle"
+    ],
+    [
       new GoogleDriveRequestError("drive_network_error"),
       "google-drive-network",
       "vfsErrorNetworkTitle"

@@ -1,7 +1,8 @@
 # Development Guide — VFS Provider for Google Drive
 
 > **Development status:** Version 0.1.0 includes the MV3 foundation, Google
-> OAuth account services, localized account and connection settings, and a
+> OAuth account and configuration services, localized account and connection
+> settings, and a
 > working VFS provider for browsing, reading, creating and replacing files,
 > creating folders, moving, copying, and merging items, and moving items to the
 > Google Drive trash. Release validation is still in progress.
@@ -12,11 +13,12 @@ The project will provide Google Drive storage to compatible Thunderbird add-ons
 through Thunderbird's VFS Toolkit. It is a standalone provider with its own
 account handling and Google Drive implementation.
 
-The design separates three concerns:
+The design separates four concerns:
 
-1. Google accounts and credentials owned by this add-on;
-2. VFS connections granted to individual consumer add-ons; and
-3. request-scoped file and folder operations performed for a granted
+1. the effective built-in, local, or managed Google OAuth client configuration;
+2. Google accounts and refresh grants owned by this add-on;
+3. VFS connections granted to individual consumer add-ons; and
+4. request-scoped file and folder operations performed for a granted
    connection.
 
 The provider publishes only capabilities backed by a complete account,
@@ -48,7 +50,7 @@ Drive, and this project does not include its WebDAV protocol code.
 |---|---|
 | `src/manifest.json` | Thunderbird MV3 manifest and product metadata |
 | `src/background.js` | module background entry point |
-| `src/state/` | versioned account, connection-binding, change-cursor, and preference storage |
+| `src/state/` | versioned OAuth configuration, account, connection-binding, change-cursor, and preference storage |
 | `src/core/` | request cancellation, network deadlines, and redacted provider diagnostics |
 | `src/google/` | Google OAuth, session-token, and Drive API services |
 | `src/provider/` | VFS adapter and account-bound connection lifecycle |
@@ -93,11 +95,12 @@ maintenance release of the 140 ESR line and the current ESR at candidate time.
 
 The compatibility floor was checked against the Mozilla and Thunderbird API
 documentation. Manifest V3 event pages are supported from Thunderbird 128,
-`storage.session` from Thunderbird 115, and the runtime, window, identity, i18n,
-and alarm calls used here predate Thunderbird 140. `AbortSignal.any()`, which
-combines VFS cancellation with request deadlines, is available from Gecko 124.
-The project does not claim support for Thunderbird 128 because its release and
-manual test baseline starts at 140.
+`storage.session` from Thunderbird 115, `storage.managed` from Thunderbird 57,
+and the runtime, window, identity, i18n, and alarm calls used here predate
+Thunderbird 140. `AbortSignal.any()`, which combines VFS cancellation with
+request deadlines, is available from Gecko 124. The project does not claim
+support for Thunderbird 128 because its release and manual test baseline starts
+at 140.
 
 Version references: Thunderbird's [Manifest V3 migration guide](https://webextension-api.thunderbird.net/en/mv3/guides/manifestV3.html),
 [storage](https://webextension-api.thunderbird.net/en/esr-mv3/storage.html),
@@ -108,9 +111,13 @@ Version references: Thunderbird's [Manifest V3 migration guide](https://webexten
 [i18n](https://webextension-api.thunderbird.net/en/esr-mv3/i18n.html) API pages,
 plus Mozilla's [`AbortSignal.any()` reference](https://developer.mozilla.org/docs/Web/API/AbortSignal/any_static).
 
-The manifest requests `storage` for Toolkit, account, preference, and session
-state, `identity` for the interactive OAuth window, and `alarms` for periodic
-Drive change checks.
+The manifest requests `storage` for Toolkit, account, preference, OAuth
+configuration, session, and administrator-managed state, `identity` for the
+interactive OAuth window, and `alarms` for periodic Drive change checks.
+Thunderbird does not enforce an extension-provided managed-storage schema and
+does not support change events for the managed area, so the project does not add
+a `managed_schema` manifest entry. Product code validates managed values and
+requires a full Thunderbird restart to apply policy changes.
 Host access is limited to
 `oauth2.googleapis.com` for token exchange/revocation and `www.googleapis.com`
 for Drive API calls. The authorization page at `accounts.google.com` is opened
@@ -123,9 +130,9 @@ evaluation:
 
 | API | Use | Permission |
 |---|---|---|
-| `browser.runtime.onMessage.addListener` | internal account and preference requests | none |
+| `browser.runtime.onMessage.addListener` | internal account, OAuth configuration, and preference requests | none |
 | `browser.runtime.onStartup.addListener` | resumes the MV3 startup boundary | none |
-| `browser.storage.onChanged.addListener` | applies debug changes and reconciles removed VFS connections | `storage` |
+| `browser.storage.onChanged.addListener` | applies local debug changes and reconciles removed VFS connections; it is not used for managed OAuth policy | `storage` |
 | `browser.alarms.onAlarm.addListener` | polls Google Drive change logs every five minutes | `alarms` |
 | `browser.runtime.onMessageExternal.addListener` | VFS provider discovery | none |
 | `browser.runtime.onConnectExternal.addListener` | consumer-bound VFS requests | none |
@@ -136,13 +143,14 @@ messages through `browser.i18n.getMessage`. Its `.js` entry point delegates
 message and view state to a DOM-independent `.mjs` controller. The manifest's
 `default_locale` is `de`.
 
-The background constructs the account, preference, OAuth-session, OAuth-client,
-connection, Drive transport, and logger services before it accepts work. The
-runtime message listener is not declared `async`: it returns a promise for known
-internal messages and `undefined` for all other messages. The background
-constructs `GoogleDriveVfsProvider` and calls its synchronous `init()` during
-module evaluation. Provider operations wait for asynchronous repository
-initialization through the shared readiness promise.
+The background constructs the OAuth-configuration, account, preference,
+OAuth-session, OAuth-client, connection, Drive transport, and logger services
+before it accepts work. The runtime message listener is not declared `async`:
+it returns a promise for known internal messages and `undefined` for all other
+messages. The background constructs `GoogleDriveVfsProvider` and calls its
+synchronous `init()` during module evaluation. Provider operations wait for
+asynchronous repository initialization, including resolution of managed OAuth
+policy, through the shared readiness promise.
 
 `ChangePollScheduler` registers its alarm listener during module evaluation.
 It keeps a matching periodic alarm instead of replacing it on every event-page
@@ -152,8 +160,10 @@ after repository initialization. VFS connection changes request another poll
 after the account bindings have been reconciled.
 
 The provider module uses `browser.storage.local` for consumer connection
-records. Product account records and preferences use separate keys in the same
-storage area; access tokens and active PKCE data use `browser.storage.session`.
+records. Product OAuth configuration, account records, and preferences use
+separate keys in the same storage area; access tokens and active PKCE data use
+`browser.storage.session`. Administrator OAuth values are read from
+`browser.storage.managed` and are never copied into local state.
 
 ### OAuth account flow
 
@@ -165,29 +175,102 @@ loopback redirect from the fixed add-on ID:
 http://127.0.0.1/mozoauth2/<extension-id-hash>
 ```
 
-The Google Cloud credential must be a Desktop app client. The credential issued
-for this provider requires its client ID and assigned client secret in token-
-exchange and refresh requests. Both values are packaged with the installed
-add-on and therefore are public client credentials, not a confidentiality
-boundary. A 32-byte random verifier and independent state value are held in
-`storage.session` for the authorization transaction. The returned state and
-redirect are checked before the code is exchanged, and PKCE binds the returned
-code to that transaction.
+Every supported Google Cloud credential is a Desktop app client. Its client ID
+and assigned client secret are required in token-exchange and refresh requests.
+The effective pair can come from the built-in package, local extension storage,
+or Thunderbird managed storage. Desktop application credentials are public
+client configuration rather than a confidentiality boundary. A 32-byte random
+verifier and independent state value are held in `storage.session` for the
+authorization transaction. The returned state and redirect are checked before
+the code is exchanged, and PKCE binds the returned code to that transaction.
 
 The provider requests `https://www.googleapis.com/auth/drive`. The narrower
 `drive.file` scope cannot represent an existing Drive tree because it only sees
 files created by or explicitly opened for the app. The full scope is restricted
 and a published build needs the corresponding Google verification work.
 
-#### Live development OAuth setup
+#### OAuth configuration resolution
 
-Release and live-test XPI builds use the project's Google Desktop OAuth client.
-Tracked source contains only unique build markers. `tools/build.js` reads the
-unchanged Desktop credential JSON from an external path, replaces those markers
-in the in-memory package entry, and never copies the JSON into the project or
-XPI. The client is not configurable through the options page. The Cloud project
-display name may change, but the OAuth client ID and Gecko add-on ID remain
-stable product identities.
+`OAuthConfigurationRepository` in `src/state/oauth-configuration.mjs` owns the
+configuration boundary. Its local key is `google-drive-oauth-configuration`.
+Version 1 has this persisted shape:
+
+```json
+{
+  "version": 1,
+  "mode": "builtin",
+  "customClientId": "",
+  "customClientSecret": ""
+}
+```
+
+`mode` is `builtin` or `custom`. Without managed policy, a missing record starts
+in `builtin` mode. A local custom mode requires a non-empty Google client ID
+ending in `.apps.googleusercontent.com` and a non-empty client secret. Updates
+are validated before they replace the record. An empty secret retains the saved
+secret only when the submitted client ID is unchanged; a new or changed ID must
+include its matching secret. Switching to `builtin` may retain the dormant
+custom pair in the record.
+
+The internal runtime boundary exposes:
+
+- `googleDrive:oauth:configuration:get`; and
+- `googleDrive:oauth:configuration:update`.
+
+The get response is the redacted public view `{ mode, source, locked, clientId,
+hasClientSecret, customClientId, hasCustomClientSecret }`, where `source` is
+`local` or `managed`. The custom fields let an unmanaged page preserve and
+describe a dormant pair without returning its secret. The update handler accepts
+only the documented mode, custom client ID, and optional replacement secret; it
+does not accept persisted version, source, lock, or presence fields from the
+page. Managed configuration rejects updates with
+`oauth_configuration_managed`. Other stable configuration errors are
+`oauth_configuration_invalid`, `oauth_client_id_invalid`,
+`oauth_client_secret_required`, `oauth_managed_policy_invalid`,
+`oauth_managed_policy_read_failed`, `oauth_configuration_uninitialized`, and
+`oauth_not_configured`. A client that changes while an authorization or refresh
+request is in flight produces `oauth_configuration_changed`. Runtime responses
+contain only the stable code, never an exception message or credential value.
+
+The repository reads the exact case-sensitive managed keys `OAuthMode`,
+`OAuthClientId`, and `OAuthClientSecret`. Presence of any one activates managed
+mode and makes the configuration authoritative and locked; `OAuthMode` is then
+required. `builtin` selects the packaged pair and ignores the other two managed
+fields. `custom` requires both valid values. A partial policy, unknown mode,
+wrong type, blank value, or invalid custom ID fails closed; it never falls back
+to local or built-in values.
+
+Firefox and Thunderbird reject `storage.managed.get()` with the documented
+`Managed storage manifest not found` result when no native manifest or
+`3rdparty` policy exists. That normalized result is the normal unmanaged state.
+Any other managed read failure becomes `oauth_managed_policy_read_failed` and
+remains fail-closed.
+Thunderbird neither enforces a managed schema nor supplies a reliable managed
+change event. The repository validates all values itself and reads the policy
+during background initialization; applying a policy change requires a full
+Thunderbird restart.
+
+The OAuth client asks the repository for the effective configuration instead of
+accepting a user-supplied secret through each operation. The client ID used for
+a grant remains in the account record. Before returning a cached access token
+or refreshing it, the client compares that account ID with the current effective
+ID. A mismatch clears the cached access token, marks the account as requiring
+authorization again in the repository's public view without rewriting the
+stored grant, and performs no Google request. Account records and VFS bindings
+remain. A secret replacement under the same client ID does not trigger
+reauthorization; a later refresh uses the new secret. Client changes do not
+automatically revoke grants issued to the previous client.
+
+#### Live development and built-in OAuth setup
+
+Release and live-test XPI builds include the project's Google Desktop OAuth
+client as the built-in default. Tracked source contains only unique build
+markers. `tools/build.js` reads the unchanged Desktop credential JSON from an
+external path, replaces those markers in the in-memory package entry, and never
+copies the JSON into the project or XPI. The built-in client remains available
+when an unmanaged profile selects it or managed policy forces `builtin`. A
+custom client is configured after installation and never changes the fixed
+Gecko add-on ID or its loopback redirect.
 
 For local live tests:
 
@@ -199,9 +282,10 @@ For local live tests:
    path through `GDRVFS_OAUTH_CREDENTIALS_FILE` when building the XPI.
 6. Add every tester while the External application remains in Testing status.
 
-Do not commit or log the packaged client secret or copy it into account records.
-It is unavoidably inspectable in a distributed installed application and must
-never be treated as proof that a request came from an untampered add-on.
+Do not commit or log a built-in, local, or managed client secret or copy one into
+account records. A built-in secret is unavoidably inspectable in a distributed
+installed application; local and managed Desktop secrets likewise cannot be
+treated as proof that a request came from an untampered add-on.
 External-testing authorizations that request Drive access normally expire after
 seven days.
 
@@ -212,11 +296,15 @@ References:
 - [Google Drive API scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)
 
 Refresh tokens and minimal Google account metadata are stored in
-`storage.local`; normal account queries omit the refresh token. Access tokens
-and PKCE transactions are stored in `storage.session` and are replaced on
-expiry. Thunderbird does not expose a documented operating-system credential
-store to ordinary WebExtensions, so the project does not describe local token
-storage as encrypted. Profile access must be treated as credential access.
+`storage.local`; normal account queries omit the refresh token. The optional
+local custom client pair is stored under the separate versioned OAuth key.
+Managed values remain in `storage.managed`, and built-in values remain in the
+installed package. Access tokens and PKCE transactions are stored in
+`storage.session` and are replaced on expiry. Thunderbird does not expose a
+documented operating-system credential store to ordinary WebExtensions, so the
+project does not describe local token or custom-client storage as encrypted.
+Profile and policy-file access must be treated as credential-bearing
+configuration access.
 
 Token refresh is deduplicated per account. `invalid_grant` marks that account as
 requiring authorization again. Disconnect first asks Google to revoke the
@@ -231,16 +319,19 @@ reauthorization because it says nothing about the validity of the stored grant.
 It is reported as a network failure and can be retried by the user or a later
 VFS request.
 
-The options page saves provider preferences before it starts a new login. Every
-new authorization uses the packaged product client. A reauthorization request
-includes the selected local account ID and login hint and rejects a returned
-Google identity that does not match. The page renders account data as text and
-never receives refresh or access tokens.
+The options page loads and updates OAuth configuration through the two redacted
+runtime messages. It saves provider preferences before it starts a new login.
+Every new authorization uses the resolved effective client. A reauthorization
+request includes the selected local account ID and login hint and rejects a
+returned Google identity that does not match. The page renders account and
+configuration data as text and never receives refresh tokens, access tokens, or
+an OAuth client secret. Managed mode disables all OAuth inputs.
 
 The account record retains the client ID that created its refresh grant as
-authorization metadata, not as a configurable preference. This lets an old
-grant fail safely or be reauthorized if a deliberate client migration is ever
-required; new and reauthorized accounts always use the packaged product client.
+authorization metadata, not as a preference or a copy of managed policy. This
+lets the runtime reject a cached or refresh-token path immediately after the
+effective client ID changes. New and reauthorized accounts always use the
+current effective client.
 
 ### Drive request layer
 
@@ -294,7 +385,8 @@ Drive namespace only after the Toolkit connection, requested capability, local
 account binding, and current account status have been checked.
 
 After a background reconstruction, a valid session token is reused or a new
-access token is obtained from the refresh grant stored with the account.
+access token is obtained from the refresh grant stored with the account only
+when the account's stored OAuth client ID matches the effective configuration.
 Connection reconciliation removes a product binding if setup stopped before
 the Toolkit stored its matching connection, while a completed Toolkit record
 keeps its account binding. Active request controllers and resumable session URLs
@@ -374,16 +466,24 @@ each uniquely matched local binding through the Toolkit helper. It does not
 write Toolkit connection records directly. A failed update leaves the binding
 in place and can be tried again after the next background start.
 
-The repository serializes writes performed by its background instance and uses
-a versioned storage record. UI pages must request state changes through the
-background instead of constructing independent writers.
+The account repository serializes writes performed by its background instance
+and uses a versioned storage record. UI pages must request state changes through
+the background instead of constructing independent writers. Its public account
+view resolves `reauthorization_required` dynamically when the stored grant's
+client ID differs from the effective OAuth configuration; it does not delete or
+rewrite the stored grant or its VFS bindings merely because the client changed.
 
 Provider preferences use a separate versioned record. The initial export
 choices are DOCX for Google Docs, XLSX for Google Sheets, PPTX for Google Slides,
 and PDF for Google Drawings. PDF is also an available choice for Docs, Sheets,
-and Slides. Version 2 removes the former development-only OAuth client setting;
-the packaged OAuth client is part of the product identity and is not an
-administrator or user preference.
+and Slides. OAuth settings do not belong in this preference record.
+
+`OAuthConfigurationRepository` independently serializes local updates and owns
+the version 1 `google-drive-oauth-configuration` record. A missing record creates
+the documented built-in default. A malformed record or unknown version fails
+closed and is not overwritten. There is no supported import or conversion path
+for OAuth settings from prerelease development builds; do not add an implicit
+legacy migration.
 
 Incoming requests must validate the consumer, storage ID, requested capability,
 and current account state before accessing Google Drive. Setup data supplied by
@@ -464,10 +564,10 @@ part of the vendored Toolkit.
 Product logs use the `[GDRVFS]` prefix. The logger accepts only operation names,
 phases, counts, byte totals, progress, retry data, HTTP status values, and stable
 error codes. It drops tokens, authorization data, names, paths, URLs, account and
-storage identifiers, addresses, request bodies, and file content. Error objects
-are reduced to their type, stable code, and numeric HTTP status; their free-text
-messages are not logged. Debug entries remain disabled until the user enables
-the preference.
+storage identifiers, addresses, OAuth client IDs and secrets, managed-policy
+values, request bodies, and file content. Error objects are reduced to their
+type, stable code, and numeric HTTP status; their free-text messages are not
+logged. Debug entries remain disabled until the user enables the preference.
 
 ## 8. Vendor policy
 
@@ -493,9 +593,57 @@ the default locale, and each English key must exist in all 15 supported locale
 folders. The locale list and update steps are recorded in
 [Translations.md](../Translations.md).
 
+This includes the OAuth mode labels and help text, client-field labels, managed
+lock notice, save result, configuration-change warning, and every stable
+configuration and policy error shown by the options page. Policy key names and
+enum values are protocol constants and are not localized.
+
 ## 10. Build, validation, and release handoff
 
 Use Node.js 22 or newer.
+
+### OAuth configuration test coverage
+
+`tests/oauth-configuration.test.mjs` covers the repository boundary:
+
+- creation of the local built-in default, persistence across reconstruction,
+  valid local custom configuration, dormant-pair retention, blank-secret reuse
+  only for an unchanged client ID, serialized concurrent writes, invalid and
+  unsupported stored records, and secret-free public views;
+- managed `builtin` and `custom` precedence, activation when any supported key
+  is present, rejection of every partial or malformed policy without local
+  fallback, locked-update rejection without a local write, the exact missing-
+  manifest result as an unmanaged state, and every other managed read failure as
+  fail-closed; and
+- redacted public views and runtime responses that never contain a client
+  secret. The logger suite separately verifies that OAuth client and managed
+  policy fields, along with exception messages, are dropped.
+
+OAuth-client, runtime-handler, options-controller, provider-state, and
+background-restart tests cover the integration boundary:
+
+- authorization and refresh use the current effective pair, and configuration
+  is checked before a cached access token is returned;
+- changing the client ID invalidates session tokens, prevents an old-client
+  refresh grant from being reused when Google omits a new refresh token, and
+  keeps concurrent refresh work separated by effective client;
+- the public account view becomes `reauthorization_required` while the persisted
+  account, refresh grant, Toolkit connection, and product binding stay intact;
+- a same-ID secret replacement continues without forced reauthorization and is
+  used by the next refresh;
+- `googleDrive:oauth:configuration:get` and `update` pass only their exact
+  redacted/request shapes, reject foreign messages, and clear access-token
+  session state only when the effective client ID changes; and
+- the options controller submits only the editable fields, preserves an
+  existing secret through its presence flag, refreshes the derived account
+  view after a change, and maps stable errors to localized messages. Static
+  review checks require every OAuth UI message in all supported locales.
+
+The restart and provider-state fixtures reconstruct services with the same
+storage areas. Together they verify that managed configuration is re-read and
+that a changed client ID keeps the same account and storage IDs while the public
+account view blocks Drive use until that account is authorized again. Tests do
+not import or convert prerelease OAuth settings.
 
 ```sh
 npm ci
@@ -504,8 +652,9 @@ npm run test:review
 
 `test:review` checks the source tree, builds `.tmp/review.xpi`, compares the XPI
 contents with the package allowlist, and removes the temporary package after a
-successful check. It uses explicit synthetic OAuth values and cannot create a
-release package.
+successful check. It uses explicit synthetic values for the built-in OAuth
+client and cannot create a release package. Runtime custom values never become
+build inputs.
 
 Create the normal build from the unchanged Google Desktop credential JSON. The
 file must remain outside the project folder and source control:
@@ -517,9 +666,11 @@ Remove-Item Env:\GDRVFS_OAUTH_CREDENTIALS_FILE
 ```
 
 The release build fails closed when the environment variable, file, Desktop-app
-section, client ID, or client secret is missing. The file and its values are not
-logged. The source module remains unchanged; only its in-memory ZIP entry gets
-the values that the installed application requires. Given the same source and
+section, client ID, or client secret is missing. A later local or managed custom
+selection does not relax this requirement because the built-in client remains
+the default and can be forced by policy. The file and its values are not logged.
+The source module remains unchanged; only its in-memory ZIP entry gets the
+values that the installed application requires. Given the same source and
 credential input, the build is deterministic.
 
 Run the complete check set before a release candidate or review handoff:
@@ -536,6 +687,13 @@ Use the exact packaged candidate for manual validation. At minimum, test:
 - the latest maintenance release in the Thunderbird 140 ESR line and the
   current ESR at candidate time;
 - installation and a cold restart without an automatic Google sign-in;
+- built-in mode without policy, a locally configured custom Desktop client,
+  managed `builtin`, and managed `custom` after a full Thunderbird restart;
+- incomplete, invalid, and unreadable managed OAuth policy failing closed
+  without displaying or logging its values;
+- an effective client-ID switch retaining accounts and VFS bindings while
+  requiring each account to sign in again, plus a same-ID secret rotation that
+  refreshes without forced reauthorization;
 - account setup, reauthorization, removal, and two separate accounts;
 - two independent VFS consumers, including revoking only one connection;
 - My Drive, Shared with me, and a real Shared Drive;
@@ -563,8 +721,8 @@ For a release handoff:
    values occur only in the packaged OAuth module.
 4. Complete the manual cases above with the exact candidate.
 5. Confirm the manifest identity, permissions, supported Thunderbird range,
-   product OAuth configuration, privacy text, license notices, translations,
-   and release notes.
+   built-in and custom OAuth configuration paths, managed policy examples,
+   privacy text, license notices, translations, and release notes.
 6. Give ATN reviewers private access to a disposable test account and the
    release credential input when needed for exact reproduction, plus the build
    commands, vendor sources, data flow, and manual test results. Never place
@@ -583,12 +741,16 @@ Before committing a functional provider change:
 1. Check the callback and data shapes against the fixed upstream provider API.
 2. Add only the manifest permissions used by that change.
 3. Add localized text to every supported locale.
-4. Keep secrets, authorization data, and file content out of logs.
-5. Cover success, error, cancellation, and background-restart behavior where
+4. Keep OAuth client secrets, managed values, authorization data, and file
+   content out of runtime responses and logs.
+5. For OAuth changes, cover local and managed precedence, missing-policy versus
+   read-failure behavior, fail-closed validation, client-ID changes, same-ID
+   secret rotation, and redaction.
+6. Cover success, error, cancellation, and background-restart behavior where
    the change applies.
-6. Update `README.md`, `PRIVACY.md`, `docs/ADMIN.md`, `docs/DEVELOPMENT.md`,
+7. Update `README.md`, `PRIVACY.md`, `docs/ADMIN.md`, `docs/DEVELOPMENT.md`,
    `Translations.md`, or `VENDOR.md` when their statements change.
-7. Run `npm run test:unit` and `npm run test:review`. Run `npm test` before the
+8. Run `npm run test:unit` and `npm run test:review`. Run `npm test` before the
    first release candidate or review handoff.
 
 ## 12. Pending release inputs

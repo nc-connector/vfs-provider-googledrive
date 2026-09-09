@@ -12,6 +12,7 @@ import {
   connectionViewModels,
   createOptionsController,
   errorMessageKey,
+  normalizeOAuthConfigurationChanges,
   normalizePreferenceChanges,
   shouldRefreshForStorageChange
 } from "../src/options/options-controller.mjs";
@@ -24,6 +25,7 @@ function createHarness(responses = {}) {
     renderConnections: (value) => calls.push(["connections", value]),
     setBusy: (value) => calls.push(["busy", value]),
     setFeedback: (value) => calls.push(["feedback", value]),
+    setOAuthConfiguration: (value) => calls.push(["oauth", value]),
     setPreferences: (value) => calls.push(["preferences", value])
   };
   const controller = createOptionsController({
@@ -33,6 +35,19 @@ function createHarness(responses = {}) {
         ? responses[message.type]
         : message.type === "googleDrive:vfs:connections:list"
           ? { ok: true, value: [] }
+          : message.type === "googleDrive:oauth:configuration:get"
+            ? {
+                ok: true,
+                value: {
+                  mode: "builtin",
+                  source: "local",
+                  locked: false,
+                  clientId: "test.apps.googleusercontent.com",
+                  hasClientSecret: true,
+                  customClientId: "",
+                  hasCustomClientSecret: false
+                }
+              }
           : undefined;
       return typeof response === "function" ? response(message) : response;
     },
@@ -59,6 +74,18 @@ test("normalizes values before saving provider preferences", () => {
       presentation: "pptx",
       drawing: "pdf"
     }
+  });
+});
+
+test("normalizes editable OAuth configuration without exposing extra fields", () => {
+  assert.deepEqual(normalizeOAuthConfigurationChanges({
+    mode: " custom ",
+    clientId: " custom.apps.googleusercontent.com ",
+    clientSecret: " secret "
+  }), {
+    mode: "custom",
+    clientId: "custom.apps.googleusercontent.com",
+    clientSecret: "secret"
   });
 });
 
@@ -165,11 +192,58 @@ test("loads preferences and accounts together", async () => {
   assert.deepEqual(result.preferences, preferences);
   assert.deepEqual(harness.messages.map(({ type }) => type).sort(), [
     "googleDrive:accounts:list",
+    "googleDrive:oauth:configuration:get",
     "googleDrive:preferences:get",
     "googleDrive:vfs:connections:list"
   ]);
   assert.equal(harness.calls.some(([type]) => type === "preferences"), true);
+  assert.equal(harness.calls.some(([type]) => type === "oauth"), true);
   assert.equal(harness.calls.some(([type]) => type === "accounts"), true);
+});
+
+test("saves an editable OAuth client and reloads derived account state", async () => {
+  const configuration = {
+    mode: "custom",
+    source: "local",
+    locked: false,
+    clientId: "custom.apps.googleusercontent.com",
+    hasClientSecret: true,
+    customClientId: "custom.apps.googleusercontent.com",
+    hasCustomClientSecret: true
+  };
+  const harness = createHarness({
+    "googleDrive:oauth:configuration:update": {
+      ok: true,
+      value: configuration
+    },
+    "googleDrive:oauth:configuration:get": {
+      ok: true,
+      value: configuration
+    },
+    "googleDrive:preferences:get": {
+      ok: true,
+      value: { debugLogging: false, exportFormats: {} }
+    },
+    "googleDrive:accounts:list": { ok: true, value: [] }
+  });
+
+  assert.deepEqual(await harness.controller.saveOAuthConfiguration({
+    mode: " custom ",
+    clientId: " custom.apps.googleusercontent.com ",
+    clientSecret: " secret "
+  }), configuration);
+  assert.deepEqual(harness.messages[0], {
+    type: "googleDrive:oauth:configuration:update",
+    changes: {
+      mode: "custom",
+      clientId: "custom.apps.googleusercontent.com",
+      clientSecret: "secret"
+    }
+  });
+  assert.deepEqual(harness.calls.at(-2), [
+    "feedback",
+    { kind: "success", text: "translated:optionsOAuthSaved" }
+  ]);
 });
 
 test("refreshes connection rows without replacing unsaved preferences", async () => {
@@ -244,6 +318,14 @@ test("maps known and unknown OAuth errors to user-facing messages", async () => 
   assert.equal(
     errorMessageKey("oauth_request_timeout"),
     "vfsErrorNetworkDescription"
+  );
+  assert.equal(
+    errorMessageKey("oauth_configuration_managed"),
+    "optionsErrorOAuthConfigurationManaged"
+  );
+  assert.equal(
+    errorMessageKey("oauth_managed_policy_read_failed"),
+    "optionsErrorOAuthPolicyInvalid"
   );
 
   const harness = createHarness({

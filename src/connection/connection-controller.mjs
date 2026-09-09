@@ -25,6 +25,15 @@ const ERROR_MESSAGE_KEYS = Object.freeze({
   oauth_reauthorization_required: "optionsErrorOAuthReauthorizationRequired",
   oauth_token_refresh_failed: "optionsErrorOAuthReauthorizationRequired",
   oauth_refresh_token_missing: "optionsErrorOAuthReauthorizationRequired",
+  oauth_configuration_changed: "optionsErrorOAuthConfigurationChanged",
+  oauth_configuration_invalid: "optionsErrorOAuthConfigurationInvalid",
+  oauth_configuration_managed: "optionsErrorOAuthConfigurationManaged",
+  oauth_configuration_uninitialized: "optionsErrorOAuthConfigurationInvalid",
+  oauth_client_id_invalid: "optionsErrorOAuthConfigurationInvalid",
+  oauth_client_secret_required: "optionsErrorOAuthConfigurationInvalid",
+  oauth_managed_policy_invalid: "optionsErrorOAuthPolicyInvalid",
+  oauth_managed_policy_read_failed: "optionsErrorOAuthPolicyInvalid",
+  oauth_not_configured: "optionsErrorOAuthConfigurationInvalid",
   unexpected_error: "vfsConnectionErrorUnexpected"
 });
 

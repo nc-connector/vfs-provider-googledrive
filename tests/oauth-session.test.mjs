@@ -48,3 +48,17 @@ test("removes only expired authorization transactions", async () => {
   assert.equal(await repository.getTransaction("old-state"), null);
   assert.equal((await repository.getTransaction("new-state")).codeVerifier, "new-verifier");
 });
+
+test("clears every cached access token after an OAuth client change", async () => {
+  const repository = new OAuthSessionRepository({
+    storageArea: new FakeStorageArea(),
+    now: () => 1_000
+  });
+  await repository.setAccessToken("account-1", "access-one", 121_000);
+  await repository.setAccessToken("account-2", "access-two", 121_000);
+
+  await repository.clearAccessTokens();
+
+  assert.equal(await repository.getAccessToken("account-1"), null);
+  assert.equal(await repository.getAccessToken("account-2"), null);
+});

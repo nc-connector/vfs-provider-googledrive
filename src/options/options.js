@@ -7,13 +7,15 @@
 import { localizeDocument } from "../vendor/i18n/i18n.mjs";
 import {
   createOptionsController,
+  errorMessageKey,
   shouldRefreshForStorageChange
 } from "./options-controller.mjs";
 
 localizeDocument();
 document.documentElement.lang = browser.i18n.getMessage("optionsDocumentLanguage") || "de";
 
-const form = document.getElementById("preferences-form");
+const preferencesForm = document.getElementById("preferences-form");
+const oauthForm = document.getElementById("oauth-form");
 const feedback = document.getElementById("feedback");
 const accountList = document.getElementById("account-list");
 const noAccounts = document.getElementById("no-accounts");
@@ -25,6 +27,25 @@ const exportDocument = document.getElementById("export-document");
 const exportSpreadsheet = document.getElementById("export-spreadsheet");
 const exportPresentation = document.getElementById("export-presentation");
 const exportDrawing = document.getElementById("export-drawing");
+const oauthMode = document.getElementById("oauth-mode");
+const oauthModeHelp = document.getElementById("oauth-mode-help");
+const oauthSource = document.getElementById("oauth-source");
+const oauthEffectiveClientId = document.getElementById(
+  "oauth-effective-client-id"
+);
+const oauthCustomFields = document.getElementById("oauth-custom-fields");
+const oauthClientId = document.getElementById("oauth-client-id");
+const oauthClientSecret = document.getElementById("oauth-client-secret");
+const oauthClientSecretHelp = document.getElementById(
+  "oauth-client-secret-help"
+);
+const oauthManagedNotice = document.getElementById("oauth-managed-notice");
+const saveOAuth = document.getElementById("save-oauth");
+
+let busy = false;
+let oauthLocked = false;
+let oauthHasCustomClientSecret = false;
+let oauthStoredCustomClientId = "";
 
 function getMessage(key) {
   return browser.i18n.getMessage(key) || key;
@@ -42,12 +63,57 @@ function readPreferences() {
   };
 }
 
+function readOAuthConfiguration() {
+  return {
+    mode: oauthMode.value,
+    clientId: oauthClientId.value,
+    clientSecret: oauthClientSecret.value
+  };
+}
+
 function setPreferences(preferences) {
   debugLogging.checked = preferences.debugLogging;
   exportDocument.value = preferences.exportFormats.document;
   exportSpreadsheet.value = preferences.exportFormats.spreadsheet;
   exportPresentation.value = preferences.exportFormats.presentation;
   exportDrawing.value = preferences.exportFormats.drawing;
+}
+
+function updateOAuthControls() {
+  const custom = oauthMode.value === "custom";
+  oauthCustomFields.hidden = !custom;
+  oauthModeHelp.textContent = getMessage(custom
+    ? "optionsOAuthModeCustomHelp"
+    : "optionsOAuthModeBuiltinHelp");
+  const canRetainStoredSecret = oauthHasCustomClientSecret &&
+    oauthClientId.value.trim() === oauthStoredCustomClientId &&
+    !oauthClientSecret.value;
+  oauthClientSecretHelp.textContent = getMessage(
+    canRetainStoredSecret
+      ? "optionsOAuthClientSecretConfigured"
+      : "optionsOAuthClientSecretHelp"
+  );
+  oauthMode.disabled = busy || oauthLocked;
+  oauthClientId.disabled = busy || oauthLocked || !custom;
+  oauthClientSecret.disabled = busy || oauthLocked || !custom;
+  saveOAuth.disabled = busy || oauthLocked;
+  oauthManagedNotice.hidden = !oauthLocked;
+}
+
+function setOAuthConfiguration(configuration) {
+  oauthLocked = Boolean(configuration.locked);
+  oauthHasCustomClientSecret = Boolean(
+    configuration.hasCustomClientSecret
+  );
+  oauthStoredCustomClientId = configuration.customClientId || "";
+  oauthMode.value = configuration.mode;
+  oauthSource.textContent = getMessage(configuration.source === "managed"
+    ? "optionsOAuthSourceManaged"
+    : "optionsOAuthSourceLocal");
+  oauthEffectiveClientId.textContent = configuration.clientId;
+  oauthClientId.value = oauthStoredCustomClientId;
+  oauthClientSecret.value = "";
+  updateOAuthControls();
 }
 
 function setFeedback({ kind, text }) {
@@ -57,9 +123,19 @@ function setFeedback({ kind, text }) {
 }
 
 function setBusy(isBusy) {
+  busy = isBusy;
   for (const control of document.querySelectorAll("button, input, select")) {
     control.disabled = isBusy;
   }
+  updateOAuthControls();
+}
+
+function setUnavailable() {
+  busy = true;
+  for (const control of document.querySelectorAll("button, input, select")) {
+    control.disabled = true;
+  }
+  updateOAuthControls();
 }
 
 function createActionButton(text, className, callback) {
@@ -193,17 +269,36 @@ controller = createOptionsController({
     renderConnections,
     setBusy,
     setFeedback,
+    setOAuthConfiguration,
     setPreferences
   }
 });
 
-form.addEventListener("submit", (event) => {
+preferencesForm.addEventListener("submit", (event) => {
   event.preventDefault();
   void controller.savePreferences(readPreferences());
 });
 
+oauthForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  void controller.saveOAuthConfiguration(readOAuthConfiguration());
+});
+
+oauthMode.addEventListener("change", updateOAuthControls);
+oauthClientId.addEventListener("input", updateOAuthControls);
+oauthClientSecret.addEventListener("input", updateOAuthControls);
+
 addAccountButton.addEventListener("click", () => {
   void (async () => {
+    if (!oauthLocked) {
+      const configuration = await controller.saveOAuthConfiguration(
+        readOAuthConfiguration(),
+        { notify: false }
+      );
+      if (!configuration) {
+        return;
+      }
+    }
     const preferences = await controller.savePreferences(readPreferences(), {
       notify: false
     });
@@ -224,7 +319,11 @@ browser.storage.onChanged.addListener((changes, areaName) => {
 
 setBusy(true);
 void controller.refresh()
-  .catch(() => {
-    setFeedback({ kind: "error", text: getMessage("optionsErrorUnexpected") });
-  })
-  .finally(() => setBusy(false));
+  .then(() => setBusy(false))
+  .catch((error) => {
+    setFeedback({
+      kind: "error",
+      text: getMessage(errorMessageKey(error?.code))
+    });
+    setUnavailable();
+  });

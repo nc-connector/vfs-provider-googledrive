@@ -12,7 +12,7 @@ import {
 export const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
 export const GOOGLE_OAUTH_CLIENT_ID =
   "__GDRVFS_OAUTH_CLIENT_ID__";
-const GOOGLE_OAUTH_CLIENT_SECRET =
+export const GOOGLE_OAUTH_CLIENT_SECRET =
   "__GDRVFS_OAUTH_CLIENT_SECRET__";
 export const OAUTH_REQUEST_TIMEOUT_MS = 30 * 1000;
 
@@ -98,6 +98,11 @@ function authorizationFailure(error, phase) {
   if (error instanceof GoogleOAuthError) {
     return error;
   }
+  if (typeof error?.code === "string" && error.code.startsWith("oauth_")) {
+    const failure = new GoogleOAuthError(error.code, error.status || 0);
+    failure.cause = error;
+    return failure;
+  }
   const failure = new GoogleOAuthError(`oauth_${phase}_failed`);
   failure.cause = error;
   return failure;
@@ -138,8 +143,7 @@ export class GoogleOAuthClient {
   #crypto;
   #now;
   #requestTimeoutMs;
-  #clientId;
-  #clientSecret;
+  #configurationProvider;
   #refreshPromises = new Map();
 
   constructor({
@@ -152,7 +156,8 @@ export class GoogleOAuthClient {
     now = () => Date.now(),
     requestTimeoutMs = OAUTH_REQUEST_TIMEOUT_MS,
     clientId = GOOGLE_OAUTH_CLIENT_ID,
-    clientSecret = GOOGLE_OAUTH_CLIENT_SECRET
+    clientSecret = GOOGLE_OAUTH_CLIENT_SECRET,
+    configurationProvider = () => ({ clientId, clientSecret })
   }) {
     this.#identityApi = identityApi;
     this.#sessionRepository = sessionRepository;
@@ -161,8 +166,10 @@ export class GoogleOAuthClient {
     this.#logger = logger;
     this.#crypto = cryptoApi;
     this.#now = now;
-    this.#clientId = clientId;
-    this.#clientSecret = clientSecret;
+    if (typeof configurationProvider !== "function") {
+      throw new TypeError("configurationProvider");
+    }
+    this.#configurationProvider = configurationProvider;
     this.#requestTimeoutMs = requirePositiveNumber(
       requestTimeoutMs,
       "requestTimeoutMs"
@@ -176,8 +183,8 @@ export class GoogleOAuthClient {
     if (accountId && !expectedAccount) {
       throw new GoogleOAuthError("oauth_reauthorization_required", 401);
     }
-    const normalizedClientId = requireClientId(this.#clientId);
-    const normalizedClientSecret = requireClientSecret(this.#clientSecret);
+    const configuration = await this.#configuration();
+    const normalizedClientId = configuration.clientId;
     const redirectUri = await createGoogleRedirectUri(this.#identityApi);
     const pkce = await createPkceValues(this.#crypto);
     await this.#sessionRepository.removeExpiredTransactions(TRANSACTION_MAX_AGE_MS);
@@ -250,12 +257,16 @@ export class GoogleOAuthClient {
       }
 
       phase = "token_exchange";
+      const exchangeConfiguration = await this.#configuration();
+      if (exchangeConfiguration.clientId !== normalizedClientId) {
+        throw new GoogleOAuthError("oauth_configuration_changed");
+      }
       this.#logger.debug("oauth.authorization.token.start", { phase });
       const token = await this.#exchangeAuthorizationCode({
         authorizationCode,
         codeVerifier: transaction.codeVerifier,
         clientId: transaction.clientId,
-        clientSecret: normalizedClientSecret,
+        clientSecret: exchangeConfiguration.clientSecret,
         redirectUri
       });
       this.#logger.debug("oauth.authorization.token.complete", { phase });
@@ -263,6 +274,10 @@ export class GoogleOAuthClient {
       this.#logger.debug("oauth.authorization.profile.start", { phase });
       const profile = await this.#loadDriveProfile(token.accessToken);
       this.#logger.debug("oauth.authorization.profile.complete", { phase });
+      const currentConfiguration = await this.#configuration();
+      if (currentConfiguration.clientId !== normalizedClientId) {
+        throw new GoogleOAuthError("oauth_configuration_changed");
+      }
       if (expectedAccount &&
           profile.permissionId !== expectedAccount.googleUserId) {
         try {
@@ -314,8 +329,14 @@ export class GoogleOAuthClient {
   }
 
   async getAccessToken(accountId, { forceRefresh = false } = {}) {
+    const configuration = await this.#configuration();
     const authorization = await this.#accountRepository.getAccountAuthorization(accountId);
     if (!authorization || authorization.status !== "connected") {
+      throw new GoogleOAuthError("oauth_reauthorization_required", 401);
+    }
+    const authorizedClientId = requireClientId(authorization.oauthClientId);
+    if (authorizedClientId !== configuration.clientId) {
+      await this.#sessionRepository.clearAccessToken(accountId);
       throw new GoogleOAuthError("oauth_reauthorization_required", 401);
     }
 
@@ -328,12 +349,24 @@ export class GoogleOAuthClient {
       await this.#sessionRepository.clearAccessToken(accountId);
     }
 
-    if (!this.#refreshPromises.has(accountId)) {
-      const refresh = this.#refreshAccessToken(accountId, authorization)
-        .finally(() => this.#refreshPromises.delete(accountId));
-      this.#refreshPromises.set(accountId, refresh);
+    const activeRefresh = this.#refreshPromises.get(accountId);
+    if (!activeRefresh || activeRefresh.clientId !== configuration.clientId) {
+      const entry = {
+        clientId: configuration.clientId,
+        promise: null
+      };
+      entry.promise = this.#refreshAccessToken(
+        accountId,
+        authorization,
+        configuration
+      ).finally(() => {
+        if (this.#refreshPromises.get(accountId) === entry) {
+          this.#refreshPromises.delete(accountId);
+        }
+      });
+      this.#refreshPromises.set(accountId, entry);
     }
-    return this.#refreshPromises.get(accountId);
+    return this.#refreshPromises.get(accountId).promise;
   }
 
   async disconnectAccount(accountId) {
@@ -438,18 +471,9 @@ export class GoogleOAuthClient {
     };
   }
 
-  async #refreshAccessToken(accountId, authorization) {
+  async #refreshAccessToken(accountId, authorization, configuration) {
     const clientId = requireClientId(authorization.oauthClientId);
-    const configuredClientId = requireClientId(this.#clientId);
-    if (clientId !== configuredClientId) {
-      await this.#accountRepository.setAccountStatus(
-        accountId,
-        "reauthorization_required"
-      );
-      await this.#sessionRepository.clearAccessToken(accountId);
-      throw new GoogleOAuthError("oauth_reauthorization_required", 401);
-    }
-    const clientSecret = requireClientSecret(this.#clientSecret);
+    const clientSecret = configuration.clientSecret;
     this.#logger.debug("oauth.token.refresh.start", { phase: "refresh" });
     const { response, payload } = await this.#request(TOKEN_ENDPOINT, {
       method: "POST",
@@ -476,6 +500,10 @@ export class GoogleOAuthClient {
     }
 
     const expiresAt = tokenExpiry(this.#now(), payload.expires_in);
+    const currentConfiguration = await this.#configuration();
+    if (currentConfiguration.clientId !== clientId) {
+      throw new GoogleOAuthError("oauth_configuration_changed");
+    }
     if (typeof payload.refresh_token === "string" && payload.refresh_token) {
       const account = await this.#accountRepository.getAccount(accountId);
       if (!account) {
@@ -495,6 +523,14 @@ export class GoogleOAuthClient {
     );
     this.#logger.debug("oauth.token.refresh.complete", { status: "connected" });
     return payload.access_token;
+  }
+
+  async #configuration() {
+    const configuration = await this.#configurationProvider();
+    return {
+      clientId: requireClientId(configuration?.clientId),
+      clientSecret: requireClientSecret(configuration?.clientSecret)
+    };
   }
 
   async #request(url, options, { readBody = false } = {}) {

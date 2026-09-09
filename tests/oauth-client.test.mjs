@@ -33,6 +33,7 @@ function createHarness({
   fetchApi,
   requestTimeoutMs,
   useSourceCredentials = false,
+  configurationProvider,
   logger = {
     debug() {},
     info() {},
@@ -72,6 +73,9 @@ function createHarness({
     clientOptions.clientId = CLIENT_ID;
     clientOptions.clientSecret = CLIENT_SECRET;
   }
+  if (configurationProvider) {
+    clientOptions.configurationProvider = configurationProvider;
+  }
   const client = new GoogleOAuthClient(clientOptions);
   return {
     accountRepository,
@@ -106,6 +110,37 @@ test("fails closed before OAuth when build credentials are not injected", async 
     (error) => error instanceof GoogleOAuthError &&
       error.code === "oauth_not_configured"
   );
+});
+
+test("does not exchange a code after the effective client ID changes", async () => {
+  let configuration = {
+    clientId: CLIENT_ID,
+    clientSecret: CLIENT_SECRET
+  };
+  let requests = 0;
+  const harness = createHarness({
+    configurationProvider: () => configuration,
+    fetchApi: async () => {
+      requests += 1;
+      return jsonResponse({});
+    }
+  });
+  const launch = harness.identityApi.launchWebAuthFlow;
+  harness.identityApi.launchWebAuthFlow = async (options) => {
+    const response = await launch(options);
+    configuration = {
+      clientId: "other.apps.googleusercontent.com",
+      clientSecret: "other-secret"
+    };
+    return response;
+  };
+
+  await assert.rejects(
+    harness.client.authorize(),
+    (error) => error instanceof GoogleOAuthError &&
+      error.code === "oauth_configuration_changed"
+  );
+  assert.equal(requests, 0);
 });
 
 test("calls the native fetch function through its global receiver", async () => {
@@ -384,6 +419,101 @@ test("reauthorizes the selected account with the packaged OAuth client", async (
   );
 });
 
+test("keeps the old grant and binding when a new client returns no refresh token", async () => {
+  const requests = [];
+  const configuration = {
+    clientId: CLIENT_ID,
+    clientSecret: CLIENT_SECRET
+  };
+  const harness = createHarness({
+    configurationProvider: () => configuration,
+    fetchApi: async (url) => {
+      requests.push(String(url));
+      if (String(url).includes("/token")) {
+        return jsonResponse({
+          access_token: "new-access",
+          expires_in: 3600
+        });
+      }
+      return jsonResponse({
+        user: {
+          permissionId: "google-user-1",
+          displayName: "Ada Example",
+          emailAddress: "ada@example.invalid"
+        }
+      });
+    }
+  });
+  const account = await harness.accountRepository.upsertAccount({
+    googleUserId: "google-user-1",
+    oauthClientId: LEGACY_CLIENT_ID,
+    refreshToken: "old-refresh"
+  });
+  await harness.accountRepository.bindConnection({
+    storageId: "storage-1",
+    accountId: account.id
+  });
+
+  await assert.rejects(
+    harness.client.authorize({ accountId: account.id }),
+    (error) => error instanceof GoogleOAuthError &&
+      error.code === "oauth_refresh_token_missing"
+  );
+
+  const authorization = await harness.accountRepository
+    .getAccountAuthorization(account.id);
+  assert.equal(authorization.oauthClientId, LEGACY_CLIENT_ID);
+  assert.equal(authorization.refreshToken, "old-refresh");
+  assert.equal(
+    (await harness.accountRepository.getConnectionBinding("storage-1")).accountId,
+    account.id
+  );
+  assert.equal(requests.some((url) => url.includes("/revoke")), false);
+});
+
+test("replaces a grant in place after reauthorization with a new client", async () => {
+  const harness = createHarness({
+    configurationProvider: () => ({
+      clientId: CLIENT_ID,
+      clientSecret: CLIENT_SECRET
+    }),
+    fetchApi: async (url) => String(url).includes("/token")
+      ? jsonResponse({
+          access_token: "new-access",
+          refresh_token: "new-refresh",
+          expires_in: 3600
+        })
+      : jsonResponse({
+          user: {
+            permissionId: "google-user-1",
+            displayName: "Ada Example",
+            emailAddress: "ada@example.invalid"
+          }
+        })
+  });
+  const account = await harness.accountRepository.upsertAccount({
+    googleUserId: "google-user-1",
+    oauthClientId: LEGACY_CLIENT_ID,
+    refreshToken: "old-refresh"
+  });
+  await harness.accountRepository.bindConnection({
+    storageId: "storage-1",
+    accountId: account.id
+  });
+
+  const updated = await harness.client.authorize({ accountId: account.id });
+
+  assert.equal(updated.id, account.id);
+  const authorization = await harness.accountRepository
+    .getAccountAuthorization(account.id);
+  assert.equal(authorization.oauthClientId, CLIENT_ID);
+  assert.equal(authorization.refreshToken, "new-refresh");
+  assert.equal(
+    (await harness.accountRepository.getConnectionBinding("storage-1")).accountId,
+    account.id
+  );
+});
+
 test("refreshes one token for concurrent callers", async () => {
   let refreshRequests = 0;
   let requestBody;
@@ -411,7 +541,106 @@ test("refreshes one token for concurrent callers", async () => {
   assert.equal(requestBody.get("client_secret"), CLIENT_SECRET);
 });
 
-test("requires reauthorization for a grant from another OAuth client", async () => {
+test("keeps concurrent refresh work separated when the client ID changes", async () => {
+  const firstClientId = "first.apps.googleusercontent.com";
+  const secondClientId = "second.apps.googleusercontent.com";
+  let configuration = {
+    clientId: firstClientId,
+    clientSecret: "first-secret"
+  };
+  let resolveFirst;
+  let resolveSecond;
+  let firstStarted;
+  let secondStarted;
+  const firstStartedPromise = new Promise((resolve) => {
+    firstStarted = resolve;
+  });
+  const secondStartedPromise = new Promise((resolve) => {
+    secondStarted = resolve;
+  });
+  const harness = createHarness({
+    configurationProvider: () => configuration,
+    fetchApi: async (_url, options) => {
+      const body = new URLSearchParams(options.body);
+      if (body.get("client_id") === firstClientId) {
+        firstStarted();
+        return new Promise((resolve) => {
+          resolveFirst = resolve;
+        });
+      }
+      secondStarted();
+      return new Promise((resolve) => {
+        resolveSecond = resolve;
+      });
+    }
+  });
+  await harness.accountRepository.upsertAccount({
+    googleUserId: "google-user-1",
+    oauthClientId: firstClientId,
+    refreshToken: "first-refresh"
+  });
+
+  const firstRefresh = harness.client.getAccessToken("account-1");
+  await firstStartedPromise;
+  configuration = {
+    clientId: secondClientId,
+    clientSecret: "second-secret"
+  };
+  await harness.accountRepository.upsertAccount({
+    id: "account-1",
+    googleUserId: "google-user-1",
+    oauthClientId: secondClientId,
+    refreshToken: "second-refresh"
+  });
+  const secondRefresh = harness.client.getAccessToken("account-1");
+  await secondStartedPromise;
+
+  resolveFirst(jsonResponse({
+    access_token: "first-access",
+    expires_in: 3600
+  }));
+  await assert.rejects(
+    firstRefresh,
+    (error) => error.code === "oauth_configuration_changed"
+  );
+  resolveSecond(jsonResponse({
+    access_token: "second-access",
+    expires_in: 3600
+  }));
+  assert.equal(await secondRefresh, "second-access");
+  assert.equal(
+    await harness.sessionRepository.getAccessToken("account-1"),
+    "second-access"
+  );
+});
+
+test("uses a rotated secret without requiring a new grant for the same client ID", async () => {
+  let requestBody;
+  const harness = createHarness({
+    configurationProvider: () => ({
+      clientId: CLIENT_ID,
+      clientSecret: "rotated-client-secret"
+    }),
+    fetchApi: async (_url, options) => {
+      requestBody = new URLSearchParams(options.body);
+      return jsonResponse({ access_token: "new-access", expires_in: 3600 });
+    }
+  });
+  await harness.accountRepository.upsertAccount({
+    googleUserId: "google-user-1",
+    oauthClientId: CLIENT_ID,
+    refreshToken: "refresh-secret"
+  });
+
+  assert.equal(
+    await harness.client.getAccessToken("account-1"),
+    "new-access"
+  );
+  assert.equal(requestBody.get("client_id"), CLIENT_ID);
+  assert.equal(requestBody.get("client_secret"), "rotated-client-secret");
+});
+
+test("rejects another OAuth client before using a cached access token", async () => {
   let refreshRequests = 0;
   const harness = createHarness({
     fetchApi: async () => {
@@ -424,6 +653,11 @@ test("requires reauthorization for a grant from another OAuth client", async () 
     oauthClientId: LEGACY_CLIENT_ID,
     refreshToken: "refresh-secret"
   });
+  await harness.sessionRepository.setAccessToken(
+    "account-1",
+    "old-cached-access",
+    3_601_000
+  );
 
   await assert.rejects(
     harness.client.getAccessToken("account-1"),
@@ -435,7 +669,11 @@ test("requires reauthorization for a grant from another OAuth client", async () 
   assert.equal(refreshRequests, 0);
   assert.equal(
     (await harness.accountRepository.getAccount("account-1")).status,
-    "reauthorization_required"
+    "connected"
+  );
+  assert.equal(
+    await harness.sessionRepository.getAccessToken("account-1"),
+    null
   );
 });
 

@@ -97,6 +97,12 @@ export class OAuthSessionRepository {
     });
   }
 
+  async clearAccessTokens() {
+    await this.#mutate((session) => {
+      session.accessTokens = {};
+    });
+  }
+
   async storeTransaction({ state, codeVerifier, clientId, createdAt = this.#now() }) {
     const normalizedState = requireNonEmptyString(state, "state");
     const transaction = {

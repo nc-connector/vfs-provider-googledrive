@@ -16,6 +16,9 @@ import {
   VfsConnectionService
 } from "../src/provider/vfs-connection-service.mjs";
 import { ProviderStateRepository } from "../src/state/provider-state.mjs";
+import {
+  OAuthConfigurationRepository
+} from "../src/state/oauth-configuration.mjs";
 import { FakeStorageArea } from "./helpers/fake-storage.mjs";
 
 const CLIENT_ID = "test-client.apps.googleusercontent.com";
@@ -186,4 +189,39 @@ test("does not carry active request controllers into a restarted background", as
 
   finishInitial("old-request-finished");
   assert.equal(await initialRequest, "old-request-finished");
+});
+
+test("applies a managed OAuth client after background reconstruction", async () => {
+  const localArea = new FakeStorageArea();
+  const managedArea = new FakeStorageArea();
+  const initialConfiguration = new OAuthConfigurationRepository({
+    localStorageArea: localArea,
+    managedStorageArea: managedArea,
+    builtInClientId: CLIENT_ID,
+    builtInClientSecret: CLIENT_SECRET
+  });
+  await initialConfiguration.initialize();
+  assert.equal(initialConfiguration.getEffective().clientId, CLIENT_ID);
+
+  await managedArea.set({
+    OAuthMode: "custom",
+    OAuthClientId: "managed.apps.googleusercontent.com",
+    OAuthClientSecret: "managed-secret"
+  });
+  assert.equal(initialConfiguration.getEffective().clientId, CLIENT_ID);
+
+  const restartedConfiguration = new OAuthConfigurationRepository({
+    localStorageArea: localArea,
+    managedStorageArea: managedArea,
+    builtInClientId: CLIENT_ID,
+    builtInClientSecret: CLIENT_SECRET
+  });
+  const publicConfiguration = await restartedConfiguration.initialize();
+
+  assert.equal(
+    restartedConfiguration.getEffective().clientId,
+    "managed.apps.googleusercontent.com"
+  );
+  assert.equal(publicConfiguration.source, "managed");
+  assert.equal(publicConfiguration.locked, true);
 });

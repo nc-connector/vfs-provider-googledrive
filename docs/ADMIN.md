@@ -52,7 +52,8 @@ an account-bound VFS connection.
 - Thunderbird 140.0 or newer
 - an approved VFS Provider for Google Drive XPI
 - a compatible Thunderbird VFS consumer
-- a Google account permitted to authorize the product's Google application
+- a Google account permitted to authorize the effective Google OAuth
+  application
 - Google Workspace membership and a suitable Drive role for Shared Drive use
 
 Google permissions still apply after a VFS connection is granted. The provider
@@ -67,7 +68,7 @@ The add-on requests only these Thunderbird permissions:
 | --- | --- |
 | alarms | Check connected Drive accounts for remote changes every five minutes |
 | identity | Open Google's interactive authorization flow |
-| storage | Store accounts, refresh grants, VFS bindings, change cursors, and preferences in the Thunderbird profile |
+| storage | Store accounts, refresh grants, VFS bindings, change cursors, preferences, and optional local OAuth client configuration in the Thunderbird profile; read administrator OAuth policy from managed storage |
 
 The add-on does not use Thunderbird Experiment APIs, native messaging, or
 remotely loaded executable code.
@@ -169,12 +170,46 @@ instead of guessing how to downgrade it.
 
 ## 4. Initial configuration
 
-The released add-on includes the publisher's OAuth configuration. Account
-authorization and provider preferences are stored per Thunderbird profile. An
-enterprise policy can install the add-on, but each Google account still needs
-an explicit user authorization.
+The released add-on includes the publisher's Google Desktop OAuth client as the
+built-in default. An unmanaged profile can instead save its own Desktop client.
+Enterprise policy can lock the profile to either the built-in client or an
+administrator-provided client. Account authorization and provider preferences
+are stored per Thunderbird profile. Choosing an OAuth client does not authorize
+an account; each Google account still needs an explicit user authorization.
 
-### 4.1 Configure provider preferences
+### 4.1 Select the OAuth client
+
+For the normal built-in configuration, leave **Built-in OAuth client** selected.
+No client values need to be entered.
+
+To use a client owned by the user or organization:
+
+1. Complete the [custom Google client prerequisites](#63-managed-oauth-client-policy).
+2. Open **Add-ons Manager → VFS Provider for Google Drive → Preferences**.
+3. Select **Own Google OAuth client**.
+4. Enter the complete Desktop client ID ending in
+   `.apps.googleusercontent.com` and its client secret.
+5. Save the OAuth configuration before adding or authorizing an account.
+
+The client-secret field is password-style and the saved secret is never read
+back into the page. When the same custom client ID is already stored, leaving
+the field blank retains its current secret. A new or changed client ID requires
+the matching secret. Invalid input is rejected without replacing the previous
+configuration.
+
+The local record is held in the Thunderbird profile, not an operating-system
+credential vault. Selecting the built-in mode can leave the local custom pair
+dormant so it can be selected again later. Like every installed Desktop client
+configuration, these values must not be treated as confidential proof of the
+application's identity.
+
+When enterprise policy supplies an OAuth mode, the options page identifies the
+managed source and selected mode and disables all OAuth controls. For managed
+custom mode it also shows the client ID. Managed values cannot be changed or
+removed from the add-on, and the client secret is never returned to the page.
+See [Managed OAuth client policy](#63-managed-oauth-client-policy).
+
+### 4.2 Configure provider preferences
 
 1. Open **Add-ons Manager → VFS Provider for Google Drive → Preferences**.
 2. Select the required Google Workspace export formats.
@@ -183,7 +218,7 @@ an explicit user authorization.
 
 Expected result: the page reports that preferences were saved.
 
-### 4.2 Add a Google account
+### 4.3 Add a Google account
 
 1. Select **Add Google account**.
 2. Review Google's application name and requested Drive access.
@@ -200,7 +235,7 @@ If an account shows **Sign-in required again**, select **Sign in again** for
 that account. The returned Google identity must match the stored account; the
 provider does not silently replace it with another signed-in account.
 
-### 4.3 Grant a VFS connection
+### 4.4 Grant a VFS connection
 
 Connections are initiated by a compatible consumer add-on, not from the
 provider's options page.
@@ -217,7 +252,7 @@ Expected result: the consumer receives one storage connection bound to that
 consumer and account. Another consumer cannot reuse the connection without its
 own user grant.
 
-### 4.4 Revoke a connection or remove an account
+### 4.5 Revoke a connection or remove an account
 
 To remove one consumer's access:
 
@@ -240,7 +275,7 @@ record. If remote revocation cannot be confirmed, it reports that the account
 was removed locally. In that case, remove the app's access separately in the
 user's [Google Account connections](https://myaccount.google.com/connections).
 
-### 4.5 Google Workspace export formats
+### 4.6 Google Workspace export formats
 
 The export choices apply to all configured accounts:
 
@@ -327,12 +362,13 @@ a different Thunderbird add-on identity and a different OAuth redirect.
 
 Common policies.json locations:
 
-- Windows: C:\Program Files\Mozilla Thunderbird\distribution\policies.json
-- macOS: /Applications/Thunderbird.app/Contents/Resources/distribution/policies.json
-- Linux: /usr/lib/thunderbird/distribution/policies.json or the distribution
-  path used by the installed package
+- Windows: `C:\Program Files\Mozilla Thunderbird\distribution\policies.json`
+- macOS: `/Applications/Thunderbird.app/Contents/Resources/distribution/policies.json`
+- Linux: `/usr/lib/thunderbird/distribution/policies.json`, the `distribution`
+  path used by the installed package, or the system-wide
+  `/etc/thunderbird/policies/policies.json`
 
-Use about:policies in Thunderbird to check policy discovery and parsing.
+Use `about:policies` in Thunderbird to check policy discovery and parsing.
 
 ### 6.2 Force-install template
 
@@ -359,31 +395,156 @@ distribution URL are final. See Thunderbird's
 and Mozilla's
 [ExtensionSettings reference](https://mozilla.github.io/policy-templates/#extensionsettings).
 
-### 6.3 Google Workspace controls
+### 6.3 Managed OAuth client policy
+
+Thunderbird exposes extension policy through its read-only `storage.managed`
+area. This provider recognizes exactly these case-sensitive values below its
+permanent add-on ID:
+
+| Value | Requirement and effect |
+| --- | --- |
+| `OAuthMode` | Required when any supported OAuth policy value is deployed. `builtin` or `custom`. |
+| `OAuthClientId` | Required for `custom`; a non-empty Google Desktop client ID ending in `.apps.googleusercontent.com`. Ignored for `builtin`. |
+| `OAuthClientSecret` | Required and non-empty for `custom`. Ignored for `builtin`. |
+
+To force the client included in the approved XPI, merge this block into the
+existing `policies.json` object:
+
+```json
+{
+  "policies": {
+    "3rdparty": {
+      "Extensions": {
+        "{90c66d9f-a142-43a8-8ffb-707a48d8eb7a}": {
+          "OAuthMode": "builtin"
+        }
+      }
+    }
+  }
+}
+```
+
+To force an organization-owned client, first create and approve the client as
+described below, then merge this block with the actual values:
+
+```json
+{
+  "policies": {
+    "3rdparty": {
+      "Extensions": {
+        "{90c66d9f-a142-43a8-8ffb-707a48d8eb7a}": {
+          "OAuthMode": "custom",
+          "OAuthClientId": "<desktop-client-id>.apps.googleusercontent.com",
+          "OAuthClientSecret": "<desktop-client-secret>"
+        }
+      }
+    }
+  }
+}
+```
+
+Do not deploy either example with placeholders. Keep the surrounding
+`ExtensionSettings` force-install policy when both policies are required; the
+`ExtensionSettings` and `3rdparty` objects are siblings below `policies`, not
+alternative files.
+
+The custom client must be an OAuth 2.0 **Desktop app** in a Google Cloud project
+controlled by the deploying organization. Before rollout:
+
+1. Enable the Google Drive API in that project.
+2. Configure the Google Auth Platform branding, support contacts, audience, and
+   test users or production publication status.
+3. Declare and review the restricted
+   `https://www.googleapis.com/auth/drive` scope.
+4. Complete any Google verification or Workspace approval required for the
+   intended audience.
+5. Create a Desktop app client. Copy the `installed.client_id` and
+   `installed.client_secret` string values from Google's credential JSON; do
+   not place the whole JSON document in the policy.
+6. Confirm that Google's consent page shows the expected organization-owned app
+   identity and that the account is permitted to authorize it.
+
+The person or organization that supplies the client owns its Google Cloud
+configuration, consent-screen accuracy, verification, test-user and publication
+status, quota, credential rotation, Workspace approval, and support. An
+External application left in Testing can issue grants that expire after seven
+days.
+
+`policies.json` must be valid UTF-8 JSON and must be placed in a Thunderbird
+policy location listed in [Add-on identity and policy locations](#61-add-on-identity-and-policy-locations).
+After adding, changing, or removing managed OAuth values, fully exit and restart
+Thunderbird. Thunderbird does not provide a reliable managed-storage change
+event, and an extension reload is not a supported substitute for a browser
+restart. Check `about:policies`, then open the provider options and confirm the
+expected mode, managed source, and locked controls. The client secret itself is
+never displayed.
+
+Thunderbird does not enforce an extension-provided schema for managed storage,
+so the provider validates the policy at runtime. The presence of any one of the
+three supported keys activates managed mode and locks the local controls;
+`OAuthMode` is then required. `builtin` deliberately ignores managed client
+fields. `custom` fails closed if either field is absent, blank, the wrong type,
+or invalid. An unknown mode, a partial OAuth policy, or a managed storage read
+failure also fails closed; the provider does not silently use the local or
+built-in client. Thunderbird's documented **Managed storage manifest not
+found** result means that no extension policy is configured and is treated as
+the normal unmanaged state.
+
+The Desktop client secret is public installed-application configuration, not a
+user password or a security boundary. It is nevertheless present in the policy
+file, so restrict write access, avoid placing it in tickets or logs, and follow
+the organization's configuration-retention rules. The provider reads managed
+values into memory but does not copy them to `storage.local`, return the secret
+to the options page, or log it.
+
+Changing the effective client ID invalidates the provider's cached access tokens
+and requires every account authorized under the previous ID to use **Sign in
+again**. Account records, VFS connection bindings, and Drive files are retained;
+the provider neither revokes the old Google grants nor deletes data
+automatically. Replacing a secret while keeping the same client ID does not by
+itself require reauthorization; the next token refresh uses the replacement
+secret. After an ID change, revoke the previous application grants separately in
+Google when the organization's offboarding policy requires it.
+
+References:
+
+- [Thunderbird managed-storage example](https://github.com/thunderbird/webext-examples/tree/master/manifest_v2/managedStorage)
+- [Thunderbird storage API](https://webextension-api.thunderbird.net/en/esr-mv3/storage.html)
+- [Thunderbird enterprise policy documentation](https://enterprise.thunderbird.net/manage-updates-policies-and-customization/managing-thunderbird-policies)
+- [OAuth 2.0 for desktop apps](https://developers.google.com/identity/protocols/oauth2/native-app)
+- [Google Drive API scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)
+
+### 6.4 Google Workspace controls
 
 When users see an administrator-policy error during Google authorization:
 
-1. Obtain the released product's OAuth application details from its official
-   support documentation.
+1. In the provider options, identify whether the effective client is built-in
+   or custom. For a custom client, record its displayed client ID; for the
+   built-in client, use the ID from the approved release records.
 2. Open Google Workspace Admin app access controls.
 3. Review the requested full Drive scope and the affected organizational unit.
-4. Permit or trust the product's OAuth application only after the
+4. Permit or trust only that effective OAuth application after the
    organization's security and data-handling review.
 5. Ask the user to start **Add Google account** or **Sign in again** once more.
 
 Expected result: Google shows the consent flow instead of
 admin_policy_enforced. Do not weaken domain-wide controls for unrelated OAuth
-clients.
+clients. For a built-in client, product support owns application-level problems;
+for a custom client, the deploying organization owns them.
 
-### 6.4 Rollout verification
+### 6.5 Rollout verification
 
-1. Open about:policies and check for policy errors.
-2. Restart Thunderbird.
+1. Open `about:policies` and check for policy parse errors.
+2. Fully exit and restart Thunderbird.
 3. Confirm that the add-on is installed and enabled.
-4. Open its options and confirm that no sign-in starts automatically.
-5. Connect a disposable Google account.
-6. Grant one connection from the approved VFS consumer.
-7. Complete [Operational checks](#7-operational-checks).
+4. Open its options and confirm the intended OAuth mode and source. For a
+   managed policy, confirm that the controls are locked and the secret is not
+   exposed.
+5. Confirm that no sign-in starts automatically.
+6. Connect a disposable Google account and verify the expected application name
+   and client ID in Google's flow.
+7. Grant one connection from the approved VFS consumer.
+8. Complete [Operational checks](#7-operational-checks).
 
 ## 7. Operational checks
 
@@ -393,6 +554,7 @@ proxy change, or a significant Google Workspace policy change:
 | Check | Expected result |
 | --- | --- |
 | Cold start | Thunderbird starts without opening Google authorization and without a provider error |
+| OAuth configuration | The options page shows the intended built-in or custom mode and local or managed source; managed controls are locked and no secret is displayed |
 | Provider discovery | The approved VFS consumer lists VFS Provider for Google Drive |
 | Account setup | The intended account appears as Connected |
 | Connection grant | The setup window shows the consumer name and ID before access is granted |
@@ -427,19 +589,26 @@ original consumer's discovery and permission settings.
 Check:
 
 - the installed XPI came from the approved product distribution channel;
+- the options page shows the expected OAuth mode and source;
+- a local custom client has a complete Desktop client ID and matching secret;
+- a managed policy contains the exact case-sensitive keys from [Managed OAuth
+  client policy](#63-managed-oauth-client-policy), `about:policies` reports no
+  error, and Thunderbird was fully restarted after the last policy change;
 - the Google account is active and can use Google Drive;
-- Google Workspace app access controls permit the released product;
+- Google Workspace app access controls permit the effective OAuth client;
 - the system can reach all hosts in [Network access](#23-network-access); and
 - the Google consent window was not canceled.
 
-If Google reports an invalid, deleted, or unverified application, record the
-exact Google error and contact product support. Administrators do not replace
-the product's OAuth configuration locally.
+An incomplete, invalid, or unreadable managed OAuth policy fails closed instead
+of falling back to a local or built-in client. Correct the policy and restart
+Thunderbird. If Google reports an invalid, deleted, or unverified application,
+record the exact Google error. Contact product support for the built-in client;
+contact the organization's Google Cloud administrator for a custom client.
 
 ### 8.3 Account requires sign-in again
 
-Common causes include a revoked grant, an account security change, or a Google
-Workspace policy change.
+Common causes include a revoked grant, an account security change, a Google
+Workspace policy change, or a change to the effective OAuth client ID.
 
 1. Select **Sign in again** beside the affected account.
 2. Choose the same Google identity.
@@ -526,6 +695,8 @@ Collect:
 - provider and consumer add-on versions;
 - approximate operation time;
 - Google account type: consumer or Workspace;
+- OAuth mode and source: built-in or custom, local or managed, without copying
+  the client ID or secret;
 - whether My Drive or a Shared Drive was involved;
 - operation and phase;
 - stable error code and numeric HTTP status; and
@@ -557,7 +728,7 @@ Before an update:
 3. Back up the complete Thunderbird profile through the organization's normal
    endpoint backup process.
 4. Protect the backup as credential-bearing data because it can contain OAuth
-   refresh tokens.
+   refresh tokens and a locally saved custom OAuth client pair.
 5. Record which add-on version matches the backup.
 
 ### 10.2 Recovery
@@ -565,9 +736,12 @@ Before an update:
 1. Install the provider version that matches the backup.
 2. Restore the profile while Thunderbird is closed.
 3. Start Thunderbird.
-4. Check every configured account and VFS connection.
-5. Use **Sign in again** if Google no longer accepts a restored grant.
-6. Run [Operational checks](#7-operational-checks).
+4. Confirm that the effective OAuth configuration matches the intended restored
+   environment. Managed policy is deployed separately from the profile backup.
+5. Check every configured account and VFS connection.
+6. Use **Sign in again** if Google no longer accepts a restored grant or the
+   effective client ID changed.
+7. Run [Operational checks](#7-operational-checks).
 
 Restoring a profile does not restore Drive content that Google has already
 deleted or changed. Use Google Drive's own trash, retention, and recovery tools
@@ -582,7 +756,9 @@ To remove access completely:
 3. Remove any remaining grant from the user's
    [Google Account connections](https://myaccount.google.com/connections).
 4. Remove the add-on from Thunderbird.
-5. Retire profile backups according to the organization's credential-retention
+5. Remove its `3rdparty.Extensions` OAuth policy when it is no longer required,
+   then restart Thunderbird before reusing the profile for another deployment.
+6. Retire profile and policy backups according to the organization's credential-retention
    policy.
 
 Removing the add-on or a VFS connection does not delete Drive files. Items

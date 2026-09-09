@@ -29,12 +29,14 @@ The current build provides:
 - localized account, consumer-access, and provider settings;
 - a versioned state repository that keeps Google accounts separate from VFS
   consumer connections;
-- versioned preferences for OAuth setup, diagnostics, and Google Workspace
-  export formats;
+- versioned OAuth configuration with a packaged default, an optional local
+  Google Desktop client, and administrator-locked Thunderbird managed policy;
+- versioned preferences for diagnostics and Google Workspace export formats;
 - privacy-aware diagnostic logging with a strict metadata allowlist;
 - Google OAuth Authorization Code flow with PKCE, token refresh, revocation,
   and restart-safe session token storage;
-- localized account, diagnostic, and Google Workspace export settings;
+- localized OAuth client, account, diagnostic, and Google Workspace export
+  settings;
 - authenticated Google Drive v3 requests with token refresh, bounded retry and
   request deadlines, validated upload-session URLs, pagination, quota,
   metadata, download, and export helpers;
@@ -69,8 +71,12 @@ invalidates the VFS storage root so an open picker can refresh its current
 folder without relying on unstable Drive paths.
 The settings page lists every current consumer connection and can revoke one
 add-on's access without removing the Google account or Drive files. Release
-packages include the project's Google Desktop OAuth client; administrators and
-users do not create or enter OAuth credentials.
+packages include the project's Google Desktop OAuth client as the default. An
+unmanaged profile can instead use its own Google Desktop client, and an
+administrator can force either the built-in or a custom client through
+Thunderbird managed storage. Selecting a client never authorizes a Google
+account by itself; each account still requires an explicit user sign-in and
+consent.
 
 ## Requirements
 
@@ -99,7 +105,10 @@ The package is written to `dist/vfs-provider-googledrive_0_1_0.xpi` for the
 current version. The credential JSON is read as build input; it is neither
 copied into the package nor logged. Its client ID and client secret are inserted
 only into the packaged OAuth module. The distributed XPI necessarily exposes
-these public installed-application client values.
+these public installed-application client values. The built-in client remains
+the product default and the target of a managed `builtin` policy, so a normal
+release build still requires this input even though a user or administrator can
+select a custom client after installation.
 
 Run the local source and package checks:
 

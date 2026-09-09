@@ -19,6 +19,52 @@
 
       <p id="feedback" class="feedback" role="status" aria-live="polite" hidden></p>
 
+      <section class="panel" aria-labelledby="oauth-heading">
+        <h2 id="oauth-heading" data-i18n-content="optionsOAuthHeading"></h2>
+        <p class="section-intro" data-i18n-content="optionsOAuthText"></p>
+
+        <form id="oauth-form" novalidate>
+          <div class="form-field">
+            <label for="oauth-mode" data-i18n-content="optionsOAuthModeLabel"></label>
+            <select id="oauth-mode" name="mode" aria-describedby="oauth-mode-help">
+              <option value="builtin" data-i18n-content="optionsOAuthModeBuiltin"></option>
+              <option value="custom" data-i18n-content="optionsOAuthModeCustom"></option>
+            </select>
+            <p id="oauth-mode-help" class="field-help"></p>
+          </div>
+
+          <dl class="oauth-summary">
+            <div>
+              <dt data-i18n-content="optionsOAuthSourceLabel"></dt>
+              <dd id="oauth-source"></dd>
+            </div>
+            <div>
+              <dt data-i18n-content="optionsOAuthEffectiveClientIdLabel"></dt>
+              <dd><code id="oauth-effective-client-id"></code></dd>
+            </div>
+          </dl>
+
+          <div id="oauth-custom-fields">
+            <div class="form-field">
+              <label for="oauth-client-id" data-i18n-content="optionsOAuthClientIdLabel"></label>
+              <input id="oauth-client-id" name="clientId" type="text" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="form-field">
+              <label for="oauth-client-secret" data-i18n-content="optionsOAuthClientSecretLabel"></label>
+              <input id="oauth-client-secret" name="clientSecret" type="password" autocomplete="new-password" spellcheck="false" aria-describedby="oauth-client-secret-help">
+              <p id="oauth-client-secret-help" class="field-help" data-i18n-content="optionsOAuthClientSecretHelp"></p>
+            </div>
+          </div>
+
+          <p id="oauth-managed-notice" class="managed-notice" data-i18n-content="optionsOAuthManagedNotice" hidden></p>
+          <p class="data-notice" data-i18n-content="optionsOAuthChangeNotice"></p>
+
+          <div class="form-actions">
+            <button id="save-oauth" class="secondary-action" type="submit" data-i18n-content="optionsOAuthSave"></button>
+          </div>
+        </form>
+      </section>
+
       <section class="panel" aria-labelledby="accounts-heading">
         <div class="section-heading">
           <div>

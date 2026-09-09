@@ -13,6 +13,8 @@ export function createRuntimeMessageHandler({
   readiness,
   accountRepository,
   preferencesRepository,
+  oauthConfigurationRepository,
+  oauthSessionRepository,
   oauthClient,
   connectionService,
   logger
@@ -53,6 +55,23 @@ export function createRuntimeMessageHandler({
         break;
       case "googleDrive:preferences:update":
         operation = () => preferencesRepository.update(message.changes);
+        break;
+      case "googleDrive:oauth:configuration:get":
+        operation = () => oauthConfigurationRepository.getPublic();
+        break;
+      case "googleDrive:oauth:configuration:update":
+        operation = async () => {
+          const previousClientId = oauthConfigurationRepository
+            .getEffective().clientId;
+          const configuration = await oauthConfigurationRepository
+            .updateLocal(message.changes);
+          const currentClientId = oauthConfigurationRepository
+            .getEffective().clientId;
+          if (currentClientId !== previousClientId) {
+            await oauthSessionRepository.clearAccessTokens();
+          }
+          return configuration;
+        };
         break;
       case "googleDrive:vfs:connection:get":
         operation = () => connectionService.getConnection({

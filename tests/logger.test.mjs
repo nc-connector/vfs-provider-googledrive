@@ -32,6 +32,9 @@ test("keeps only operation-safe diagnostic fields", () => {
     connections: 2,
     accessToken: "secret-token",
     authorization: "Bearer secret-token",
+    oauthClientId: "private.apps.googleusercontent.com",
+    oauthClientSecret: "client-secret",
+    OAuthMode: "custom",
     path: "/private/report.pdf",
     emailAddress: "ada@example.invalid",
     url: "https://example.invalid/private"
@@ -44,6 +47,9 @@ test("keeps only operation-safe diagnostic fields", () => {
     percent: 25,
     connections: 2
   });
+  assert.equal(JSON.stringify(details).includes("googleusercontent"), false);
+  assert.equal(JSON.stringify(details).includes("client-secret"), false);
+  assert.equal(JSON.stringify(details).includes("custom"), false);
 });
 
 test("redacts free text placed in an otherwise safe field", () => {

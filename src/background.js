@@ -11,7 +11,11 @@ import {
   GoogleDriveChangeMonitor
 } from "./google/drive-change-monitor.mjs";
 import { GoogleDriveTransport } from "./google/drive-transport.mjs";
-import { GoogleOAuthClient } from "./google/oauth-client.mjs";
+import {
+  GOOGLE_OAUTH_CLIENT_ID,
+  GOOGLE_OAUTH_CLIENT_SECRET,
+  GoogleOAuthClient
+} from "./google/oauth-client.mjs";
 import { OAuthSessionRepository } from "./google/oauth-session.mjs";
 import {
   GoogleDriveVfsProvider
@@ -27,13 +31,24 @@ import {
   PROVIDER_PREFERENCES_KEY,
   ProviderPreferencesRepository
 } from "./state/provider-preferences.mjs";
+import {
+  OAuthConfigurationRepository
+} from "./state/oauth-configuration.mjs";
 import { ProviderStateRepository } from "./state/provider-state.mjs";
 
 export { GoogleDriveVfsProvider };
 
 const logger = new ProviderLogger();
+const oauthConfigurationRepository = new OAuthConfigurationRepository({
+  localStorageArea: browser.storage.local,
+  managedStorageArea: browser.storage.managed,
+  builtInClientId: GOOGLE_OAUTH_CLIENT_ID,
+  builtInClientSecret: GOOGLE_OAUTH_CLIENT_SECRET
+});
 const accountRepository = new ProviderStateRepository({
-  storageArea: browser.storage.local
+  storageArea: browser.storage.local,
+  resolveAccountStatus: (account) =>
+    oauthConfigurationRepository.accountStatus(account)
 });
 const preferencesRepository = new ProviderPreferencesRepository({
   storageArea: browser.storage.local
@@ -45,6 +60,8 @@ const oauthClient = new GoogleOAuthClient({
   identityApi: browser.identity,
   sessionRepository: oauthSessionRepository,
   accountRepository,
+  configurationProvider: () =>
+    oauthConfigurationRepository.getEffective(),
   logger
 });
 const driveTransport = new GoogleDriveTransport({
@@ -64,10 +81,11 @@ const connectionService = new VfsConnectionService({
 });
 
 const readiness = Promise.all([
+  oauthConfigurationRepository.initialize(),
   accountRepository.initialize(),
   preferencesRepository.initialize(),
   oauthSessionRepository.initialize()
-]).then(async ([, preferences]) => {
+]).then(async ([, , preferences]) => {
   logger.setDebugEnabled(preferences.debugLogging);
   await connectionService.initialize();
 });
@@ -135,6 +153,8 @@ browser.runtime.onMessage.addListener(createRuntimeMessageHandler({
   readiness,
   accountRepository,
   preferencesRepository,
+  oauthConfigurationRepository,
+  oauthSessionRepository,
   oauthClient,
   connectionService,
   logger

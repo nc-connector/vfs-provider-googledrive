@@ -244,6 +244,7 @@ h2 {
 }
 
 input[type="text"],
+input[type="password"],
 select {
   width: 100%;
   min-height: 34px;
@@ -252,6 +253,36 @@ select {
   border-radius: 5px;
   background: light-dark(#ffffff, #202023);
   color: inherit;
+}
+
+.managed-notice {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-inline-start: 3px solid var(--accent);
+  background: light-dark(#e7f1ff, #17324f);
+  line-height: 1.45;
+}
+
+.oauth-summary {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+}
+
+.oauth-summary > div {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.35fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.oauth-summary dt {
+  color: var(--muted);
+}
+
+.oauth-summary dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .field-help {

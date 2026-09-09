@@ -10,6 +10,8 @@ const MESSAGE_TYPES = Object.freeze({
   disconnectAccount: "googleDrive:account:disconnect",
   listConnections: "googleDrive:vfs:connections:list",
   revokeConnection: "googleDrive:vfs:connection:revoke",
+  getOAuthConfiguration: "googleDrive:oauth:configuration:get",
+  updateOAuthConfiguration: "googleDrive:oauth:configuration:update",
   getPreferences: "googleDrive:preferences:get",
   updatePreferences: "googleDrive:preferences:update"
 });
@@ -23,6 +25,15 @@ const ERROR_MESSAGE_KEYS = Object.freeze({
   oauth_reauthorization_required: "optionsErrorOAuthReauthorizationRequired",
   oauth_token_refresh_failed: "optionsErrorOAuthReauthorizationRequired",
   oauth_refresh_token_missing: "optionsErrorOAuthReauthorizationRequired",
+  oauth_configuration_changed: "optionsErrorOAuthConfigurationChanged",
+  oauth_configuration_invalid: "optionsErrorOAuthConfigurationInvalid",
+  oauth_configuration_managed: "optionsErrorOAuthConfigurationManaged",
+  oauth_configuration_uninitialized: "optionsErrorOAuthConfigurationInvalid",
+  oauth_client_id_invalid: "optionsErrorOAuthConfigurationInvalid",
+  oauth_client_secret_required: "optionsErrorOAuthConfigurationInvalid",
+  oauth_managed_policy_invalid: "optionsErrorOAuthPolicyInvalid",
+  oauth_managed_policy_read_failed: "optionsErrorOAuthPolicyInvalid",
+  oauth_not_configured: "optionsErrorOAuthConfigurationInvalid",
   account_has_connections: "optionsErrorAccountHasConnections",
   connection_not_found: "vfsConnectionErrorNotFound",
   unexpected_error: "optionsErrorUnexpected"
@@ -45,6 +56,18 @@ export function normalizePreferenceChanges({
   return {
     debugLogging: Boolean(debugLogging),
     exportFormats: { ...exportFormats }
+  };
+}
+
+export function normalizeOAuthConfigurationChanges({
+  mode,
+  clientId,
+  clientSecret
+}) {
+  return {
+    mode: typeof mode === "string" ? mode.trim() : "",
+    clientId: typeof clientId === "string" ? clientId.trim() : "",
+    clientSecret: typeof clientSecret === "string" ? clientSecret.trim() : ""
   };
 }
 
@@ -127,15 +150,17 @@ export function createOptionsController({ sendMessage, view, getMessage }) {
   }
 
   async function refresh() {
-    const [preferences, accounts, connections] = await Promise.all([
+    const [preferences, oauthConfiguration, accounts, connections] = await Promise.all([
       request(MESSAGE_TYPES.getPreferences),
+      request(MESSAGE_TYPES.getOAuthConfiguration),
       request(MESSAGE_TYPES.listAccounts),
       request(MESSAGE_TYPES.listConnections)
     ]);
     view.setPreferences(preferences);
+    view.setOAuthConfiguration(oauthConfiguration);
     view.renderAccounts(accountViewModels(accounts, getMessage));
     renderConnectionList(connections, accounts);
-    return { preferences, accounts, connections };
+    return { preferences, oauthConfiguration, accounts, connections };
   }
 
   async function refreshConnections() {
@@ -169,6 +194,29 @@ export function createOptionsController({ sendMessage, view, getMessage }) {
         view.setFeedback({ kind: "success", text: getMessage("optionsPreferencesSaved") });
       }
       return preferences;
+    } catch (error) {
+      showError(error);
+      return null;
+    } finally {
+      view.setBusy(false);
+    }
+  }
+
+  async function saveOAuthConfiguration(changes, { notify = true } = {}) {
+    view.setBusy(true);
+    try {
+      const configuration = await request(
+        MESSAGE_TYPES.updateOAuthConfiguration,
+        { changes: normalizeOAuthConfigurationChanges(changes) }
+      );
+      await refresh();
+      if (notify) {
+        view.setFeedback({
+          kind: "success",
+          text: getMessage("optionsOAuthSaved")
+        });
+      }
+      return configuration;
     } catch (error) {
       showError(error);
       return null;
@@ -243,6 +291,7 @@ export function createOptionsController({ sendMessage, view, getMessage }) {
     refresh,
     refreshConnections,
     revokeConnection,
+    saveOAuthConfiguration,
     savePreferences
   };
 }

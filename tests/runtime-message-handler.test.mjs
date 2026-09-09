@@ -20,6 +20,16 @@ function createHandler(overrides = {}) {
       get: async () => ({ debugLogging: false }),
       update: async (changes) => changes
     },
+    oauthConfigurationRepository: {
+      getPublic: () => ({ mode: "builtin", locked: false }),
+      getEffective: () => ({
+        clientId: "builtin.apps.googleusercontent.com"
+      }),
+      updateLocal: async (changes) => changes
+    },
+    oauthSessionRepository: {
+      clearAccessTokens: async () => undefined
+    },
     oauthClient: {
       authorize: async () => ({ id: "account-1" }),
       disconnectAccount: async () => ({ revoked: true })
@@ -229,4 +239,85 @@ test("routes VFS connection messages without passing extra fields", async () => 
       name: "Personal Drive"
     }]
   ]);
+});
+
+test("returns redacted OAuth configuration and clears tokens on client change", async () => {
+  let clientId = "builtin.apps.googleusercontent.com";
+  let clearCalls = 0;
+  const publicConfiguration = {
+    mode: "custom",
+    source: "local",
+    locked: false,
+    clientId: "custom.apps.googleusercontent.com",
+    hasClientSecret: true,
+    customClientId: "custom.apps.googleusercontent.com",
+    hasCustomClientSecret: true
+  };
+  const handler = createHandler({
+    oauthConfigurationRepository: {
+      getPublic: () => publicConfiguration,
+      getEffective: () => ({ clientId }),
+      async updateLocal(changes) {
+        assert.deepEqual(changes, {
+          mode: "custom",
+          clientId: "custom.apps.googleusercontent.com",
+          clientSecret: "private-secret"
+        });
+        clientId = "custom.apps.googleusercontent.com";
+        return publicConfiguration;
+      }
+    },
+    oauthSessionRepository: {
+      async clearAccessTokens() {
+        clearCalls += 1;
+      }
+    }
+  });
+  const sender = { id: "provider@example.invalid" };
+
+  assert.deepEqual(await handler({
+    type: "googleDrive:oauth:configuration:get"
+  }, sender), {
+    ok: true,
+    value: publicConfiguration
+  });
+  assert.deepEqual(await handler({
+    type: "googleDrive:oauth:configuration:update",
+    changes: {
+      mode: "custom",
+      clientId: "custom.apps.googleusercontent.com",
+      clientSecret: "private-secret"
+    },
+    ignored: "value"
+  }, sender), {
+    ok: true,
+    value: publicConfiguration
+  });
+  assert.equal(clearCalls, 1);
+  assert.equal(JSON.stringify(publicConfiguration).includes("private-secret"), false);
+});
+
+test("keeps cached tokens when only the OAuth client secret changes", async () => {
+  let clearCalls = 0;
+  const handler = createHandler({
+    oauthConfigurationRepository: {
+      getEffective: () => ({
+        clientId: "same.apps.googleusercontent.com"
+      }),
+      updateLocal: async () => ({ mode: "custom" })
+    },
+    oauthSessionRepository: {
+      async clearAccessTokens() {
+        clearCalls += 1;
+      }
+    }
+  });
+
+  const response = await handler({
+    type: "googleDrive:oauth:configuration:update",
+    changes: { mode: "custom" }
+  }, { id: "provider@example.invalid" });
+
+  assert.equal(response.ok, true);
+  assert.equal(clearCalls, 0);
 });
