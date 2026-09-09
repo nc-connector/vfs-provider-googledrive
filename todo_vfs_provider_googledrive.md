@@ -8,10 +8,10 @@ kept in sync with the repository.
 - [x] Register the project-owned Google OAuth Desktop client and inject its
   client ID and assigned client secret from an external, untracked credential
   JSON during the XPI build. Installed applications cannot keep this credential
-  pair confidential, so PKCE remains the authorization-code protection and
-  neither value is accepted from administrators or users.
-- [x] Use one project-owned OAuth client in releases. Administrators and users
-  do not provide their own client ID.
+  pair confidential, so PKCE remains the authorization-code protection.
+- [x] Use the project-owned OAuth client as the release default, allow an
+  unmanaged profile to select its own Google Desktop client, and allow an
+  administrator to force either mode through Thunderbird managed policy.
 - [x] Keep real publisher client values out of tracked source and CI review
   packages. Release builds fail closed without the protected external input.
 - [x] Use the packaged client in every release build and remove the development
@@ -63,6 +63,10 @@ kept in sync with the repository.
 - [x] Implement OAuth with PKCE through a documented Thunderbird MV3 identity
   API flow. Never log authorization codes, access tokens, refresh tokens, or
   Authorization headers.
+- [x] Resolve the effective OAuth client from the built-in default, optional
+  local custom settings, or authoritative `storage.managed` policy. Lock
+  policy-controlled settings, fail closed on invalid policy, redact secrets,
+  and require account reauthorization only when the effective client ID changes.
 - [x] Store account metadata and refresh material in persistent WebExtension
   storage; keep access tokens short-lived and replaceable. Document that
   Thunderbird does not expose a documented OS credential store to ordinary
@@ -212,7 +216,7 @@ kept in sync with the repository.
     production OAuth, and compatibility values kept as gates.
   - [x] Document Google's 10 MB Workspace export limit in the administrator
     guide and its troubleshooting steps.
-- [ ] Add a release changelog with the first release candidate.
+- [x] Add a release changelog with the first release candidate.
 - [x] Complete license and third-party notices for all currently packaged source.
 - [ ] Replace the open PR #96 VFS review revision with its merged upstream commit,
   or confirm ATN acceptance of the pinned Thunderbird-owned revision.

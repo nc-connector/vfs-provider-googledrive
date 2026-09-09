@@ -5,6 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const ROOT_PACKAGE_FILES = [
+  "CHANGELOG.md",
   "LICENSE",
   "PRIVACY.md",
   "README.md",

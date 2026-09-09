@@ -15,6 +15,7 @@ const TEST_OAUTH_CREDENTIALS = Object.freeze({
   clientSecret: "test-build-client-secret"
 });
 const PACKAGE_FILES = [
+  "CHANGELOG.md",
   "LICENSE",
   "PRIVACY.md",
   "README.md",
