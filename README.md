@@ -68,9 +68,9 @@ changes are checked every five minutes for connected accounts. A changed Drive
 invalidates the VFS storage root so an open picker can refresh its current
 folder without relying on unstable Drive paths.
 The settings page lists every current consumer connection and can revoke one
-add-on's access without removing the Google account or Drive files. The add-on
-includes its project-owned Google Desktop OAuth client; administrators and users
-do not create or enter OAuth credentials.
+add-on's access without removing the Google account or Drive files. Release
+packages include the project's Google Desktop OAuth client; administrators and
+users do not create or enter OAuth credentials.
 
 ## Requirements
 
@@ -86,14 +86,20 @@ Install the recorded development dependencies:
 npm ci
 ```
 
-Create the XPI:
+Create the XPI from the publisher's Google Desktop credential JSON, which must
+remain outside the project folder and source control:
 
-```sh
+```powershell
+$env:GDRVFS_OAUTH_CREDENTIALS_FILE = "C:\external\path\client_secret.json"
 npm run build
+Remove-Item Env:\GDRVFS_OAUTH_CREDENTIALS_FILE
 ```
 
 The package is written to `dist/vfs-provider-googledrive_0_1_0.xpi` for the
-current version.
+current version. The credential JSON is read as build input; it is neither
+copied into the package nor logged. Its client ID and client secret are inserted
+only into the packaged OAuth module. The distributed XPI necessarily exposes
+these public installed-application client values.
 
 Run the local source and package checks:
 
@@ -108,6 +114,7 @@ WebExtension linter:
 npm test
 ```
 
+The review build uses synthetic OAuth values and needs no publisher credential.
 The complete check requires network access because it downloads the linter from
 the Thunderbird `webext-linter` repository.
 

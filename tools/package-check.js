@@ -71,6 +71,10 @@ function run() {
   assert(actual.includes("manifest.json"), "XPI manifest is missing");
   assert(!actual.some((name) => /(^|\/)(node_modules|dist|\.git|\.tmp)(\/|$)/.test(name)), "XPI contains a development directory");
   assert(!actual.some((name) => /todo/i.test(path.basename(name))), "XPI contains a work plan");
+  assert(
+    !actual.some((name) => /(?:client[_-]?secret|oauth[_-]?credentials).*\.json$/iu.test(path.basename(name))),
+    "XPI contains an OAuth credential file"
+  );
 
   console.log(`[OK] package-check passed (${actual.length} files)`);
   if (process.argv.includes("--remove")) {

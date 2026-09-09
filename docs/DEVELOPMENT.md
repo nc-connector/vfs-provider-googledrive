@@ -165,13 +165,14 @@ loopback redirect from the fixed add-on ID:
 http://127.0.0.1/mozoauth2/<extension-id-hash>
 ```
 
-The Google Cloud credential must be a Desktop app client. Google currently
-requires that client's ID and client secret in token-exchange and refresh
-requests. Both values are packaged with the installed add-on and therefore are
-public client credentials, not a confidentiality boundary. A 32-byte random
-verifier and independent state value are held in `storage.session` for the
-authorization transaction. The returned state and redirect are checked before
-the code is exchanged, and PKCE binds the returned code to that transaction.
+The Google Cloud credential must be a Desktop app client. The credential issued
+for this provider requires its client ID and assigned client secret in token-
+exchange and refresh requests. Both values are packaged with the installed
+add-on and therefore are public client credentials, not a confidentiality
+boundary. A 32-byte random verifier and independent state value are held in
+`storage.session` for the authorization transaction. The returned state and
+redirect are checked before the code is exchanged, and PKCE binds the returned
+code to that transaction.
 
 The provider requests `https://www.googleapis.com/auth/drive`. The narrower
 `drive.file` scope cannot represent an existing Drive tree because it only sees
@@ -180,11 +181,13 @@ and a published build needs the corresponding Google verification work.
 
 #### Live development OAuth setup
 
-All builds use the project's packaged Google Desktop OAuth client. Its client
-ID and client secret are defined once in the OAuth module and are not
-configurable through the options page. The Cloud project display name may
-change, but the OAuth client ID and Gecko add-on ID remain stable product
-identities.
+Release and live-test XPI builds use the project's Google Desktop OAuth client.
+Tracked source contains only unique build markers. `tools/build.js` reads the
+unchanged Desktop credential JSON from an external path, replaces those markers
+in the in-memory package entry, and never copies the JSON into the project or
+XPI. The client is not configurable through the options page. The Cloud project
+display name may change, but the OAuth client ID and Gecko add-on ID remain
+stable product identities.
 
 For local live tests:
 
@@ -192,13 +195,15 @@ For local live tests:
 2. Configure the Google Auth Platform audience and branding.
 3. Add `https://www.googleapis.com/auth/drive` to the requested scopes.
 4. Create the packaged OAuth client with application type **Desktop app**.
-5. Add every tester while the External application remains in Testing status.
+5. Keep the downloaded credential JSON outside the repository and supply its
+   path through `GDRVFS_OAUTH_CREDENTIALS_FILE` when building the XPI.
+6. Add every tester while the External application remains in Testing status.
 
-Do not log the packaged client secret or copy it into account records. It is
-unavoidably inspectable in a distributed installed application and must never
-be treated as proof that a request came from an untampered add-on. External-
-testing authorizations that request Drive access normally expire after seven
-days.
+Do not commit or log the packaged client secret or copy it into account records.
+It is unavoidably inspectable in a distributed installed application and must
+never be treated as proof that a request came from an untampered add-on.
+External-testing authorizations that request Drive access normally expire after
+seven days.
 
 References:
 
@@ -499,13 +504,23 @@ npm run test:review
 
 `test:review` checks the source tree, builds `.tmp/review.xpi`, compares the XPI
 contents with the package allowlist, and removes the temporary package after a
-successful check.
+successful check. It uses explicit synthetic OAuth values and cannot create a
+release package.
 
-Create the normal build with:
+Create the normal build from the unchanged Google Desktop credential JSON. The
+file must remain outside the project folder and source control:
 
-```sh
+```powershell
+$env:GDRVFS_OAUTH_CREDENTIALS_FILE = "C:\external\path\client_secret.json"
 npm run build
+Remove-Item Env:\GDRVFS_OAUTH_CREDENTIALS_FILE
 ```
+
+The release build fails closed when the environment variable, file, Desktop-app
+section, client ID, or client secret is missing. The file and its values are not
+logged. The source module remains unchanged; only its in-memory ZIP entry gets
+the values that the installed application requires. Given the same source and
+credential input, the build is deterministic.
 
 Run the complete check set before a release candidate or review handoff:
 
@@ -533,22 +548,27 @@ Use the exact packaged candidate for manual validation. At minimum, test:
 
 Use disposable Drive content. Record the commit, XPI SHA-256, Thunderbird
 versions, VFS consumer version, account type, result of each case, and sanitized
-logs for failures. Never store credentials, tokens, private file names, or test
-content in the repository.
+logs for failures. Never store the publisher credential file, user credentials,
+tokens, private file names, or test content in the repository.
 
 For a release handoff:
 
 1. Create the candidate from a clean checkout with `npm ci`, `npm test`, and
-   `npm run build`.
-2. Build the same commit a second time and compare the unsigned XPI hashes.
-3. Inspect the XPI for unreviewed files, credentials, logs, work plans, and
-   generated development directories.
+   `npm run build`, supplying the protected external credential JSON only to the
+   build command.
+2. Build the same commit with the same credential input a second time and
+   compare the unsigned XPI hashes.
+3. Inspect the XPI for unreviewed files, user credentials, tokens, logs, work
+   plans, and generated development directories. The expected publisher client
+   values occur only in the packaged OAuth module.
 4. Complete the manual cases above with the exact candidate.
 5. Confirm the manifest identity, permissions, supported Thunderbird range,
    product OAuth configuration, privacy text, license notices, translations,
    and release notes.
-6. Give ATN reviewers private access to a disposable test account when needed,
-   plus the build commands, vendor sources, data flow, and manual test results.
+6. Give ATN reviewers private access to a disposable test account and the
+   release credential input when needed for exact reproduction, plus the build
+   commands, vendor sources, data flow, and manual test results. Never place
+   either private input in the public repository or review notes.
 
 Use the current
 [Thunderbird ATN review policy](https://thunderbird.github.io/atn-review-policy/)

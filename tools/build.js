@@ -6,6 +6,14 @@ const zlib = require("node:zlib");
 
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE_DIR = path.join(ROOT, "src");
+const OAUTH_SOURCE_PATH = "google/oauth-client.mjs";
+const OAUTH_CLIENT_ID_MARKER = "__GDRVFS_OAUTH_CLIENT_ID__";
+const OAUTH_CLIENT_SECRET_MARKER = "__GDRVFS_OAUTH_CLIENT_SECRET__";
+const OAUTH_CREDENTIALS_ENV = "GDRVFS_OAUTH_CREDENTIALS_FILE";
+const TEST_OAUTH_CREDENTIALS = Object.freeze({
+  clientId: "test-build-client.apps.googleusercontent.com",
+  clientSecret: "test-build-client-secret"
+});
 const PACKAGE_FILES = [
   "LICENSE",
   "PRIVACY.md",
@@ -72,13 +80,109 @@ function collectPackageEntries() {
   return entries.sort((left, right) => left.archivePath.localeCompare(right.archivePath, "en"));
 }
 
+function parseArguments() {
+  const argumentsList = process.argv.slice(2);
+  const useTestCredentials = argumentsList.includes("--test-credentials");
+  const positional = argumentsList.filter((argument) => argument !== "--test-credentials");
+  if (positional.length > 1) {
+    throw new Error("Usage: node tools/build.js [output] [--test-credentials]");
+  }
+  return {
+    requestedOutput: positional[0],
+    useTestCredentials
+  };
+}
+
+function requireCredential(value, name) {
+  const credential = typeof value === "string" ? value.trim() : "";
+  if (!credential || /[\u0000-\u001f\u007f]/u.test(credential)) {
+    throw new Error(`The OAuth credential file has an invalid ${name}`);
+  }
+  return credential;
+}
+
+function loadOAuthCredentials(useTestCredentials) {
+  if (useTestCredentials) {
+    return TEST_OAUTH_CREDENTIALS;
+  }
+
+  const configuredPath = process.env[OAUTH_CREDENTIALS_ENV];
+  if (!configuredPath) {
+    throw new Error(
+      `${OAUTH_CREDENTIALS_ENV} must point to the external Google Desktop credential JSON`
+    );
+  }
+  const credentialPath = path.resolve(configuredPath);
+  const relativePath = path.relative(ROOT, credentialPath);
+  if (!relativePath.startsWith("..") && !path.isAbsolute(relativePath)) {
+    throw new Error("The Google OAuth credential file must stay outside the project folder");
+  }
+
+  let document;
+  try {
+    document = JSON.parse(fs.readFileSync(credentialPath, "utf8"));
+  } catch {
+    throw new Error("The external Google OAuth credential file cannot be read");
+  }
+  if (!document?.installed || document.web) {
+    throw new Error("The Google OAuth credential file must describe a Desktop app client");
+  }
+  const clientId = requireCredential(document.installed.client_id, "client ID");
+  if (!/^[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/u.test(clientId)) {
+    throw new Error("The Google OAuth credential file has an invalid client ID");
+  }
+  return {
+    clientId,
+    clientSecret: requireCredential(
+      document.installed.client_secret,
+      "client secret"
+    )
+  };
+}
+
+function replaceCredentialMarker(source, marker, value) {
+  const quotedMarker = JSON.stringify(marker);
+  const firstIndex = source.indexOf(quotedMarker);
+  if (firstIndex < 0 || source.indexOf(quotedMarker, firstIndex + 1) >= 0) {
+    throw new Error(`OAuth build marker must occur exactly once: ${marker}`);
+  }
+  return source.replace(quotedMarker, JSON.stringify(value));
+}
+
+function injectOAuthCredentials(entries, credentials) {
+  return entries.map((entry) => {
+    if (entry.archivePath !== OAUTH_SOURCE_PATH) {
+      return entry;
+    }
+    let source = fs.readFileSync(entry.sourcePath, "utf8");
+    source = replaceCredentialMarker(
+      source,
+      OAUTH_CLIENT_ID_MARKER,
+      credentials.clientId
+    );
+    source = replaceCredentialMarker(
+      source,
+      OAUTH_CLIENT_SECRET_MARKER,
+      credentials.clientSecret
+    );
+    if (source.includes(OAUTH_CLIENT_ID_MARKER) ||
+        source.includes(OAUTH_CLIENT_SECRET_MARKER)) {
+      throw new Error("OAuth build markers remain in the packaged source");
+    }
+    return {
+      ...entry,
+      data: Buffer.from(source, "utf8")
+    };
+  });
+}
+
 function createZip(entries, outputPath) {
   const localParts = [];
   const centralParts = [];
   let offset = 0;
 
   for (const entry of entries) {
-    const data = fs.readFileSync(entry.sourcePath);
+    const data = entry.data || fs.readFileSync(entry.sourcePath);
     const compressed = zlib.deflateRawSync(data, { level: 9 });
     const useDeflate = compressed.length < data.length;
     const payload = useDeflate ? compressed : data;
@@ -143,26 +247,38 @@ function createZip(entries, outputPath) {
   fs.writeFileSync(outputPath, Buffer.concat([...localParts, centralDirectory, endRecord]));
 }
 
-function resolveOutputPath(version) {
+function resolveOutputPath(version, requestedOutput, useTestCredentials) {
   const defaultName = `vfs-provider-googledrive_${version.replaceAll(".", "_")}.xpi`;
-  const requested = process.argv[2] || path.join("dist", defaultName);
+  const requested = requestedOutput || path.join("dist", defaultName);
   const outputPath = path.resolve(ROOT, requested);
   const relative = path.relative(ROOT, outputPath);
   if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error("The build output must stay inside the project folder");
   }
+  if (useTestCredentials && relative.split(path.sep)[0] !== ".tmp") {
+    throw new Error("A test-credential build must be written below .tmp");
+  }
   return outputPath;
 }
 
 function run() {
+  const { requestedOutput, useTestCredentials } = parseArguments();
   const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
   const manifest = JSON.parse(fs.readFileSync(path.join(SOURCE_DIR, "manifest.json"), "utf8"));
   if (packageJson.version !== manifest.version) {
     throw new Error("package.json and src/manifest.json versions differ");
   }
 
-  const outputPath = resolveOutputPath(packageJson.version);
-  const entries = collectPackageEntries();
+  const outputPath = resolveOutputPath(
+    packageJson.version,
+    requestedOutput,
+    useTestCredentials
+  );
+  const credentials = loadOAuthCredentials(useTestCredentials);
+  const entries = injectOAuthCredentials(
+    collectPackageEntries(),
+    credentials
+  );
   createZip(entries, outputPath);
   console.log(`[build] Created ${path.relative(ROOT, outputPath)} with ${entries.length} files`);
 }

@@ -8,7 +8,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  GOOGLE_OAUTH_CLIENT_ID,
   GoogleOAuthClient,
   GoogleOAuthError,
   OAUTH_REQUEST_TIMEOUT_MS,
@@ -19,7 +18,8 @@ import { OAuthSessionRepository } from "../src/google/oauth-session.mjs";
 import { ProviderStateRepository } from "../src/state/provider-state.mjs";
 import { FakeStorageArea } from "./helpers/fake-storage.mjs";
 
-const CLIENT_ID = GOOGLE_OAUTH_CLIENT_ID;
+const CLIENT_ID = "test-client.apps.googleusercontent.com";
+const CLIENT_SECRET = "test-client-secret";
 const LEGACY_CLIENT_ID = "legacy-client.apps.googleusercontent.com";
 
 function jsonResponse(payload, status = 200) {
@@ -32,6 +32,7 @@ function jsonResponse(payload, status = 200) {
 function createHarness({
   fetchApi,
   requestTimeoutMs,
+  useSourceCredentials = false,
   logger = {
     debug() {},
     info() {},
@@ -58,7 +59,7 @@ function createHarness({
       return `${redirectUri}?code=authorization-code&state=${state}`;
     }
   };
-  const client = new GoogleOAuthClient({
+  const clientOptions = {
     identityApi,
     sessionRepository,
     accountRepository,
@@ -66,7 +67,12 @@ function createHarness({
     logger,
     now: () => 1_000,
     requestTimeoutMs
-  });
+  };
+  if (!useSourceCredentials) {
+    clientOptions.clientId = CLIENT_ID;
+    clientOptions.clientSecret = CLIENT_SECRET;
+  }
+  const client = new GoogleOAuthClient(clientOptions);
   return {
     accountRepository,
     client,
@@ -93,10 +99,12 @@ test("uses the documented Google account request deadline", () => {
   assert.equal(OAUTH_REQUEST_TIMEOUT_MS, 30 * 1000);
 });
 
-test("uses the permanent product OAuth client", () => {
-  assert.equal(
-    GOOGLE_OAUTH_CLIENT_ID,
-    "97829492793-hupuhndvki6esrb3hpgbuhgr5ci3mc6m.apps.googleusercontent.com"
+test("fails closed before OAuth when build credentials are not injected", async () => {
+  const harness = createHarness({ useSourceCredentials: true });
+  await assert.rejects(
+    harness.client.authorize(),
+    (error) => error instanceof GoogleOAuthError &&
+      error.code === "oauth_not_configured"
   );
 });
 
@@ -174,7 +182,7 @@ test("authorizes a Drive account with the packaged client credentials and PKCE",
   assert.equal(account.emailAddress, "ada@example.invalid");
   const tokenBody = new URLSearchParams(requests[0].options.body);
   assert.equal(tokenBody.get("client_id"), CLIENT_ID);
-  assert.equal(tokenBody.has("client_secret"), true);
+  assert.equal(tokenBody.get("client_secret"), CLIENT_SECRET);
   assert.equal(tokenBody.get("grant_type"), "authorization_code");
   assert.equal(tokenBody.has("code_verifier"), true);
   assert.equal(
@@ -400,7 +408,7 @@ test("refreshes one token for concurrent callers", async () => {
   assert.deepEqual(tokens, ["new-access", "new-access"]);
   assert.equal(refreshRequests, 1);
   assert.equal(requestBody.get("client_id"), CLIENT_ID);
-  assert.equal(requestBody.has("client_secret"), true);
+  assert.equal(requestBody.get("client_secret"), CLIENT_SECRET);
 });
 
 test("requires reauthorization for a grant from another OAuth client", async () => {

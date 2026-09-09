@@ -1,6 +1,6 @@
 # Privacy Policy — VFS Provider for Google Drive
 
-Last updated: September 7, 2026
+Last updated: September 9, 2026
 
 This policy describes how VFS Provider for Google Drive handles data when it
 connects Google Drive storage to compatible Thunderbird add-ons. The provider
@@ -64,6 +64,11 @@ content to a developer-operated service.
 No data is sold, used for advertising, or shared for analytics. The provider
 does not include third-party tracking or remote diagnostic reporting.
 
+VFS Provider for Google Drive's use of information received from Google APIs
+will adhere to the
+[Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy),
+including the Limited Use requirements.
+
 ## 4. Local storage and retention
 
 Thunderbird extension storage holds:
@@ -118,10 +123,15 @@ written by Thunderbird, a consumer add-on, Google, or another component.
 
 ## 7. Security
 
-OAuth uses the Authorization Code flow with PKCE and does not embed or store a
-client secret. Sensitive network requests use HTTPS. Host permissions are
-limited to Google's OAuth and Drive API hosts. Packaged code is self-contained;
-the add-on does not download code for execution.
+OAuth uses the Authorization Code flow with PKCE. The publisher's Google
+Desktop OAuth client configuration is supplied as an external release-build
+input and is included in the distributed add-on. Installed applications cannot
+keep this public client configuration confidential, so it is not used as a
+security boundary or as proof that a request came from an untampered add-on.
+It is not a user credential and is not copied into account records or logs.
+Sensitive network requests use HTTPS. Host permissions are limited to Google's
+OAuth and Drive API hosts. Packaged code is self-contained; the add-on does not
+download code for execution.
 
 Refresh tokens are stored in the Thunderbird profile rather than an operating
 system credential vault. Device access and Thunderbird profile backups must

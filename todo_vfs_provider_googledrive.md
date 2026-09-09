@@ -5,14 +5,20 @@ kept in sync with the repository.
 
 ## Product decisions
 
-- [x] Register the project-owned Google OAuth Desktop client and wire its client
-  ID and required client secret into the add-on. Installed applications cannot
-  keep this credential pair confidential, so PKCE remains the authorization-code
-  protection and neither value is accepted from administrators or users.
+- [x] Register the project-owned Google OAuth Desktop client and inject its
+  client ID and assigned client secret from an external, untracked credential
+  JSON during the XPI build. Installed applications cannot keep this credential
+  pair confidential, so PKCE remains the authorization-code protection and
+  neither value is accepted from administrators or users.
 - [x] Use one project-owned OAuth client in releases. Administrators and users
   do not provide their own client ID.
-- [x] Use the packaged client in every build and remove the development
+- [x] Keep real publisher client values out of tracked source and CI review
+  packages. Release builds fail closed without the protected external input.
+- [x] Use the packaged client in every release build and remove the development
   client-ID field from the options page.
+- [ ] Rotate the Google Desktop client secret that was previously committed,
+  rebuild and verify login and refresh with the replacement, then disable and
+  delete the exposed secret in Google Cloud.
 - [ ] Complete restricted-scope verification with the final product identity,
   privacy text, support contact, and production test instructions.
 - [x] Keep `{90c66d9f-a142-43a8-8ffb-707a48d8eb7a}` as the permanent Gecko
@@ -41,7 +47,7 @@ kept in sync with the repository.
 - [x] Add a build that packages only `src/` and does not download or rewrite
   dependencies during packaging.
 - [x] Add review checks for manifest shape, locale parity, vendor integrity,
-  package contents, encoding, and generated artifacts.
+  OAuth build markers, package contents, encoding, and generated artifacts.
 - [x] Add GitHub Actions for the review aggregate and the current Thunderbird
   webext-linter.
 - [x] Add all family locales and keep every visible string translated. DE/EN are
@@ -177,8 +183,12 @@ kept in sync with the repository.
     services to exercise token refresh, interrupted/completed setup, and active
     transfer boundaries; retain real Thunderbird restart cases in the manual
     release matrix.
-- [ ] Run the upstream VFS example-client tests and benchmark against the provider.
-- [ ] Test interoperability with an unmodified API 1.3 VFS client.
+- [x] Run the upstream VFS example-client tests against the provider. The live
+  test suite passes all 55 checks.
+- [x] Run the upstream VFS example-client benchmark against the provider. The
+  full benchmark, including 100 MiB operations and cleanup, completed in
+  796.5 seconds.
+- [x] Test interoperability with an unmodified API 1.3 VFS client.
 - [ ] Follow up upstream on serializing Toolkit connection record mutations.
   Concurrent setup/config updates and consumer removal currently use separate
   read-modify-write operations in the Toolkit.
@@ -187,8 +197,9 @@ kept in sync with the repository.
 - [ ] Run the complete review matrix and a freshly downloaded Thunderbird
   webext-linter before the first release candidate.
 - [ ] Smoke-test the XPI on the oldest supported Thunderbird and the current ESR.
-- [ ] Run live tests against My Drive and a real Shared Drive, including token
-  expiry, refresh, rate-limit retry, resumable upload, and change polling.
+- [ ] Complete the remaining live tests against a real Shared Drive, including
+  token expiry, refresh, rate-limit retry, and change polling. My Drive and the
+  resumable upload path pass through the example-client suite and benchmark.
 - [x] Add administrator and developer documentation for the implemented scope.
   - [x] Document development Google Cloud setup, account connection and recovery,
     OAuth scope and verification boundaries, Shared Drives, and Workspace exports.

@@ -8,3 +8,6 @@ npm-debug.log*
 webext-linter-*.json
 *.xpi
 *.zip
+client_secret*.json
+oauth-credentials*.json
+.secrets/

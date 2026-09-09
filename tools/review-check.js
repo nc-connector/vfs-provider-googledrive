@@ -114,15 +114,23 @@ function checkOAuthConfiguration() {
     path.join(SOURCE_DIR, "google", "oauth-client.mjs"),
     "utf8"
   );
+  const clientIdMarker = "__GDRVFS_OAUTH_CLIENT_ID__";
+  const clientSecretMarker = "__GDRVFS_OAUTH_CLIENT_SECRET__";
   assert(
-    oauthSource.includes(
-      "97829492793-hupuhndvki6esrb3hpgbuhgr5ci3mc6m.apps.googleusercontent.com"
-    ),
-    "Unexpected packaged OAuth client ID"
+    oauthSource.split(clientIdMarker).length === 2,
+    "The OAuth client ID build marker must occur exactly once"
   );
   assert(
-    /const GOOGLE_OAUTH_CLIENT_SECRET\s*=\s*"[^"\r\n]+";/u.test(oauthSource),
-    "The packaged OAuth client secret is missing"
+    oauthSource.split(clientSecretMarker).length === 2,
+    "The OAuth client secret build marker must occur exactly once"
+  );
+  assert(
+    !/[A-Za-z0-9._-]+\.apps\.googleusercontent\.com/u.test(oauthSource),
+    "The OAuth source must not contain a real Google client ID"
+  );
+  assert(
+    !/GOCSPX-[A-Za-z0-9_-]+/u.test(oauthSource),
+    "The OAuth source must not contain a Google client secret"
   );
   assert(
     oauthSource.includes("client_secret: clientSecret"),

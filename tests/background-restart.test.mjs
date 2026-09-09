@@ -8,10 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { RequestAbortRegistry } from "../src/core/request-aborts.mjs";
-import {
-  GOOGLE_OAUTH_CLIENT_ID,
-  GoogleOAuthClient
-} from "../src/google/oauth-client.mjs";
+import { GoogleOAuthClient } from "../src/google/oauth-client.mjs";
 import { OAuthSessionRepository } from "../src/google/oauth-session.mjs";
 import { GOOGLE_DRIVE_CAPABILITIES } from "../src/provider/google-drive-vfs-provider.mjs";
 import {
@@ -21,7 +18,8 @@ import {
 import { ProviderStateRepository } from "../src/state/provider-state.mjs";
 import { FakeStorageArea } from "./helpers/fake-storage.mjs";
 
-const CLIENT_ID = GOOGLE_OAUTH_CLIENT_ID;
+const CLIENT_ID = "test-client.apps.googleusercontent.com";
+const CLIENT_SECRET = "test-client-secret";
 
 function tokenResponse(accessToken) {
   return new Response(JSON.stringify({
@@ -86,7 +84,9 @@ test("refreshes from stored account state after background reconstruction", asyn
       return tokenResponse("new-access");
     },
     logger: { debug() {} },
-    now: () => now
+    now: () => now,
+    clientId: CLIENT_ID,
+    clientSecret: CLIENT_SECRET
   });
 
   const tokens = await Promise.all([

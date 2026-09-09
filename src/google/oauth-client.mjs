@@ -11,9 +11,9 @@ import {
 
 export const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
 export const GOOGLE_OAUTH_CLIENT_ID =
-  "97829492793-hupuhndvki6esrb3hpgbuhgr5ci3mc6m.apps.googleusercontent.com";
+  "__GDRVFS_OAUTH_CLIENT_ID__";
 const GOOGLE_OAUTH_CLIENT_SECRET =
-  "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";
+  "__GDRVFS_OAUTH_CLIENT_SECRET__";
 export const OAUTH_REQUEST_TIMEOUT_MS = 30 * 1000;
 
 const AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -22,6 +22,8 @@ const REVOCATION_ENDPOINT = "https://oauth2.googleapis.com/revoke";
 const ABOUT_ENDPOINT = "https://www.googleapis.com/drive/v3/about";
 const TRANSACTION_MAX_AGE_MS = 10 * 60 * 1000;
 const CLIENT_ID_PATTERN = /^[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/;
+const UNCONFIGURED_CLIENT_ID = "__GDRVFS_" + "OAUTH_CLIENT_ID__";
+const UNCONFIGURED_CLIENT_SECRET = "__GDRVFS_" + "OAUTH_CLIENT_SECRET__";
 
 function defaultFetch(input, init) {
   return globalThis.fetch(input, init);
@@ -40,7 +42,7 @@ function encodeBase64Url(bytes) {
 
 function requireClientId(value) {
   const clientId = typeof value === "string" ? value.trim() : "";
-  if (!clientId) {
+  if (!clientId || clientId === UNCONFIGURED_CLIENT_ID) {
     throw new GoogleOAuthError("oauth_not_configured");
   }
   if (!CLIENT_ID_PATTERN.test(clientId)) {
@@ -51,7 +53,7 @@ function requireClientId(value) {
 
 function requireClientSecret(value) {
   const clientSecret = typeof value === "string" ? value.trim() : "";
-  if (!clientSecret) {
+  if (!clientSecret || clientSecret === UNCONFIGURED_CLIENT_SECRET) {
     throw new GoogleOAuthError("oauth_not_configured");
   }
   return clientSecret;
@@ -136,6 +138,8 @@ export class GoogleOAuthClient {
   #crypto;
   #now;
   #requestTimeoutMs;
+  #clientId;
+  #clientSecret;
   #refreshPromises = new Map();
 
   constructor({
@@ -146,7 +150,9 @@ export class GoogleOAuthClient {
     logger,
     cryptoApi = crypto,
     now = () => Date.now(),
-    requestTimeoutMs = OAUTH_REQUEST_TIMEOUT_MS
+    requestTimeoutMs = OAUTH_REQUEST_TIMEOUT_MS,
+    clientId = GOOGLE_OAUTH_CLIENT_ID,
+    clientSecret = GOOGLE_OAUTH_CLIENT_SECRET
   }) {
     this.#identityApi = identityApi;
     this.#sessionRepository = sessionRepository;
@@ -155,6 +161,8 @@ export class GoogleOAuthClient {
     this.#logger = logger;
     this.#crypto = cryptoApi;
     this.#now = now;
+    this.#clientId = clientId;
+    this.#clientSecret = clientSecret;
     this.#requestTimeoutMs = requirePositiveNumber(
       requestTimeoutMs,
       "requestTimeoutMs"
@@ -168,10 +176,8 @@ export class GoogleOAuthClient {
     if (accountId && !expectedAccount) {
       throw new GoogleOAuthError("oauth_reauthorization_required", 401);
     }
-    const normalizedClientId = requireClientId(GOOGLE_OAUTH_CLIENT_ID);
-    const normalizedClientSecret = requireClientSecret(
-      GOOGLE_OAUTH_CLIENT_SECRET
-    );
+    const normalizedClientId = requireClientId(this.#clientId);
+    const normalizedClientSecret = requireClientSecret(this.#clientSecret);
     const redirectUri = await createGoogleRedirectUri(this.#identityApi);
     const pkce = await createPkceValues(this.#crypto);
     await this.#sessionRepository.removeExpiredTransactions(TRANSACTION_MAX_AGE_MS);
@@ -434,7 +440,8 @@ export class GoogleOAuthClient {
 
   async #refreshAccessToken(accountId, authorization) {
     const clientId = requireClientId(authorization.oauthClientId);
-    if (clientId !== GOOGLE_OAUTH_CLIENT_ID) {
+    const configuredClientId = requireClientId(this.#clientId);
+    if (clientId !== configuredClientId) {
       await this.#accountRepository.setAccountStatus(
         accountId,
         "reauthorization_required"
@@ -442,7 +449,7 @@ export class GoogleOAuthClient {
       await this.#sessionRepository.clearAccessToken(accountId);
       throw new GoogleOAuthError("oauth_reauthorization_required", 401);
     }
-    const clientSecret = requireClientSecret(GOOGLE_OAUTH_CLIENT_SECRET);
+    const clientSecret = requireClientSecret(this.#clientSecret);
     this.#logger.debug("oauth.token.refresh.start", { phase: "refresh" });
     const { response, payload } = await this.#request(TOKEN_ENDPOINT, {
       method: "POST",
