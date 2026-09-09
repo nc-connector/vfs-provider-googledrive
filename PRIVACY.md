@@ -128,10 +128,11 @@ Desktop OAuth client configuration is supplied as an external release-build
 input and is included in the distributed add-on. Installed applications cannot
 keep this public client configuration confidential, so it is not used as a
 security boundary or as proof that a request came from an untampered add-on.
-It is not a user credential and is not copied into account records or logs.
-Sensitive network requests use HTTPS. Host permissions are limited to Google's
-OAuth and Drive API hosts. Packaged code is self-contained; the add-on does not
-download code for execution.
+It is not a user credential. The client ID is retained as authorization
+metadata for an account; the client secret is not copied into account records
+or logs. Sensitive network requests use HTTPS. Host permissions are limited to
+Google's OAuth and Drive API hosts. Packaged code is self-contained; the add-on
+does not download code for execution.
 
 Refresh tokens are stored in the Thunderbird profile rather than an operating
 system credential vault. Device access and Thunderbird profile backups must
